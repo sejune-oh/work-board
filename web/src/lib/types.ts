@@ -104,6 +104,74 @@ export type MeetingNote = {
   }[];
 };
 
+export type OverviewIssueRef = {
+  id: string;
+  repositoryName: string;
+  number: number;
+  title: string;
+  status: Status;
+  updatedAt: string;
+  assignees: Assignee[];
+};
+
+export type StatusCounts = { todo: number; inProgress: number; inReview: number; done: number };
+
+export type OverviewNoteRef = { id: string; title: string; heldAt: string };
+
+export type ActivityKind = "comment" | "pr_opened" | "pr_review_requested" | "pr_merged" | "issue_closed" | "meeting_note";
+
+/** `GET /api/overview`. doneThisWeek counts from Monday 00:00 Asia/Seoul; sprint dates are yyyy-MM-dd. */
+export type Overview = {
+  generatedAt: string;
+  counts: { open: number; inProgress: number; inReview: number; stale: number; doneThisWeek: number };
+  attention: {
+    urgent: { issue: OverviewIssueRef; notStarted: boolean }[];
+    reviewWaiting: {
+      issue: OverviewIssueRef;
+      pullRequest: { number: number; title: string; authorGithubLogin: string | null; waitingSince: string };
+    }[];
+    stale: { issue: OverviewIssueRef; idleDays: number }[];
+    unassigned: OverviewIssueRef[];
+    actionItemsWithoutIssue: { id: string; text: string; assignee: Member | null; note: OverviewNoteRef }[];
+    /** De-duplicated counts before the 5-per-group cut. */
+    totals: { urgent: number; reviewWaiting: number; stale: number; unassigned: number; actionItemsWithoutIssue: number };
+  };
+  people: {
+    member: Member;
+    todo: number;
+    inProgress: number;
+    inReview: number;
+    doneThisWeek: number;
+    overloaded: boolean;
+    current: OverviewIssueRef | null;
+    lastActivityAt: string | null;
+  }[];
+  projects: {
+    project: { id: string; name: string; color: string | null; repositories: string[] };
+    byStatus: StatusCounts;
+    openPullRequests: number;
+    latestNote: OverviewNoteRef | null;
+  }[];
+  sprint: { id: string; name: string; startDate: string; endDate: string; daysLeft: number; byStatus: StatusCounts } | null;
+  milestones: null;
+  actionItems: {
+    id: string;
+    text: string;
+    assignee: Member | null;
+    issue: { id: string; repositoryName: string; number: number; status: Status } | null;
+    note: OverviewNoteRef;
+  }[];
+  activity: {
+    kind: ActivityKind;
+    at: string;
+    actor: { githubLogin: string | null; displayName: string | null } | null;
+    issue: { id: string; repositoryName: string; number: number; title: string } | null;
+    pullRequest: { repositoryName: string; number: number; title: string } | null;
+    note: { id: string; title: string } | null;
+    snippet: string | null;
+  }[];
+};
+
 export type SearchResult = {
   issues: { id: string; repositoryName: string; number: number; title: string; status: Status }[];
   comments: { issueId: string; issueTitle: string; snippet: string }[];

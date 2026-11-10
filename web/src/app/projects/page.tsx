@@ -5,11 +5,11 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Empty, ErrorBox, Loading } from "@/components/Feedback";
 import { FilterChips } from "@/components/FilterChips";
 import { StatusColumns } from "@/components/StatusColumns";
-import { PageHeader, ProgressBar, SectionHead, type StatusCounts, progressLine } from "@/components/ui";
+import { PageHeader, ProgressBar, SectionHead, progressLine } from "@/components/ui";
 import { useApi } from "@/lib/api";
 import { applyFilters, hasFilters, issuesQuery, readFilters } from "@/lib/filters";
 import { STATUS_ORDER, formatDate, isCanceled, percent, personName } from "@/lib/labels";
-import type { BoardIssue, MeetingNoteSummary, Member, Project } from "@/lib/types";
+import type { BoardIssue, MeetingNoteSummary, Member, Project, StatusCounts } from "@/lib/types";
 
 function countByStatus(issues: BoardIssue[]): StatusCounts {
   const c: StatusCounts = { todo: 0, inProgress: 0, inReview: 0, done: 0 };

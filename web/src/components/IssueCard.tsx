@@ -9,7 +9,7 @@ import { useIssuePanel } from "./useIssuePanel";
 type Props = {
   issue: BoardIssue;
   showAssignee?: boolean;
-  /** Board columns already name the status, so the left rule can go. */
+  /** Board columns already name the status, so the left status rule is off unless asked for. */
   showStatusRule?: boolean;
 };
 

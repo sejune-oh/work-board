@@ -1,5 +1,5 @@
 import { STATUS_DOT, STATUS_LABEL, initial, percent } from "@/lib/labels";
-import type { Status } from "@/lib/types";
+import type { Status, StatusCounts } from "@/lib/types";
 
 type Person = { displayName: string | null; githubLogin: string | null };
 
@@ -55,7 +55,6 @@ export function SectionHead({ eyebrow, title, id, action }: { eyebrow?: string; 
   );
 }
 
-export type StatusCounts = { todo: number; inProgress: number; inReview: number; done: number };
 
 /** Done, review, progress, todo from the left, always with the numbers beside it. */
 export function ProgressBar({ counts, thick = false, label }: { counts: StatusCounts; thick?: boolean; label?: string }) {

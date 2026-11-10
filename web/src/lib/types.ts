@@ -1,6 +1,13 @@
 // Mirrors docs/api-contract.md. Keep the two in sync.
 
-export type DevUser = { githubLogin: string; displayName: string | null; tenantLogin: string };
+/** One entry per membership: the same person appears once per tenant. */
+export type DevUser = {
+  githubLogin: string;
+  githubUserId: number;
+  displayName: string | null;
+  tenantId: string;
+  tenantLogin: string;
+};
 
 export type Member = {
   id: string;

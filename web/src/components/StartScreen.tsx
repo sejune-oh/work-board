@@ -7,7 +7,7 @@ const RUN_STEPS = [
 ];
 
 /** Shown instead of the boards until someone picks who they are. */
-export function StartScreen() {
+export function StartScreen({ tenantRequired = false }: { tenantRequired?: boolean }) {
   return (
     <div className="mx-auto flex max-w-lg flex-col gap-6 py-10">
       <div>
@@ -18,7 +18,11 @@ export function StartScreen() {
       </div>
 
       <div className="rounded-xl border border-slate-200 p-5 dark:border-slate-800">
-        <p className="mb-3 text-sm text-slate-500">시작하려면 누구로 볼지 고르세요.</p>
+        <p className="mb-3 text-sm text-slate-500">
+          {tenantRequired
+            ? "이 사용자는 여러 조직에 속해 있습니다. 괄호 안의 조직까지 맞는 항목을 고르세요."
+            : "시작하려면 누구로 볼지 고르세요."}
+        </p>
         <UserPicker large />
       </div>
 

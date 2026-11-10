@@ -23,10 +23,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [q, setQ] = useState("");
   const me = useMe();
-  const needsUser = me.error instanceof ApiError && me.error.status === 401;
+  const authError = me.error instanceof ApiError && me.error.status === 401 ? me.error : null;
+  const needsUser = authError !== null;
 
   let content: React.ReactNode;
-  if (needsUser) content = <StartScreen />;
+  if (authError) content = <StartScreen tenantRequired={authError.code === "tenant_required"} />;
   else if (me.error) content = <ErrorBox error={me.error} />;
   else if (!me.data) content = <Loading />;
   else content = children;

@@ -29,6 +29,10 @@ public class GrantTests : IClassFixture<WebApplicationFactory<Program>>
         { "comments", "delete from comments" },
         { "webhook_deliveries", "select * from webhook_deliveries" },
         { "ai_usage", "select * from ai_usage" },
+        { "auth_links", "select * from auth_links" },
+        { "auth_links", "insert into auth_links (auth_user_id, github_user_id) values (gen_random_uuid(), 1)" },
+        { "auth_links", "update auth_links set github_user_id = 1" },
+        { "auth_links", "delete from auth_links" },
         { "ai_usage", "insert into ai_usage (tenant_id, feature) values ('10000000-0000-0000-0000-000000000001', 'x')" },
     };
 

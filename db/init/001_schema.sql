@@ -301,6 +301,14 @@ begin
   end loop;
 end $$;
 
+-- Login link: Supabase auth user -> GitHub user. Global, not tenant data, so no RLS; the app role gets no grant.
+create table auth_links (
+  auth_user_id   uuid primary key,
+  github_user_id bigint not null,
+  linked_at      timestamptz not null default now()
+);
+create index auth_links_github_user_id on auth_links (github_user_id);
+
 -- Grants ----------------------------------------------------------------------
 -- The API role reads everything it needs and writes only board-only tables. GitHub mirror data,
 -- tenants and members are written by sync (workboard_sync) alone.

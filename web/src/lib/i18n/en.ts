@@ -10,7 +10,6 @@ export const en: Dict = {
   app: {
     title: "Work board",
     description: "Who is doing what, in which project, and how far along, on one screen",
-    noOrg: "No organization yet",
   },
 
   nav: {
@@ -83,7 +82,6 @@ export const en: Dict = {
   start: {
     title: "Who, in which project, doing what, how far along.",
     lead: "Issues, PRs and meeting notes on one screen, checked every morning.",
-    tenantRequired: "This user belongs to several organizations. Pick the entry whose organization in brackets also matches.",
     pick: "Pick who you are to get started.",
     runLocally: "How to run it on your machine",
     emptyListHint: "If the list is empty, check that the API is running.",
@@ -117,15 +115,31 @@ export const en: Dict = {
     },
     noMembership: {
       title: "Your account isn't in a company yet",
-      lead: (login) => `You signed in as ${login}, but this account doesn't belong to any company.`,
-      leadNoLogin: "You signed in, but this account doesn't belong to any company.",
-      next: "Ask your company admin to add this GitHub account as a member.",
-      otherAccount: "Sign in with another account",
+      lead: "You're signed in, but this GitHub account doesn't belong to any company.",
+      next: "Ask your company admin to add this account as a member, then check again to get in.",
+      recheck: "Check again",
     },
     tenant: {
       title: "Choose a company",
       lead: "This account belongs to several companies. Your choice is remembered next time.",
       noList: "Couldn't get the list of companies. Try signing out and in again.",
+    },
+  },
+
+  gate: {
+    devMode: "Dev mode",
+    signedInAs: (login) => `Signed in as ${login}`,
+    checking: { kicker: "Starting", title: "Checking", lead: "Checking your sign-in and your company." },
+    login: { kicker: "Sign in" },
+    company: { kicker: "Company" },
+    error: {
+      kicker: "Connection",
+      title: "Couldn't reach the server",
+      lead: "You're still signed in. Try again in a moment.",
+      network: "The API server didn't respond.",
+      status: (status) => `The API server returned a ${status} error.`,
+      retry: "Try again",
+      retrying: "Checking again",
     },
   },
 

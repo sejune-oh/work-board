@@ -14,6 +14,11 @@ export const authEnabled = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
 /** Fired when the signed-in person or the chosen tenant changes, so data is fetched again. */
 export const AUTH_EVENT = "workboard:auth";
 
+/** Asks the sign-in gate to run `/api/me` again, e.g. after a page was refused for its tenant. */
+export const GATE_EVENT = "workboard:gate";
+
+export const LOGIN_PATH = "/login";
+
 let client: SupabaseClient | null = null;
 
 export function supabase(): SupabaseClient | null {
@@ -44,9 +49,32 @@ function write(storage: () => Storage, key: string, value: string | null) {
 const local = () => window.localStorage;
 const session = () => window.sessionStorage;
 
-/** Only same-site paths, so the callback can never send someone to another origin. */
-function safePath(path: string | null): string {
-  return path && path.startsWith("/") && !path.startsWith("//") && !path.startsWith("/auth/") ? path : "/";
+// Backslashes count as slashes in URL parsing, and control characters are stripped before it.
+const UNSAFE_CHARS = /[\\\u0000-\u001f\u007f]/;
+
+/** A same-origin path to return to after sign-in, or `/`. Never the sign-in pages themselves. */
+export function safePath(path: string | null | undefined): string {
+  if (!path || !path.startsWith("/") || path.startsWith("//") || UNSAFE_CHARS.test(path)) return "/";
+  let url: URL;
+  try {
+    url = new URL(path, window.location.origin);
+  } catch {
+    return "/";
+  }
+  if (url.origin !== window.location.origin) return "/";
+  const p = url.pathname;
+  if (p === LOGIN_PATH || p === `${LOGIN_PATH}.html` || p.startsWith(`${LOGIN_PATH}/`) || p.startsWith("/auth/")) return "/";
+  return p + url.search + url.hash;
+}
+
+/** `/login?next=…`; `ended` adds the notice that the previous session was refused. */
+export function loginHref(next: string, ended = false): string {
+  const params = new URLSearchParams();
+  const target = safePath(next);
+  if (target !== "/") params.set("next", target);
+  if (ended) params.set("reason", "ended");
+  const query = params.toString();
+  return query ? `${LOGIN_PATH}?${query}` : LOGIN_PATH;
 }
 
 /** `getSession` refreshes an expired access token before returning it. */
@@ -57,12 +85,11 @@ export async function getAccessToken(): Promise<string | null> {
   return data.session?.access_token ?? null;
 }
 
-export async function signInWithGitHub() {
+/** `returnTo` is where the callback sends the person; without it, an earlier stored one is kept. */
+export async function signInWithGitHub(returnTo?: string) {
   const sb = supabase();
   if (!sb) return;
-  if (!window.location.pathname.startsWith("/auth/")) {
-    write(session, RETURN_TO_KEY, safePath(window.location.pathname + window.location.search));
-  }
+  if (returnTo !== undefined) write(session, RETURN_TO_KEY, safePath(returnTo));
   const redirectTo = new URL("/auth/callback", window.location.origin).toString();
   const { error } = await sb.auth.signInWithOAuth({ provider: "github", options: { redirectTo } });
   if (error) throw error;
@@ -102,6 +129,17 @@ async function exchange(search: URLSearchParams): Promise<string> {
 export async function signOut() {
   write(local, TENANT_KEY, null);
   await supabase()?.auth.signOut({ scope: "local" });
+}
+
+let leaving = false;
+
+/** Set while a person signs out on purpose, so the gate sends them to `/login` without a return path. */
+export function markLeaving(value: boolean) {
+  leaving = value;
+}
+
+export function isLeaving(): boolean {
+  return leaving;
 }
 
 /** Drops the session the API rejected, unless a newer one has replaced it meanwhile. */

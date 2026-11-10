@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
-import { ApiError } from "@/lib/api";
-import { setTenant, signInWithGitHub, signOut } from "@/lib/auth";
+import { useEffect, useRef, useState } from "react";
+import { ApiError, setDevIdentity } from "@/lib/api";
+import { authEnabled, markLeaving, setTenant, signInWithGitHub, signOut } from "@/lib/auth";
 import { useT } from "@/lib/i18n";
-import { useAuthSession, useMe } from "@/lib/me";
+import { useAuthSession, useLogin, useMe } from "@/lib/me";
+import { LangToggle } from "./LangToggle";
+import { ThemeToggle } from "./ThemeToggle";
 
 export function GitHubMark({ size = 16 }: { size?: number }) {
   return (
@@ -15,7 +17,7 @@ export function GitHubMark({ size = 16 }: { size?: number }) {
 }
 
 const BUTTON =
-  "inline-flex h-10 cursor-pointer items-center justify-center gap-2 rounded-control border border-rule-strong bg-surface px-4 text-ui font-medium text-ink transition-colors duration-[120ms] ease-tool hover:bg-hover disabled:cursor-default disabled:text-muted";
+  "inline-flex h-10 w-full cursor-pointer items-center justify-center gap-2 rounded-control border border-rule-strong bg-surface px-4 text-ui font-medium text-ink transition-colors duration-[120ms] ease-tool hover:bg-hover disabled:cursor-default disabled:text-muted";
 
 /** App problems stay in ink: no vermilion. */
 export function Notice({ children }: { children: React.ReactNode }) {
@@ -26,22 +28,102 @@ export function Notice({ children }: { children: React.ReactNode }) {
   );
 }
 
-function ScreenHead({ title, lead }: { title: string; lead?: React.ReactNode }) {
+/**
+ * The frame for everything before the app: product mark, language and theme, one centred column.
+ * No navigation, search or shortcuts live here. Focus moves to the title whenever it changes.
+ */
+export function GateFrame({
+  kicker,
+  title,
+  lead,
+  footer,
+  children,
+}: {
+  kicker: string;
+  title: string;
+  lead?: React.ReactNode;
+  footer?: React.ReactNode;
+  children: React.ReactNode;
+}) {
   const t = useT();
+  const heading = useRef<HTMLHeadingElement>(null);
+
+  useEffect(() => {
+    heading.current?.focus({ preventScroll: true });
+  }, [title]);
+
   return (
-    <div>
-      <p className="font-mono text-meta text-muted">{t.app.title}</p>
-      <h1 className="mt-1 text-display font-semibold tracking-[-0.015em]">{title}</h1>
-      {lead && <p className="mt-1 text-body text-ink-soft">{lead}</p>}
+    <div className="flex min-h-screen flex-col bg-canvas">
+      <header className="flex h-12 items-center gap-3 px-4 min-[900px]:px-6">
+        <span className="flex min-w-0 items-center gap-2">
+          <span
+            aria-hidden
+            className="grid h-[22px] w-[22px] shrink-0 place-items-center rounded-control bg-ink font-mono text-[11px] font-semibold text-surface"
+          >
+            wb
+          </span>
+          <span className="truncate text-[13.5px] font-semibold">{t.app.title}</span>
+          {!authEnabled && (
+            <span className="shrink-0 rounded-[2px] border border-rule-strong px-1.5 font-mono text-[11px] leading-[18px] text-ink-soft">
+              {t.gate.devMode}
+            </span>
+          )}
+        </span>
+        <div className="ml-auto flex shrink-0 items-center gap-2">
+          <LangToggle />
+          <ThemeToggle />
+        </div>
+      </header>
+      <main className="flex flex-1 justify-center px-4 pb-16 pt-[clamp(24px,12vh,120px)]">
+        <div key={title} className="reveal flex w-full max-w-[400px] flex-col gap-5">
+          <div>
+            <p className="font-mono text-meta text-muted">{kicker}</p>
+            <h1 ref={heading} tabIndex={-1} style={{ outline: "none" }} className="mt-1 text-display font-semibold tracking-[-0.015em]">
+              {title}
+            </h1>
+            {lead && <p className="mt-1 text-body text-ink-soft">{lead}</p>}
+          </div>
+          <div className="card p-3.5">{children}</div>
+          {footer}
+        </div>
+      </main>
     </div>
   );
 }
 
-export function Screen({ children }: { children: React.ReactNode }) {
-  return <div className="reveal mx-auto flex max-w-[560px] flex-col gap-6 py-6 min-[900px]:py-12">{children}</div>;
+/** Neutral screen while the session and company are checked; this is also what the static HTML holds. */
+export function CheckingScreen({ title }: { title?: string }) {
+  const t = useT();
+  return (
+    <GateFrame kicker={t.gate.checking.kicker} title={title ?? t.gate.checking.title}>
+      <p className="text-ui text-muted">{t.gate.checking.lead}</p>
+    </GateFrame>
+  );
 }
 
-export function SignInButton({ label }: { label?: string }) {
+/** Clears who is signed in, then lets the gate send the person to `/login` with no return path. */
+export async function leave() {
+  markLeaving(true);
+  if (authEnabled) await signOut();
+  else setDevIdentity(null);
+}
+
+/** "Signed in as <login> · Sign out" under the card of the company screens. */
+function SignedInAs() {
+  const t = useT();
+  const login = useLogin();
+  return (
+    <p className="flex flex-wrap items-center gap-x-2 gap-y-1 px-0.5 text-meta text-muted">
+      {login && <span>{t.gate.signedInAs(login)}</span>}
+      {login && <span aria-hidden>·</span>}
+      <button type="button" onClick={() => void leave()} className="link cursor-pointer text-meta">
+        {t.auth.signOut}
+      </button>
+    </p>
+  );
+}
+
+export function SignInButton({ label, returnTo }: { label?: string; returnTo?: string }) {
   const t = useT();
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -50,7 +132,7 @@ export function SignInButton({ label }: { label?: string }) {
     setBusy(true);
     setFailed(false);
     try {
-      await signInWithGitHub();
+      await signInWithGitHub(returnTo);
     } catch {
       setFailed(true);
       setBusy(false);
@@ -68,41 +150,34 @@ export function SignInButton({ label }: { label?: string }) {
   );
 }
 
-/** Shown instead of the boards while nobody is signed in. */
-export function SignInScreen({ ended = false }: { ended?: boolean }) {
+export function SignInScreen({ next, ended }: { next: string; ended: boolean }) {
   const t = useT();
   return (
-    <Screen>
-      <ScreenHead title={t.start.title} lead={t.start.lead} />
-      {ended && <Notice>{t.auth.sessionEnded}</Notice>}
-      <div className="card p-4">
-        <p className="mb-3 text-ui text-ink-soft">{t.auth.lead}</p>
-        <SignInButton />
-        <p className="mt-3 text-meta text-muted">{t.auth.scopeNote}</p>
-      </div>
-    </Screen>
+    <GateFrame kicker={t.gate.login.kicker} title={t.start.title} lead={t.start.lead}>
+      {ended && (
+        <div className="mb-3.5">
+          <Notice>{t.auth.sessionEnded}</Notice>
+        </div>
+      )}
+      <p className="mb-3 text-ui text-ink-soft">{t.auth.lead}</p>
+      <SignInButton returnTo={next} />
+      <p className="mt-3 text-meta text-muted">{t.auth.scopeNote}</p>
+    </GateFrame>
   );
 }
 
-export function NoMembershipScreen() {
+export function NoMembershipScreen({ onRecheck, busy }: { onRecheck: () => void; busy: boolean }) {
   const t = useT();
-  const session = useAuthSession();
-  const login = session?.user.user_metadata?.user_name as string | undefined;
   return (
-    <Screen>
-      <ScreenHead title={t.auth.noMembership.title} />
-      <div className="card p-4">
-        <p className="text-body text-ink">
-          {login ? t.auth.noMembership.lead(login) : t.auth.noMembership.leadNoLogin}
-        </p>
-        <p className="mt-1 text-body text-ink-soft">{t.auth.noMembership.next}</p>
-        <div className="mt-4 border-t border-rule pt-4">
-          <button type="button" className={BUTTON} onClick={() => void signOut()}>
-            {t.auth.noMembership.otherAccount}
-          </button>
-        </div>
+    <GateFrame kicker={t.gate.company.kicker} title={t.auth.noMembership.title} footer={<SignedInAs />}>
+      <p className="text-body text-ink">{t.auth.noMembership.lead}</p>
+      <p className="mt-1 text-body text-ink-soft">{t.auth.noMembership.next}</p>
+      <div className="mt-4">
+        <button type="button" className={BUTTON} onClick={onRecheck} disabled={busy} aria-busy={busy}>
+          {busy ? `${t.gate.error.retrying}…` : t.auth.noMembership.recheck}
+        </button>
       </div>
-    </Screen>
+    </GateFrame>
   );
 }
 
@@ -121,15 +196,13 @@ export function TenantChoiceScreen({ error }: { error: ApiError }) {
   const t = useT();
   const options = tenantOptions(error);
   return (
-    <Screen>
-      <ScreenHead title={t.auth.tenant.title} lead={t.auth.tenant.lead} />
+    <GateFrame kicker={t.gate.company.kicker} title={t.auth.tenant.title} lead={t.auth.tenant.lead} footer={<SignedInAs />}>
       {options.length > 0 ? (
-        <ul className="card">
+        <ul className="-m-3.5">
           {options.map((o, i) => (
             <li key={o.id} className={i > 0 ? "border-t border-rule" : undefined}>
               <button
                 type="button"
-                data-row
                 onClick={() => setTenant(o.id)}
                 className="flex h-11 w-full cursor-pointer items-center gap-3 px-3.5 text-left text-ui font-medium text-ink hover:bg-hover focus-visible:bg-hover"
               >
@@ -137,20 +210,33 @@ export function TenantChoiceScreen({ error }: { error: ApiError }) {
                   {o.name.slice(0, 2)}
                 </span>
                 <span className="min-w-0 truncate">{o.name}</span>
-                <span aria-hidden className="ml-auto text-muted">→</span>
+                <span aria-hidden className="ml-auto text-muted">
+                  →
+                </span>
               </button>
             </li>
           ))}
         </ul>
       ) : (
-        <Notice>{t.auth.tenant.noList}</Notice>
+        <p className="text-ui text-ink">{t.auth.tenant.noList}</p>
       )}
-      <div>
-        <button type="button" className={BUTTON} onClick={() => void signOut()}>
-          {t.auth.signOut}
+    </GateFrame>
+  );
+}
+
+/** Network or server trouble while checking: the person is not treated as signed out. */
+export function GateErrorScreen({ error, onRetry, busy }: { error: Error; onRetry: () => void; busy: boolean }) {
+  const t = useT();
+  const detail = error instanceof ApiError ? t.gate.error.status(error.status) : t.gate.error.network;
+  return (
+    <GateFrame kicker={t.gate.error.kicker} title={t.gate.error.title} lead={t.gate.error.lead}>
+      <p className="border-l-2 border-ink-soft pl-3 text-ui text-ink">{detail}</p>
+      <div className="mt-4">
+        <button type="button" className={BUTTON} onClick={onRetry} disabled={busy} aria-busy={busy}>
+          {busy ? `${t.gate.error.retrying}…` : t.gate.error.retry}
         </button>
       </div>
-    </Screen>
+    </GateFrame>
   );
 }
 
@@ -180,7 +266,7 @@ export function AccountMenu() {
       </span>
       <button
         type="button"
-        onClick={() => void signOut()}
+        onClick={() => void leave()}
         className="h-[26px] shrink-0 cursor-pointer rounded-control border border-rule px-2 text-meta text-ink-soft transition-colors duration-[120ms] ease-tool hover:border-rule-strong hover:text-ink"
       >
         {t.auth.signOut}

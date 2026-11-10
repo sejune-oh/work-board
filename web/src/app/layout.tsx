@@ -1,12 +1,10 @@
 import type { Metadata } from "next";
 import { IBM_Plex_Mono, IBM_Plex_Sans_KR } from "next/font/google";
-import { Suspense } from "react";
-import { AppShell } from "@/components/AppShell";
+import { AuthGate } from "@/components/AuthGate";
 import { THEME_INIT_SCRIPT } from "@/lib/theme";
 import { I18nProvider } from "@/lib/i18n";
 import { ko } from "@/lib/i18n/ko";
 import { LANG_INIT_SCRIPT } from "@/lib/i18n/lang";
-import { MeProvider } from "@/lib/me";
 import "./globals.css";
 
 // Korean glyphs come from the unicode-range slices Google serves; `subsets` only picks what is preloaded.
@@ -25,13 +23,9 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <script dangerouslySetInnerHTML={{ __html: `${THEME_INIT_SCRIPT};${LANG_INIT_SCRIPT}` }} />
       </head>
       <body>
-        <Suspense fallback={null}>
-          <I18nProvider>
-            <MeProvider>
-              <AppShell>{children}</AppShell>
-            </MeProvider>
-          </I18nProvider>
-        </Suspense>
+        <I18nProvider>
+          <AuthGate>{children}</AuthGate>
+        </I18nProvider>
       </body>
     </html>
   );

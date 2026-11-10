@@ -3,8 +3,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Notice, Screen, SignInButton } from "@/components/Auth";
-import { Loading } from "@/components/Feedback";
+import { CheckingScreen, GateFrame, Notice, SignInButton } from "@/components/Auth";
 import { SignInError, authEnabled, finishSignIn } from "@/lib/auth";
 import { useT } from "@/lib/i18n";
 
@@ -31,7 +30,7 @@ export default function AuthCallbackPage() {
     };
   }, [params, router]);
 
-  if (!failure) return <Loading label={t.auth.callback.working} />;
+  if (!failure) return <CheckingScreen title={t.auth.callback.working} />;
 
   const reason = {
     denied: t.auth.callback.denied,
@@ -41,21 +40,21 @@ export default function AuthCallbackPage() {
   }[failure];
 
   return (
-    <Screen>
-      <div>
-        <p className="font-mono text-meta text-muted">{t.app.title}</p>
-        <h1 className="mt-1 text-display font-semibold tracking-[-0.015em]">{t.auth.callback.failedTitle}</h1>
-      </div>
+    <GateFrame kicker={t.gate.login.kicker} title={t.auth.callback.failedTitle}>
       <Notice>
         <p>{reason}</p>
         {authEnabled && <p className="mt-1 text-ink-soft">{t.auth.callback.fix}</p>}
       </Notice>
-      <div className="flex flex-wrap items-center gap-4">
-        {authEnabled && <SignInButton label={t.auth.callback.retry} />}
+      <div className="mt-4 flex flex-col items-center gap-3">
+        {authEnabled && (
+          <div className="w-full">
+            <SignInButton label={t.auth.callback.retry} />
+          </div>
+        )}
         <Link href="/" className="link text-ui">
           {t.auth.callback.home}
         </Link>
       </div>
-    </Screen>
+    </GateFrame>
   );
 }

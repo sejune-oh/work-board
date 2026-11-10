@@ -10,7 +10,6 @@ export const ko = {
   app: {
     title: "업무 보드",
     description: "누가, 어느 프로젝트에서, 무엇을, 어디까지 했는지 한 화면에서",
-    noOrg: "조직 선택 전",
   },
 
   nav: {
@@ -85,7 +84,6 @@ export const ko = {
   start: {
     title: "누가, 어느 프로젝트에서, 무엇을, 어디까지.",
     lead: "이슈, PR, 회의 노트를 한 화면에 모아 매일 아침 확인합니다.",
-    tenantRequired: "이 사용자는 여러 조직에 속해 있습니다. 괄호 안의 조직까지 맞는 항목을 고르세요.",
     pick: "시작하려면 누구로 볼지 고르세요.",
     runLocally: "내 컴퓨터에서 실행하는 방법",
     emptyListHint: "목록이 비어 있으면 API가 켜져 있는지 확인하세요.",
@@ -119,15 +117,31 @@ export const ko = {
     },
     noMembership: {
       title: "아직 소속된 회사가 없습니다",
-      lead: (login: string) => `${login} 계정으로 로그인했지만, 이 계정이 들어간 회사가 없습니다.`,
-      leadNoLogin: "로그인은 됐지만, 이 계정이 들어간 회사가 없습니다.",
-      next: "회사 관리자에게 이 GitHub 계정을 구성원으로 추가해 달라고 요청하세요.",
-      otherAccount: "다른 계정으로 로그인하기",
+      lead: "로그인은 됐지만, 이 GitHub 계정이 들어간 회사가 없습니다.",
+      next: "회사 관리자에게 이 계정을 구성원으로 추가해 달라고 요청하세요. 추가된 뒤 다시 확인하면 들어갈 수 있습니다.",
+      recheck: "다시 확인하기",
     },
     tenant: {
       title: "어느 회사로 볼지 고르세요",
       lead: "이 계정은 여러 회사에 속해 있습니다. 고른 회사는 다음에도 기억합니다.",
       noList: "회사 목록을 받지 못했습니다. 로그아웃한 뒤 다시 로그인해 보세요.",
+    },
+  },
+
+  gate: {
+    devMode: "개발 모드",
+    signedInAs: (login: string) => `${login} 계정으로 로그인함`,
+    checking: { kicker: "시작", title: "확인하는 중", lead: "로그인 상태와 소속 회사를 확인하고 있습니다." },
+    login: { kicker: "로그인" },
+    company: { kicker: "회사 확인" },
+    error: {
+      kicker: "연결",
+      title: "서버와 연결하지 못했습니다",
+      lead: "로그아웃된 것은 아닙니다. 잠시 뒤 다시 시도하세요.",
+      network: "API 서버에서 응답이 없습니다.",
+      status: (status: number) => `API 서버가 ${status} 오류를 돌려주었습니다.`,
+      retry: "다시 시도",
+      retrying: "다시 확인하는 중",
     },
   },
 

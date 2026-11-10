@@ -1,24 +1,243 @@
 @import "tailwindcss";
 
+/* Tokens: docs/design.md section 6. Change both together. */
 :root {
-  --background: #ffffff;
-  --foreground: #0f172a;
+  --wb-paper: #f5f1e8;
+  --wb-surface: #fbf9f4;
+  --wb-sunken: #ece6d9;
+  --wb-ink: #1d1b16;
+  --wb-ink-soft: #3f3b32;
+  --wb-muted: #6b6557;
+  --wb-rule: #dcd4c3;
+  --wb-rule-strong: #1d1b16;
+  --wb-focus: #2b4fa8;
+  --wb-accent: #b8361a;
+  --wb-accent-wash: #f9e1d6;
+  --wb-status-todo: #9a9384;
+  --wb-status-progress: #2f67b2;
+  --wb-status-review: #b7821a;
+  --wb-status-done: #3f7f5a;
+  --wb-status-cancel: #b9b2a3;
+  --wb-shadow-lift: 0 1px 0 rgb(29 27 22 / 0.06), 0 4px 12px -6px rgb(29 27 22 / 0.18);
+  --wb-shadow-panel: 0 0 0 1px rgb(29 27 22 / 0.08), 0 24px 48px -16px rgb(29 27 22 / 0.28);
+  --wb-scrim: rgb(22 20 15 / 0.28);
+  --wb-grain-opacity: 0.035;
+  color-scheme: light;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-}
-
+/* Dark follows the OS unless the toggle pinned a theme on <html data-theme>. */
 @media (prefers-color-scheme: dark) {
-  :root {
-    --background: #020617;
-    --foreground: #e2e8f0;
+  :root:not([data-theme="light"]) {
+    --wb-paper: #16140f;
+    --wb-surface: #1e1c16;
+    --wb-sunken: #100f0b;
+    --wb-ink: #eee8da;
+    --wb-ink-soft: #cfc8b7;
+    --wb-muted: #968f80;
+    --wb-rule: #2f2c24;
+    --wb-rule-strong: #eee8da;
+    --wb-focus: #8fa8f0;
+    --wb-accent: #ff6b42;
+    --wb-accent-wash: #3a1c12;
+    --wb-status-todo: #8c8576;
+    --wb-status-progress: #6fa1ea;
+    --wb-status-review: #e2b04a;
+    --wb-status-done: #6dbb8b;
+    --wb-status-cancel: #5a554a;
+    --wb-shadow-lift: 0 1px 0 rgb(0 0 0 / 0.3), 0 6px 16px -8px rgb(0 0 0 / 0.6);
+    --wb-shadow-panel: 0 0 0 1px rgb(238 232 218 / 0.08), 0 24px 48px -16px rgb(0 0 0 / 0.7);
+    --wb-scrim: rgb(0 0 0 / 0.5);
+    --wb-grain-opacity: 0;
+    color-scheme: dark;
   }
 }
 
+:root[data-theme="dark"] {
+  --wb-paper: #16140f;
+  --wb-surface: #1e1c16;
+  --wb-sunken: #100f0b;
+  --wb-ink: #eee8da;
+  --wb-ink-soft: #cfc8b7;
+  --wb-muted: #968f80;
+  --wb-rule: #2f2c24;
+  --wb-rule-strong: #eee8da;
+  --wb-focus: #8fa8f0;
+  --wb-accent: #ff6b42;
+  --wb-accent-wash: #3a1c12;
+  --wb-status-todo: #8c8576;
+  --wb-status-progress: #6fa1ea;
+  --wb-status-review: #e2b04a;
+  --wb-status-done: #6dbb8b;
+  --wb-status-cancel: #5a554a;
+  --wb-shadow-lift: 0 1px 0 rgb(0 0 0 / 0.3), 0 6px 16px -8px rgb(0 0 0 / 0.6);
+  --wb-shadow-panel: 0 0 0 1px rgb(238 232 218 / 0.08), 0 24px 48px -16px rgb(0 0 0 / 0.7);
+  --wb-scrim: rgb(0 0 0 / 0.5);
+  --wb-grain-opacity: 0;
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-paper: var(--wb-paper);
+  --color-surface: var(--wb-surface);
+  --color-sunken: var(--wb-sunken);
+  --color-ink: var(--wb-ink);
+  --color-ink-soft: var(--wb-ink-soft);
+  --color-muted: var(--wb-muted);
+  --color-rule: var(--wb-rule);
+  --color-rule-strong: var(--wb-rule-strong);
+  --color-focus: var(--wb-focus);
+  --color-accent: var(--wb-accent);
+  --color-accent-wash: var(--wb-accent-wash);
+  --color-status-todo: var(--wb-status-todo);
+  --color-status-progress: var(--wb-status-progress);
+  --color-status-review: var(--wb-status-review);
+  --color-status-done: var(--wb-status-done);
+  --color-status-cancel: var(--wb-status-cancel);
+  --color-scrim: var(--wb-scrim);
+
+  /* next/font/google sets --font-hahmlet, --font-plex-kr, --font-plex-mono on <html>. */
+  --font-display: var(--font-hahmlet), "Hahmlet", serif;
+  --font-sans: var(--font-plex-kr), "IBM Plex Sans KR", sans-serif;
+  --font-mono: var(--font-plex-mono), "IBM Plex Mono", var(--font-plex-kr), monospace;
+
+  --text-display: 2.25rem;
+  --text-display--line-height: 1.25;
+  --text-title: 1.5rem;
+  --text-title--line-height: 1.3;
+  --text-heading: 1.0625rem;
+  --text-heading--line-height: 1.4;
+  --text-body: 0.9375rem;
+  --text-body--line-height: 1.6;
+  --text-ui: 0.875rem;
+  --text-ui--line-height: 1.45;
+  --text-meta: 0.78125rem;
+  --text-meta--line-height: 1.4;
+  --text-eyebrow: 0.71875rem;
+  --text-eyebrow--line-height: 1.2;
+
+  --radius-mark: 2px;
+  --radius-card: 6px;
+  --radius-panel: 10px;
+
+  --shadow-lift: var(--wb-shadow-lift);
+  --shadow-panel: var(--wb-shadow-panel);
+
+  --ease-paper: cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: "Pretendard", "Apple SD Gothic Neo", "Noto Sans KR", system-ui, sans-serif;
+  background: var(--wb-paper);
+  color: var(--wb-ink);
+  font-family: var(--font-sans);
+  font-size: var(--text-body);
+  line-height: 1.6;
+  word-break: keep-all;
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Paper grain, at most 3.5% and off in dark. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: var(--wb-grain-opacity);
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+
+:focus-visible {
+  outline: 2px solid var(--wb-focus);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+@layer components {
+  .eyebrow {
+    font-size: var(--text-eyebrow);
+    line-height: 1.2;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+  }
+
+  /* Attention mark: the only place vermilion appears. */
+  .stamp {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+    font-size: 11.5px;
+    font-weight: 600;
+    line-height: 1;
+    letter-spacing: 0.01em;
+    color: var(--wb-accent);
+    border: 1px solid currentColor;
+    border-radius: 2px;
+    padding: 4px 6px 3px;
+    opacity: 1;
+  }
+  .stamp-fill {
+    background: var(--wb-accent-wash);
+  }
+
+  .bar {
+    display: flex;
+    height: 6px;
+    gap: 2px;
+    overflow: hidden;
+    border-radius: 2px;
+    background: var(--wb-sunken);
+  }
+  .bar > span {
+    display: block;
+    height: 100%;
+    transform-origin: left;
+    animation: wb-fill 700ms var(--ease-paper) both;
+    animation-delay: 300ms;
+  }
+
+  .reveal {
+    animation: wb-rise 360ms var(--ease-paper) both;
+  }
+
+  .link {
+    color: var(--wb-ink);
+    text-decoration: underline;
+    text-decoration-color: var(--wb-rule);
+    text-underline-offset: 3px;
+    transition: text-decoration-color 120ms var(--ease-paper);
+  }
+  .link:hover {
+    text-decoration-color: currentColor;
+  }
+}
+
+@keyframes wb-rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes wb-fill {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
 }

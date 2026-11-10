@@ -213,8 +213,9 @@ Tailwind 4의 `@theme inline`으로 연결하면 `bg-paper`, `text-ink`, `border
   color-scheme: light;
 }
 
-/* 시스템 설정을 따르되, 화면의 밝기 전환 버튼은 <html data-theme="light|dark">로 덮어씁니다.
-   다크 값은 아래 미디어 쿼리 블록과 :root[data-theme="dark"] 블록에 똑같이 둡니다. */
+/* 다크 값은 아래 블록과 :root[data-theme="dark"] 블록 두 곳에 같게 둡니다.
+   화면 오른쪽 위 "밝게 · 어둡게" 버튼이 <html data-theme>를 고정하면 OS 설정보다 우선합니다.
+   이슈 패널 뒤 어둑한 막은 --wb-scrim(라이트 rgb(22 20 15 / 0.28), 다크 rgb(0 0 0 / 0.5))입니다. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --wb-paper: #16140f;

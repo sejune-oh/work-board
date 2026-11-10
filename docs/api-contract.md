@@ -4,10 +4,14 @@ Base URL: `http://localhost:5080`. All JSON is camelCase. Times are ISO 8601 UTC
 
 ## Identity (local only)
 
-Until GitHub login exists, the caller identifies itself with the `X-Dev-User: <githubLogin>` header.
+Until GitHub login exists, the caller identifies itself with the `X-Dev-User: <githubLogin>` header
+and, optionally, `X-Dev-Tenant: <tenantId>`.
 
 - The API looks the login up across all tenants (sync role, bypasses RLS), then serves the request
-  as that member's tenant.
+  as that member's tenant. A login can have one membership per tenant.
+- One membership: `X-Dev-Tenant` is optional and ignored.
+- Several memberships: `X-Dev-Tenant` must equal one of the login's `tenantId` values, otherwise
+  `401 {"error": "tenant_required"}`.
 - Missing or unknown login → `401 {"error": "unauthenticated"}`.
 - Only enabled when `ASPNETCORE_ENVIRONMENT=Development`.
 
@@ -23,7 +27,7 @@ first calls `select set_config('app.tenant_id', @tenantId, true)`. RLS policies 
 | Method | Path | Auth | Returns |
 | --- | --- | --- | --- |
 | GET | `/api/health` | none | `{"status":"ok"}` |
-| GET | `/api/dev/users` | none (Development only) | `DevUser[]` |
+| GET | `/api/dev/users` | none (Development only) | `DevUser[]`, one entry per membership |
 | GET | `/api/me` | dev user | `Me` |
 | GET | `/api/members` | dev user | `Member[]` |
 | GET | `/api/projects` | dev user | `Project[]` |
@@ -39,7 +43,7 @@ first calls `select set_config('app.tenant_id', @tenantId, true)`. RLS policies 
 | --- | --- |
 | `projectId` | only issues in repositories of this project |
 | `assignee` | only issues assigned to this GitHub login |
-| `doneWithinDays` | closed issues are included only if closed within N days (default 7) |
+| `doneWithinDays` | closed issues are included only if closed within N days, integer 0..365 (default 7). Out of range → `400 {"error": "invalid_doneWithinDays"}` |
 
 Open issues are always included. Sort: `updatedAt` descending.
 
@@ -51,7 +55,10 @@ comment bodies and meeting note titles/bodies. Up to 20 results per group.
 ## Shapes
 
 ```ts
-type DevUser = { githubLogin: string; displayName: string | null; tenantLogin: string };
+type DevUser = {
+  githubLogin: string; githubUserId: number; displayName: string | null;
+  tenantId: string; tenantLogin: string;
+};
 
 type Member = {
   id: string; githubUserId: number; githubLogin: string;

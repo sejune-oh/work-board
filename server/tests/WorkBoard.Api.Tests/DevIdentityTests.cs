@@ -15,21 +15,30 @@ public class DevIdentityTests
 {
     private static readonly Guid TenantId = Guid.Parse("10000000-0000-0000-0000-000000000001");
 
+    private static readonly Guid GlobexId = Guid.Parse("10000000-0000-0000-0000-000000000002");
+
     private sealed class FakeMemberLookup : IMemberLookup
     {
         public List<string> Lookups { get; } = [];
 
-        public Task<DevIdentity?> FindByLoginAsync(string githubLogin, CancellationToken ct)
+        public Task<IReadOnlyList<DevIdentity>> FindByLoginAsync(string githubLogin, CancellationToken ct)
         {
             Lookups.Add(githubLogin);
-            DevIdentity? identity = githubLogin == "haneul-dev"
-                ? new DevIdentity(new Member(Guid.NewGuid(), 5001, "haneul-dev", "김하늘", null, "admin"), TenantId, "acme-health")
-                : null;
-            return Task.FromResult(identity);
+            IReadOnlyList<DevIdentity> identities = githubLogin switch
+            {
+                "haneul-dev" => [new DevIdentity(new Member(Guid.NewGuid(), 5001, "haneul-dev", "김하늘", null, "admin"), TenantId, "acme-health")],
+                "shared-dev" =>
+                [
+                    new DevIdentity(new Member(Guid.NewGuid(), 5100, "shared-dev", null, null, "member"), TenantId, "acme-health"),
+                    new DevIdentity(new Member(Guid.NewGuid(), 5100, "shared-dev", null, null, "member"), GlobexId, "globex-labs"),
+                ],
+                _ => [],
+            };
+            return Task.FromResult(identities);
         }
 
         public Task<IReadOnlyList<DevUser>> ListAsync(CancellationToken ct) =>
-            Task.FromResult<IReadOnlyList<DevUser>>([new DevUser("haneul-dev", "김하늘", "acme-health")]);
+            Task.FromResult<IReadOnlyList<DevUser>>([new DevUser("haneul-dev", 5001, "김하늘", TenantId, "acme-health")]);
     }
 
     private static (WebApplicationFactory<Program> Factory, FakeMemberLookup Lookup, RecordingConnectionFactory Db) Create(
@@ -51,11 +60,13 @@ public class DevIdentityTests
         return (factory, lookup, db);
     }
 
-    private static HttpRequestMessage Get(string path, string? devUser)
+    private static HttpRequestMessage Get(string path, string? devUser, string? devTenant = null)
     {
         var request = new HttpRequestMessage(HttpMethod.Get, path);
         if (devUser is not null)
             request.Headers.Add("X-Dev-User", devUser);
+        if (devTenant is not null)
+            request.Headers.Add("X-Dev-Tenant", devTenant);
         return request;
     }
 
@@ -131,7 +142,7 @@ public class DevIdentityTests
 
         var users = await client.GetFromJsonAsync<List<DevUser>>("/api/dev/users");
 
-        Assert.Equal([new DevUser("haneul-dev", "김하늘", "acme-health")], users);
+        Assert.Equal([new DevUser("haneul-dev", 5001, "김하늘", TenantId, "acme-health")], users);
     }
 
     [Fact]
@@ -143,5 +154,56 @@ public class DevIdentityTests
         var response = await client.GetAsync("/api/dev/users");
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Multi_tenant_login_without_tenant_header_is_tenant_required()
+    {
+        var (factory, _, db) = Create();
+        using var client = factory.CreateClient();
+
+        var response = await client.SendAsync(Get("/api/members", "shared-dev"));
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Equal("""{"error":"tenant_required"}""", await response.Content.ReadAsStringAsync());
+        Assert.Empty(db.Events);
+    }
+
+    [Fact]
+    public async Task Multi_tenant_login_with_unmatched_tenant_header_is_tenant_required()
+    {
+        var (factory, _, _) = Create();
+        using var client = factory.CreateClient();
+
+        var response = await client.SendAsync(Get("/api/members", "shared-dev", Guid.NewGuid().ToString()));
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Equal("""{"error":"tenant_required"}""", await response.Content.ReadAsStringAsync());
+    }
+
+    [Theory]
+    [InlineData("10000000-0000-0000-0000-000000000001")]
+    [InlineData("10000000-0000-0000-0000-000000000002")]
+    public async Task Multi_tenant_login_with_tenant_header_scopes_that_tenant(string tenantId)
+    {
+        var (factory, _, db) = Create();
+        using var client = factory.CreateClient();
+
+        var response = await client.SendAsync(Get("/api/members", "shared-dev", tenantId));
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(tenantId, db.Commands[0].Parameters["tenantId"]);
+    }
+
+    [Fact]
+    public async Task Single_tenant_login_ignores_the_tenant_header()
+    {
+        var (factory, _, db) = Create();
+        using var client = factory.CreateClient();
+
+        var response = await client.SendAsync(Get("/api/members", "haneul-dev", GlobexId.ToString()));
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(TenantId.ToString(), db.Commands[0].Parameters["tenantId"]);
     }
 }

@@ -7,35 +7,36 @@ namespace WorkBoard.Api.Infrastructure.Identity;
 // Reads members across all tenants on the sync (RLS-bypassing) connection. Identity only, never tenant data.
 public sealed class NpgsqlMemberLookup([FromKeyedServices(DataKeys.Sync)] NpgsqlDataSource syncSource) : IMemberLookup
 {
-    public async Task<DevIdentity?> FindByLoginAsync(string githubLogin, CancellationToken ct)
+    public async Task<IReadOnlyList<DevIdentity>> FindByLoginAsync(string githubLogin, CancellationToken ct)
     {
         await using var conn = await syncSource.OpenConnectionAsync(ct);
-        var row = await conn.QuerySingleOrDefaultAsync<IdentityRow>(new CommandDefinition("""
+        var rows = await conn.QueryAsync<IdentityRow>(new CommandDefinition("""
             select m.id, m.github_user_id, m.github_login, m.display_name, m.avatar_url, m.role,
                    m.tenant_id, t.github_org_login as tenant_login
               from members m
               join tenants t on t.id = m.tenant_id
              where m.github_login = @githubLogin
+             order by t.github_org_login
             """, new { githubLogin }, cancellationToken: ct));
 
-        return row is null
-            ? null
-            : new DevIdentity(
+        return rows
+            .Select(row => new DevIdentity(
                 new Member(row.Id, row.GithubUserId, row.GithubLogin, row.DisplayName, row.AvatarUrl, row.Role),
                 row.TenantId,
-                row.TenantLogin);
+                row.TenantLogin))
+            .ToList();
     }
 
     public async Task<IReadOnlyList<DevUser>> ListAsync(CancellationToken ct)
     {
         await using var conn = await syncSource.OpenConnectionAsync(ct);
         var rows = await conn.QueryAsync<DevUserRow>(new CommandDefinition("""
-            select m.github_login, m.display_name, t.github_org_login as tenant_login
+            select m.github_login, m.github_user_id, m.display_name, m.tenant_id, t.github_org_login as tenant_login
               from members m
               join tenants t on t.id = m.tenant_id
              order by t.github_org_login, m.github_login
             """, cancellationToken: ct));
-        return rows.Select(r => new DevUser(r.GithubLogin, r.DisplayName, r.TenantLogin)).ToList();
+        return rows.Select(r => new DevUser(r.GithubLogin, r.GithubUserId, r.DisplayName, r.TenantId, r.TenantLogin)).ToList();
     }
 
     private sealed class IdentityRow
@@ -53,6 +54,8 @@ public sealed class NpgsqlMemberLookup([FromKeyedServices(DataKeys.Sync)] Npgsql
     private sealed class DevUserRow
     {
         public string GithubLogin { get; set; } = "";
+        public long GithubUserId { get; set; }
+        public Guid TenantId { get; set; }
         public string? DisplayName { get; set; }
         public string TenantLogin { get; set; } = "";
     }

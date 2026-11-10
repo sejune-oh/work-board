@@ -71,11 +71,11 @@ IBM Plex Mono에는 한글이 없으므로 mono 스택 두 번째에 IBM Plex Sa
 | `sunken` | `#ECE6D9` | `#100F0B` | 열 바탕, 입력창, 막대 바닥 |
 | `ink` | `#1D1B16` | `#EEE8DA` | 본문 글자, 기본 버튼 바탕 |
 | `ink-soft` | `#3F3B32` | `#CFC8B7` | 부제, 표 본문 |
-| `muted` | `#7A7466` | `#968F80` | 보조 글자, 날짜 |
+| `muted` | `#6B6557` | `#968F80` | 보조 글자, 날짜 |
 | `rule` | `#DCD4C3` | `#2F2C24` | 괘선, 테두리 |
 | `rule-strong` | `#1D1B16` | `#EEE8DA` | 구역 머리 굵은 줄 |
 | `focus` | `#2B4FA8` | `#8FA8F0` | 키보드 초점 테두리 |
-| `accent` (인주) | `#D2401C` | `#FF6B42` | 주의 표시 전용 |
+| `accent` (인주) | `#B8361A` | `#FF6B42` | 주의 표시 전용 |
 | `accent-wash` | `#F9E1D6` | `#3A1C12` | 주의 표시 바탕 |
 | `status-todo` | `#9A9384` | `#8C8576` | 할 일 |
 | `status-progress` | `#2F67B2` | `#6FA1EA` | 진행 중 |
@@ -194,11 +194,11 @@ Tailwind 4의 `@theme inline`으로 연결하면 `bg-paper`, `text-ink`, `border
   --wb-sunken: #ece6d9;
   --wb-ink: #1d1b16;
   --wb-ink-soft: #3f3b32;
-  --wb-muted: #7a7466;
+  --wb-muted: #6b6557;
   --wb-rule: #dcd4c3;
   --wb-rule-strong: #1d1b16;
   --wb-focus: #2b4fa8;
-  --wb-accent: #d2401c;
+  --wb-accent: #b8361a;
   --wb-accent-wash: #f9e1d6;
   --wb-status-todo: #9a9384;
   --wb-status-progress: #2f67b2;
@@ -210,8 +210,11 @@ Tailwind 4의 `@theme inline`으로 연결하면 `bg-paper`, `text-ink`, `border
   color-scheme: light;
 }
 
+/* 다크 값은 아래 블록과 :root[data-theme="dark"] 블록 두 곳에 같게 둡니다.
+   화면 오른쪽 위 "밝게 · 어둡게" 버튼이 <html data-theme>를 고정하면 OS 설정보다 우선합니다.
+   이슈 패널 뒤 어둑한 막은 --wb-scrim(라이트 rgb(22 20 15 / 0.28), 다크 rgb(0 0 0 / 0.5))입니다. */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --wb-paper: #16140f;
     --wb-surface: #1e1c16;
     --wb-sunken: #100f0b;

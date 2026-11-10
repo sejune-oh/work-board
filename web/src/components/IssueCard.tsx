@@ -1,19 +1,20 @@
 "use client";
 
-import { STALE_DAYS, STATUS_RULE, TYPE_LABEL, daysSince, isCanceled, isStale, personName, relativeDays } from "@/lib/labels";
+import { STALE_DAYS, TYPE_LABEL, daysSince, isCanceled, isStale, personName, relativeDays } from "@/lib/labels";
 import { useSettings } from "@/lib/me";
 import type { BoardIssue } from "@/lib/types";
-import { Stamp } from "./ui";
+import { Flag, StatusBadge } from "./ui";
+import { ROW_ATTR } from "./useShortcuts";
 import { useIssuePanel } from "./useIssuePanel";
 
 type Props = {
   issue: BoardIssue;
   showAssignee?: boolean;
-  /** Board columns already name the status, so the left status rule is off unless asked for. */
-  showStatusRule?: boolean;
+  /** Board columns already name the status, so the status line is off unless asked for. */
+  showStatus?: boolean;
 };
 
-export function IssueCard({ issue, showAssignee = true, showStatusRule = false }: Props) {
+export function IssueCard({ issue, showAssignee = true, showStatus = false }: Props) {
   const { open } = useIssuePanel();
   const settings = useSettings();
   const stale = isStale(issue);
@@ -27,9 +28,10 @@ export function IssueCard({ issue, showAssignee = true, showStatusRule = false }
   return (
     <button
       type="button"
+      {...{ [ROW_ATTR]: "" }}
       onClick={() => open(issue.id)}
-      className={`group block w-full cursor-pointer rounded-card border border-rule bg-surface px-3 py-2.5 text-left transition-[border-color,box-shadow] duration-[120ms] ease-paper hover:border-ink-soft hover:shadow-lift ${
-        showStatusRule && !canceled ? `border-l-[3px] ${STATUS_RULE[issue.status]}` : ""
+      className={`group block w-full cursor-pointer overflow-hidden rounded-control border border-rule bg-surface px-3 py-2 text-left transition-colors duration-[120ms] ease-tool hover:border-rule-strong hover:bg-[linear-gradient(var(--wb-hover),var(--wb-hover))] ${
+        urgent && issue.status === "todo" ? "gutter" : ""
       }`}
     >
       <div className={`flex items-center gap-2 font-mono text-meta text-muted ${fade}`}>
@@ -38,16 +40,21 @@ export function IssueCard({ issue, showAssignee = true, showStatusRule = false }
           {issue.issueType && ` · ${TYPE_LABEL[issue.issueType] ?? issue.issueType}`}
         </span>
         <span className="ml-auto shrink-0 font-sans">
-          {urgent && <Stamp fill>긴급</Stamp>}
+          {urgent && <Flag fill>긴급</Flag>}
           {high && <span className="text-meta text-ink-soft">높음</span>}
         </span>
       </div>
       <p
-        className={`mt-1 line-clamp-2 text-ui font-medium ${done ? "text-muted" : "text-ink"} ${canceled ? "line-through" : ""} ${fade}`}
+        className={`mt-0.5 line-clamp-2 text-ui font-medium ${done ? "text-muted" : "text-ink"} ${canceled ? "line-through" : ""} ${fade}`}
       >
         {issue.title}
       </p>
-      <div className="mt-2 flex items-center justify-between gap-2 text-meta text-muted">
+      {showStatus && !canceled && (
+        <div className={`mt-1 ${fade}`}>
+          <StatusBadge status={issue.status} />
+        </div>
+      )}
+      <div className="mt-1.5 flex items-center justify-between gap-2 text-meta text-muted">
         <span className={`truncate ${unassigned ? "" : fade}`}>
           {showAssignee &&
             (unassigned ? (
@@ -67,9 +74,9 @@ export function IssueCard({ issue, showAssignee = true, showStatusRule = false }
           )}
           {issue.commentCount > 0 && <span className={fade}>댓글 {issue.commentCount}</span>}
           {stale ? (
-            <Stamp>{daysSince(issue.updatedAt)}일째 멈춤</Stamp>
+            <Flag>{daysSince(issue.updatedAt)}일째 멈춤</Flag>
           ) : (
-            <span title={`${STALE_DAYS}일 넘게 움직임이 없으면 멈춤으로 표시합니다`}>{relativeDays(issue.updatedAt)}</span>
+            <span className="font-mono" title={`${STALE_DAYS}일 넘게 움직임이 없으면 멈춤으로 표시합니다`}>{relativeDays(issue.updatedAt)}</span>
           )}
         </span>
       </div>

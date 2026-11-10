@@ -18,13 +18,6 @@ export const STATUS_DOT: Record<Status, string> = {
   done: "bg-status-done",
 };
 
-export const STATUS_RULE: Record<Status, string> = {
-  todo: "border-l-status-todo",
-  in_progress: "border-l-status-progress",
-  in_review: "border-l-status-review",
-  done: "border-l-status-done",
-};
-
 export const CANCELED_LABEL = "취소";
 export const CANCELED_DOT = "bg-status-cancel";
 

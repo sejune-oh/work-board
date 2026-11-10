@@ -2,183 +2,213 @@
 
 업무 보드의 화면은 모두 이 문서를 따릅니다. 새 화면, 새 컴포넌트, 기존 화면 손질 모두 해당합니다.
 기준을 바꿀 때는 이슈를 먼저 만들고 이 문서와 `web/src/app/globals.css`를 같은 PR에서 고칩니다.
-이 문서를 처음 추가한 PR은 문서만 담았고, 화면 코드(`globals.css`와 각 화면)는 Overview 구현 PR(#24)에서 반영합니다.
 
 ## 1. 방향
 
 **목적.** 10명 안팎의 팀이 "누가, 어느 프로젝트에서, 무엇을, 어디까지" 하는지 한눈에 보게 합니다.
-보는 사람은 개발자만이 아닙니다. 기획, 디자인, 운영 담당도 매일 아침 한 번 열어 봅니다.
+매일 여는 사람은 개발자가 중심이지만, 기획, 디자인, 운영 담당도 같은 화면을 봅니다.
 
-**톤: 아침 현황지(現況紙).** 따뜻한 종이 위에 먹색 글자, 숫자는 장부처럼 줄 맞춰 정렬합니다.
-화려한 대시보드가 아니라 잘 조판된 한 장짜리 신문 1면에 가깝습니다. 장식은 빼고, 위계는 글자 크기와
-여백과 가는 줄(괘선)로 만듭니다. 카드 그림자, 그라디언트, 둥근 알약 모양을 남발하지 않습니다.
+**톤: 작업대.** 개발자가 하루 종일 켜 두는 도구처럼 보입니다. 차가운 회색 바탕 위에 흰 판(카드) 몇 장을 놓고,
+그 안의 표와 목록이 주인공입니다. 저장소 번호, 날짜, 숫자, 단축키는 고정폭 글꼴로 씁니다.
+장식은 빼고, 위계는 글자 굵기, 괘선, 판의 경계로 만듭니다. 그림자, 그라디언트, 종이 질감을 쓰지 않습니다.
 
-**기억에 남을 한 가지: 인주(印朱) 색은 "여기를 보세요"에만 씁니다.**
-화면 전체가 먹색과 종이색으로 차분하고, 주의가 필요한 곳(긴급, 오래 멈춘 일, 담당자 없음,
-리뷰 대기)에만 도장 찍은 듯한 주홍색이 나옵니다. 그래서 주홍이 보이면 그곳이 할 일입니다.
-버튼, 링크, 선택 상태에는 인주 색을 쓰지 않습니다. 강조색이 곧 경보색이라 의미가 흐려지지 않습니다.
+**기억에 남을 한 가지: 주홍 깃발과 거터는 "여기를 보세요"에만 씁니다.**
+화면 전체가 회색과 흰색으로 차분하고, 주의가 필요한 곳(긴급, 오래 멈춘 일, 담당자 없음, 리뷰 대기)에만
+주홍색 깃발이 나옵니다. 긴급인데 아직 시작 전인 줄에는 코드 diff의 변경 표시처럼 왼쪽에 2px 주홍 거터가 붙습니다.
+버튼, 링크, 선택 상태에는 주홍을 쓰지 않습니다. 강조색이 곧 경보색이라 의미가 흐려지지 않습니다.
 
-**한 문장 현황.** 개요 화면 맨 위에는 숫자 묶음 대신 사람이 쓰는 문장 하나를 크게 둡니다.
-예: "리뷰를 기다리는 PR이 3건 있고, 긴급 2건 중 1건은 아직 시작 전입니다."
+**한 문장 현황.** 개요 화면 맨 위에는 숫자 묶음 대신 사람이 쓰는 문장 하나를 둡니다.
+예: "긴급 2건 중 1건은 아직 시작 전이고, 리뷰를 기다리는 PR이 3건 있습니다."
 가장 중요한 사실을 쉬운 한국어로 먼저 말하는 것이 이 제품의 목소리입니다.
 
 **왜 이 방향인가.**
 
-- 한눈에 보기가 최우선이라, 색이 많을수록 눈이 갈 곳을 잃습니다. 색을 줄이고 주의 색 하나만 남기면
-  10초 안에 "손봐야 할 곳"이 보입니다.
-- 이슈, PR, 댓글, 회의 노트가 섞인 정보라 표(장부)와 목록이 주인공입니다. 장부 조판이 이 정보에 맞습니다.
-- 지라 같은 무거운 도구와 거리를 두고 싶은 팀입니다. 종이와 문장의 톤이 "누구나 쓸 수 있는" 인상을 줍니다.
+- 매일 쓰는 도구의 문법(표, 거터, 단축키, 고정폭 번호)을 따라야 개발자가 낯설어하지 않습니다.
+- 한글 문장은 비례폭(IBM Plex Sans KR)으로 두어 기획·운영 담당도 편하게 읽습니다.
+- 색을 줄이고 주의 색 하나만 남기면 10초 안에 "손봐야 할 곳"이 보입니다.
 
 ## 2. 글꼴
 
-모두 Google Fonts에서 받습니다. 한글을 지원하는 글꼴만 씁니다.
+모두 Google Fonts에서 받습니다. 한글을 지원하는 글꼴만 씁니다. 글꼴은 두 가지뿐입니다.
 
 | 역할 | 글꼴 | 굵기 | 쓰는 곳 |
 | --- | --- | --- | --- |
-| 표제 (display) | **Hahmlet** | 500, 600, 700 | 화면 제목, 한 문장 현황, 큰 숫자 |
-| 본문 (body) | **IBM Plex Sans KR** | 400, 500, 600 | 모든 본문, 버튼, 표 |
-| 고정폭 (mono) | **IBM Plex Mono** | 400, 500 | 저장소 이름과 번호(`booking-api #102`), 날짜, 표 안 숫자 |
+| 본문·표제 (sans) | **IBM Plex Sans KR** | 400, 500, 600, 700 | 모든 글자 |
+| 고정폭 (mono) | **IBM Plex Mono** | 400, 500, 600 | 저장소 이름과 번호(`booking-api #102`), 날짜, 경과, 핵심 숫자, 단축키 |
 
-```html
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Hahmlet:wght@500;600;700&family=IBM+Plex+Sans+KR:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
-```
+Next.js에서는 `next/font/google`로 불러와 `--font-plex-kr`, `--font-plex-mono`에 연결합니다.
+IBM Plex Mono에는 한글이 없으므로 mono 스택 세 번째에 IBM Plex Sans KR을 둡니다.
 
-Next.js에서는 `next/font/google`로 같은 세 글꼴을 불러와 아래 변수에 연결합니다.
-IBM Plex Mono에는 한글이 없으므로 mono 스택 두 번째에 IBM Plex Sans KR을 둡니다.
-
-| 단계 | 크기 / 줄 간격 | 글꼴 | 예 |
+| 단계 | 크기 / 줄 간격 | 굵기 | 예 |
 | --- | --- | --- | --- |
-| `display` | 36px / 1.25 (휴대폰 26px) | Hahmlet 600 | 한 문장 현황 |
-| `title` | 24px / 1.3 | Hahmlet 600 | 화면 제목 |
-| `heading` | 17px / 1.4 | Hahmlet 600 | 구역 제목 |
-| `body` | 15px / 1.6 | Plex Sans KR 400 | 본문 |
-| `ui` | 14px / 1.45 | Plex Sans KR 500 | 카드 제목, 버튼, 표 |
-| `meta` | 12.5px / 1.4 | Plex Sans KR 400 / Mono | 저장소·번호, 날짜, 보조 설명 |
-| `eyebrow` | 11.5px / 1.2, 자간 0.08em | Plex Sans KR 600 | 구역 위 작은 머리말 |
+| `display` | 22px / 1.4, 자간 -0.015em (휴대폰 19px) | 600 | 한 문장 현황, 시작 화면 |
+| `title` | 18px / 1.4 | 600 | 화면 제목, 이슈 패널 제목 |
+| `heading` | 13.5px / 1.4 | 600 | 카드 머리, 구역 제목 |
+| `body` | 14px / 1.55 | 400 | 본문 |
+| `ui` | 13.5px / 1.45 | 500 | 표의 제목 칸, 메뉴, 카드 제목 |
+| `meta` | 12px / 1.45 | 400, Mono 또는 Sans | 번호, 날짜, 보조 설명 |
+| `figure` | 28px / 1.15 (휴대폰 24px) | Mono 500 | 핵심 숫자 |
 
 숫자는 항상 `font-variant-numeric: tabular-nums`로 자리를 맞춥니다. 한글 본문은 `word-break: keep-all`.
+자간을 넓힌 작은 머리말(eyebrow)은 쓰지 않습니다. 맥락은 제목 위 Mono 한 줄이나 카드 머리 옆 `muted` 설명으로 줍니다.
 
 ## 3. 색
 
-색은 세 무리입니다. **종이와 먹**(바탕), **상태**(5색), **인주**(주의). 프로젝트 색(DB의 `projects.color`)은
-8px 사각 표식에만 쓰고 넓은 면에 칠하지 않습니다.
+색은 세 무리입니다. **회색 바탕**(6단), **상태**(5색), **주홍**(주의). 프로젝트 색(DB의 `projects.color`)은
+8px 사각 표식에만 쓰고 넓은 면에 칠하지 않습니다. 대비는 흰 판(`surface`) 기준입니다.
 
-| 토큰 | 라이트 | 다크 | 쓰는 곳 |
+| 토큰 | 라이트 | 다크 | 쓰는 곳 · 글자 대비 |
 | --- | --- | --- | --- |
-| `paper` | `#F5F1E8` | `#16140F` | 화면 바탕 |
-| `surface` | `#FBF9F4` | `#1E1C16` | 카드, 패널, 표 |
-| `sunken` | `#ECE6D9` | `#100F0B` | 열 바탕, 입력창, 막대 바닥 |
-| `ink` | `#1D1B16` | `#EEE8DA` | 본문 글자, 기본 버튼 바탕 |
-| `ink-soft` | `#3F3B32` | `#CFC8B7` | 부제, 표 본문 |
-| `muted` | `#6B6557` | `#968F80` | 보조 글자, 날짜 |
-| `rule` | `#DCD4C3` | `#2F2C24` | 괘선, 테두리 |
-| `rule-strong` | `#1D1B16` | `#EEE8DA` | 구역 머리 굵은 줄 |
-| `focus` | `#2B4FA8` | `#8FA8F0` | 키보드 초점 테두리 |
-| `accent` (인주) | `#B8361A` | `#FF6B42` | 주의 표시 전용 |
-| `accent-wash` | `#F9E1D6` | `#3A1C12` | 주의 표시 바탕 |
-| `status-todo` | `#9A9384` | `#8C8576` | 할 일 |
-| `status-progress` | `#2F67B2` | `#6FA1EA` | 진행 중 |
-| `status-review` | `#B7821A` | `#E2B04A` | 리뷰 중 |
-| `status-done` | `#3F7F5A` | `#6DBB8B` | 완료 |
-| `status-cancel` | `#B9B2A3` | `#5A554A` | 취소(예정) |
+| `canvas` | `#F6F7F9` | `#0E1013` | 화면 바탕, 표 머리, 보드 열 바탕 |
+| `surface` | `#FFFFFF` | `#16191D` | 카드, 패널, 상단·옆 막대 |
+| `sunken` | `#EDEFF2` | `#0A0B0D` | 선택된 메뉴, 막대 바닥, 코드 |
+| `ink` | `#15181C` | `#E7EAEE` | 본문 글자 · 17.8 / 14.6 |
+| `ink-soft` | `#3A4048` | `#B8BFC8` | 부제, 상태 이름 · 10.5 / 9.5 |
+| `muted` | `#5B636D` | `#8C949E` | 보조 글자, 번호, 날짜 · 6.1 / 5.8 (sunken 위 5.3 / 6.4) |
+| `rule` | `#E1E4E8` | `#262A30` | 괘선, 테두리 |
+| `rule-strong` | `#C8CDD4` | `#363B43` | 점선 상자, `kbd` 테두리, hover 테두리 |
+| `focus` | `#2F5BD3` | `#7FA3FF` | 키보드 초점 테두리 · 5.9 / 7.2 |
+| `accent` (주홍) | `#C2381C` | `#FF6D4F` | 주의 표시 전용 · 5.4 / 6.3 (wash 위 4.7 / 5.6) |
+| `accent-wash` | `#FCEAE5` | `#3B1A12` | 긴급 깃발 바탕 |
+| `hover` | ink 4% | ink 5% | 줄 hover 바탕 |
+| `status-todo` | `#8A929C` | `#7D858F` | 할 일 |
+| `status-progress` | `#2F6FCF` | `#5C9BFF` | 진행 중 |
+| `status-review` | `#B07A12` | `#E0AA3E` | 리뷰 중 |
+| `status-done` | `#2F8556` | `#4FBF7F` | 완료 |
+| `status-cancel` | `#B5BBC3` | `#4A5058` | 취소 |
 
 상태 색 규칙:
 
-- 상태 색은 점(8px 원), 막대 조각, 얇은 왼쪽 줄에만 씁니다. 글자 색이나 넓은 배경으로 쓰지 않습니다.
+- 상태 색은 점(7px 원)과 막대 조각에만 씁니다. 글자 색이나 넓은 배경으로 쓰지 않습니다. 점은 흰 판 위 3:1 이상입니다.
 - 상태는 언제나 **점 + 한국어 이름**을 같이 씁니다. 색만으로 구분하지 않습니다(색각 이상 대비).
-- 완료는 녹색이지만 "축하" 색이 아닙니다. 완료 항목은 기본적으로 `muted` 글자로 한발 물러섭니다.
+- 완료 항목은 기본적으로 `muted` 글자로 한발 물러섭니다.
 - 취소는 회색 점 + 제목 가운데 줄. 별도 열을 만들지 않고 완료 열 아래 접힌 묶음으로 둡니다.
-  지금 스키마에는 취소를 나타낼 값(`state_reason`)이 없어서, 상태 규칙 보완(#9) 이후에 실제로 나타납니다.
-- 라이트 모드의 `muted`와 `accent`는 `paper`, `surface`, `sunken`, `accent-wash` 위에서 글자 대비 4.5:1 이상이 되도록 정한 값입니다. 바꿀 때는 대비를 다시 계산합니다.
+- 글자 색 토큰은 `canvas`, `surface`, `sunken`, `accent-wash` 위에서 4.5:1 이상입니다. 바꿀 때는 대비를 다시 계산합니다.
 
-인주 규칙:
+주홍 규칙:
 
-- 인주 색이 화면에 나오는 곳은 주의 표시뿐입니다(4장의 "주의 표시").
-- 개요의 한 문장 현황에서 주의가 필요한 숫자(시작 전 긴급, 리뷰 대기 등)와, 0보다 큰 "7일 넘게 멈춤" 핵심 숫자도
-  주의 표시로 봅니다. 인주 글자와 옅은 인주 밑줄만 쓰고 바탕은 칠하지 않습니다.
-- 한 화면에서 인주가 칠해진 면은 2~3곳을 넘기지 않습니다. 넘치면 목록으로 모아 한 곳에 둡니다.
-- 버튼은 먹색(`ink` 바탕, `paper` 글자), 링크는 `ink` 글자 + 밑줄입니다.
+- 주홍이 화면에 나오는 곳은 주의 표시뿐입니다(5장의 "주의 표시").
+- 한 문장 현황의 주의 숫자는 주홍 Mono 글자로만 씁니다(밑줄, 바탕 없음). "7일 넘게 멈춤" 숫자 칸은 0보다 크면 위쪽 2px 주홍 줄 + 주홍 숫자.
+- 한 화면에서 주홍이 칠해진 면(`accent-wash`)은 2~3곳을 넘기지 않습니다. 넘치면 목록으로 모아 한 곳에 둡니다.
+- 기본 버튼은 `surface` 바탕 + `rule` 테두리, 링크는 `ink` 글자 + `rule-strong` 밑줄입니다. 오류도 주홍을 쓰지 않습니다.
 
-## 4. 간격, 모서리, 그림자, 움직임
+## 4. 간격, 모양, 움직임
 
-- 간격은 4px 단위: 4, 8, 12, 16, 24, 32, 48, 64. 구역과 구역 사이는 48(휴대폰 32).
-- 모서리: 표식·점 2px, 카드·입력창 6px, 패널 10px. 알약(완전히 둥근) 모양은 사람 머리글자 원에만.
-- 그림자는 두 단계뿐입니다. `shadow-lift`(카드 hover, 1px 아래로 얕게)와 `shadow-panel`(이슈 패널,
-  화면 위로 떠 있는 것). 평소 카드는 그림자 없이 테두리(`rule`)만.
-- 구역 머리는 굵은 줄(`rule-strong`, 2px) 위에 `eyebrow` + `heading`. 신문 단 머리처럼 보이게.
-- 바탕에 아주 옅은 종이 결(SVG 노이즈, 불투명도 3% 이하)을 깔 수 있습니다. 다크에서는 끕니다.
+- 간격은 4px 단위: 4, 8, 12, 16, 24, 32. 화면 여백 24px(휴대폰 16), 카드 사이 16px, 카드 안쪽 14px.
+- 상단 막대 48px(스크롤해도 고정), 옆 메뉴 224px 흰 판. 표 줄은 36px 안팎, 표 머리 30px, 카드 머리 40px.
+- 모서리: 표식 2px, 버튼·입력·깃발·`kbd`·이슈 카드 3~4px, 카드·패널 속성 표 6px. 알약 모양은 사람 머리글자 원에만.
+- 그림자는 이슈 패널(`shadow-panel`) 하나뿐입니다. hover는 `hover` 바탕색 또는 `rule-strong` 테두리로 나타냅니다.
+- 종이 결, 노이즈, 그라디언트 바탕을 쓰지 않습니다.
 
 움직임:
 
-- 시간: 빠름 120ms(hover, 눌림), 보통 200ms(패널 열림, 펼침), 첫 화면 등장 360ms.
-- 곡선: `cubic-bezier(0.2, 0.7, 0.2, 1)` 하나만.
-- 첫 화면은 구역별로 40ms씩 늦춰 아래로 2~6px 떠오르며 나타납니다. 한 번뿐이고, 데이터가 다시 불러와질 때는 움직이지 않습니다.
+- 시간: 빠름 120ms(hover, 눌림), 보통 200ms(패널 열림, 펼침), 첫 화면 등장 280ms.
+- 곡선: `cubic-bezier(0.2, 0.7, 0.2, 1)` 하나만(`ease-tool`).
+- 첫 화면은 구역별로 30ms씩 늦춰 아래로 4px 떠오르며 나타납니다. 데이터가 다시 불러와질 때는 움직이지 않습니다.
 - 막대(진행률, 부하)는 처음 그릴 때만 왼쪽에서 채워집니다.
-- `prefers-reduced-motion: reduce`이면 모든 움직임을 끕니다.
-- 깜빡임, 무한 반복 움직임, 튀는 효과는 쓰지 않습니다. 긴급도 깜빡이지 않습니다.
+- `prefers-reduced-motion: reduce`이면 모든 움직임을 끕니다. 깜빡임, 무한 반복, 튀는 효과는 쓰지 않습니다.
 
 ## 5. 컴포넌트 규칙
 
-### 이슈 카드
+### 틀 (옆 메뉴, 상단 막대)
+
+- 옆 메뉴 맨 위: 조직 표식(로그인 앞 두 글자, Mono) + 조직 이름 + "업무 보드". 그 아래 Mono `화면` 머리와 메뉴.
+- 메뉴에 마우스를 올리거나 초점이 가면 오른쪽에 단축키(`g o` 등)가 보입니다. 선택된 메뉴는 `sunken` 바탕 + 굵게.
+- 옆 메뉴 아래쪽에 단축키 요약(`/` 검색, `j` `k` 이동, `Enter` 열기, `Esc` 닫기).
+- 상단 막대: Mono 경로(`acme-health / 개요`), 검색창(`/`), 밝게·어둡게 두 칸 토글, 개발용 사용자 선택.
+- 900px 미만에서는 옆 메뉴 대신 상단 막대 아래 가로 스크롤 메뉴를 둡니다.
+
+### 화면 머리
+
+- Mono `meta` 한 줄(맥락) → `title` 제목 → `body` 한 문장. 굵은 줄을 긋지 않습니다.
+- 개요는 Mono 줄(날짜 · 열린 일 · 주기) → `display` 한 문장 → 4칸 숫자 판(카드) → 팀 막대와 범례 한 줄.
+
+### 카드
+
+- `surface` 바탕, 1px `rule`, 6px 모서리. 머리 40px: 제목(`heading`) + 개수 상자(Mono) + `muted` 설명 + 오른쪽 이동 링크와 단축키.
+- 카드 안 목록은 줄마다 위쪽 괘선, 안쪽 여백 14px. 빈 상태는 카드 안에 점선 상자.
+
+### 표 (손봐야 할 일, 검색, 회의 노트)
+
+- 열 머리 30px, `canvas` 바탕, Mono 11px: `저장소 #번호 / 제목 / 상태 / 담당 / 경과`.
+- 묶음 머리: 깃발 + 개수(Mono) + 이유(`muted`). 줄은 hover와 초점에 `hover` 바탕.
+- 좁은 판(36rem 미만)에서는 한 줄이 세 줄로 접힙니다: 번호·경과 / 제목 / 상태·담당.
+
+### 이슈 카드 (보드)
 
 ```
-┃ booking-api #102 · 작업            긴급
-┃ 예약 조회 API 페이지네이션
-┃ 이민준          PR 1 · 댓글 2 · 오늘
+booking-api #102 · 작업            긴급
+예약 조회 API 페이지네이션
+이민준          PR 1 · 댓글 2 · 오늘
 ```
 
-- 왼쪽 3px 줄이 상태 색입니다. 상태 점을 따로 두지 않습니다(열 제목이 이미 상태를 말하는 보드에서는 줄도 생략 가능).
-- 첫 줄 `meta` mono: 저장소 #번호, 종류(큰 목표/기능/작업/버그). 제목은 `ui` 굵기 500, 두 줄까지.
-- 마지막 줄: 담당자(없으면 주의 표시), 오른쪽에 PR 수, 댓글 수, 마지막 활동.
-- 우선순위는 설정에서 켠 경우에만, 긴급만 인주 표시로 보여 줍니다. 높음은 `ink-soft` 글자 "높음"만.
-- hover: 테두리 `ink-soft`, `shadow-lift`. 클릭하면 이슈 패널(`?issue=`)이 열립니다. 카드 안에 다른 링크를 두지 않습니다.
+- 흰 판, 1px `rule`, 4px 모서리. 첫 줄 Mono 번호와 종류, 제목은 `ui` 500 두 줄까지, 마지막 줄 담당자와 PR·댓글·경과.
+- 보드 열이 이미 상태를 말하므로 상태 줄은 생략합니다(필요하면 `showStatus`로 점 + 이름).
+- 긴급이고 아직 할 일이면 왼쪽 2px 주홍 거터. 우선순위는 설정에서 켠 경우에만 보입니다. 높음은 `ink-soft` 글자 "높음"만.
+- hover: `rule-strong` 테두리 + `hover` 바탕. 클릭하면 이슈 패널(`?issue=`)이 열립니다. 카드 안에 다른 링크를 두지 않습니다.
 
 ### 상태 표시
 
-- 기본형: 8px 점 + 상태 이름(`meta`, `ink-soft`). 예: `● 리뷰 중`.
-- 요약형: 상태 막대(아래 "진행률 막대") 또는 `할 일 6 · 진행 중 3 · 리뷰 중 3` 같은 점 붙은 숫자 줄.
+- 기본형: 7px 점 + 상태 이름(12.5px, `ink-soft`). 예: `● 리뷰 중`.
+- 요약형: 진행률 막대, 또는 `완료 2 · 리뷰 중 3` 같은 점 붙은 숫자 줄(숫자는 Mono).
 - 상태 이름은 할 일 / 진행 중 / 리뷰 중 / 완료 / 취소. 다른 말로 바꾸지 않습니다.
 
 ### 주의 표시
 
-인주 색을 쓰는 유일한 요소입니다. 모양은 **도장**: 인주 글자 + 1px 인주 테두리 + 2px 모서리, 굵기 600.
+주홍을 쓰는 유일한 요소입니다. 모양은 **깃발**: 주홍 글자 + 반투명 주홍 1px 테두리 + 3px 모서리, 굵기 600.
 
 | 종류 | 조건 | 표시 |
 | --- | --- | --- |
-| 긴급 | 우선순위 `urgent`이고 완료가 아님 | 도장 `긴급` (인주 바탕 `accent-wash`) |
-| 멈춤 | 열린 이슈의 마지막 활동이 7일 이상 전 | 카드 전체 불투명도 0.55 + 날짜 자리에 도장 `12일째 멈춤` |
-| 담당자 없음 | 열린 이슈에 담당자가 0명 | 담당자 자리에 점선 원 + 인주 글자 `담당자 없음` |
-| 리뷰 대기 | 리뷰 요청된 열린 PR이 24시간 이상 | 도장 `리뷰 대기 1일` |
+| 긴급 | 우선순위 `urgent`이고 완료가 아님 | 깃발 `긴급` (`accent-wash` 바탕), 아직 시작 전이면 줄 왼쪽 2px 거터 |
+| 멈춤 | 열린 이슈의 마지막 활동이 7일 이상 전 | 줄·카드 불투명도 0.55 + 경과 자리에 깃발 `12일째` |
+| 담당자 없음 | 열린 이슈에 담당자가 0명 | 담당자 자리에 점선 원 + 주홍 글자 `담당자 없음` |
+| 리뷰 대기 | 리뷰 요청된 열린 PR이 24시간 이상 | 묶음 머리 깃발 `리뷰 대기`, 경과 자리에 대기 일수 |
+| 이슈 없음 | 회의 할 일이 이슈로 이어지지 않음 | 깃발 `이슈 없음` |
 
-멈춘 카드는 흐려지지만 도장은 흐려지지 않습니다(도장은 불투명도 1로 되돌립니다). 흐려짐은 "잊혀 가는 중",
-도장은 "그래서 봐야 함"을 뜻합니다.
+멈춘 줄은 흐려지지만 깃발은 흐려지지 않습니다. 흐려짐은 "잊혀 가는 중", 깃발은 "그래서 봐야 함"을 뜻합니다.
 
 ### 사람별 부하 막대
 
-- 한 줄에 한 사람: 머리글자 원, 이름, 막대, 숫자.
-- 막대는 그 사람의 열린 일을 상태별로 쌓은 것입니다: 진행 중 + 리뷰 중(진한 색), 할 일(옅은 색).
-- 막대 길이의 기준은 팀에서 열린 일이 가장 많은 사람입니다(그 사람이 100%). 절대 기준을 두지 않습니다.
-- "몰림" 도장: 진행 중 + 리뷰 중이 4건 이상이고 팀 중앙값의 2배 이상일 때만. 매번 1등을 표시하지 않습니다.
-  중앙값은 맡은 일 없는 팀원까지 포함해 셉니다.
+- 한 줄에 한 사람: 머리글자 원, 이름, 막대, 숫자(Mono), 지금 하는 일 하나.
+- 막대는 그 사람의 열린 일을 상태별로 쌓은 것입니다: 진행 중, 리뷰 중, 할 일(옅게).
+- 막대 길이의 기준은 팀에서 열린 일이 가장 많은 사람입니다(그 사람이 100%).
+- "몰림" 깃발: 진행 중 + 리뷰 중이 4건 이상이고 팀 중앙값의 2배 이상일 때만. 중앙값은 맡은 일 없는 팀원까지 포함해 셉니다.
 - 맡은 일이 0건이면 막대 대신 `muted` 글자 "맡은 일 없음".
 
 ### 진행률 막대
 
 - 높이 6px, 바닥 `sunken`, 모서리 2px. 완료 / 리뷰 중 / 진행 중 / 할 일 순서로 왼쪽부터 쌓습니다.
-- 옆에 숫자를 항상 함께: `완료 1 / 6 · 17%`. 막대만 두지 않습니다.
+- 옆이나 아래에 숫자를 항상 함께: `완료 1/6 · 17%`. 막대만 두지 않습니다.
 - 퍼센트는 정수. 전체가 0건이면 막대 대신 "아직 일이 없습니다".
+
+### 이슈 패널
+
+- 오른쪽에서 열리는 560px 패널(휴대폰은 전체 너비). 머리 48px: Mono 번호 + `닫기 Esc` 버튼.
+- 제목(`title`) 아래 속성은 테두리 있는 2열 표(상태, 담당자, 종류, 주기, 우선순위, 크기, 마지막 활동).
+- 그 아래 연결된 PR, 하위 일, 이 일이 나온 회의, 대화 구역. 열리면 닫기 버튼에 초점, 닫히면 연 자리로 초점이 돌아갑니다.
+
+### 단축키
+
+| 키 | 동작 |
+| --- | --- |
+| `/` | 검색창으로 이동 (검색창 안에서 `Esc`는 빠져나오기) |
+| `g` 다음 `o` `m` `p` `b` `n` `s` | 개요, 내 작업, 사람별 보드, 프로젝트별 보드, 회의 노트, 설정 |
+| `j` / `k` | 목록·표·보드에서 다음 / 이전 줄로 초점 이동(`data-row`가 붙은 요소) |
+| `Enter` | 초점이 있는 줄 열기 |
+| `Esc` | 이슈 패널 닫기 |
+
+- 글자 키는 키 위치(`KeyboardEvent.code`: `KeyG`, `KeyJ`, `KeyO` 등)로 판정합니다. 한글 입력 상태에서도 같은 자리의 키로 동작합니다. `/`는 `key` 또는 `Slash`로 판정합니다.
+- 입력창, 선택 상자에 글자를 넣는 중이거나, 한글 조합 중이거나, Ctrl·Cmd·Alt·Shift를 누른 채면 동작하지 않습니다.
+- `j`/`k`는 옮겨 갈 줄이 있을 때만 키 입력을 가로챕니다. 줄이 없는 화면에서는 아무 일도 하지 않습니다.
+- 이슈 패널이 열려 있는 동안 `/`, `g`, `j`, `k`는 꺼집니다.
+- 화면에 보여 주는 단축키(`kbd`)는 모두 실제로 동작해야 합니다. 새 목록을 만들면 줄에 `data-row`를 붙입니다.
 
 ### 빈 화면, 시작 화면, 오류
 
-- **빈 화면**: 한 문장으로 사실을 말하고, 그게 좋은 소식이면 그렇다고 말합니다.
-  예: "담당자 없는 일이 없습니다." "7일 넘게 멈춘 일이 없습니다." 일러스트는 넣지 않고 `muted` 글자 + 가는 점선 상자.
-- **시작 화면**: 한 문장 현황과 같은 표제 크기로 "누가, 어느 프로젝트에서, 무엇을, 어디까지."를 보여 주고,
-  그 아래 사용자 선택 하나만. 실행 방법은 접어 둡니다.
-- **오류**: 인주 색을 쓰지 않습니다(인주는 "일"에 대한 주의). `ink` 글자 + `rule-strong` 왼쪽 줄 + 해결 방법 한 줄.
-  예: "API 서버에 연결할 수 없습니다. server 폴더에서 API를 실행했는지 확인하세요."
-- **불러오는 중**: 회색 빈 줄(skeleton) 대신 구역 머리는 바로 그리고 내용 자리에 `muted` "불러오는 중…".
+- **빈 화면**: 한 문장으로 사실을 말하고, 좋은 소식이면 그렇다고 말합니다. `muted` 글자 + `rule-strong` 점선 상자.
+- **시작 화면**: Mono "업무 보드" 위에 `display` "누가, 어느 프로젝트에서, 무엇을, 어디까지.", 그 아래 사용자 선택 카드 하나. 실행 방법은 접어 둡니다.
+- **오류**: 주홍을 쓰지 않습니다. `ink` 글자 + 왼쪽 2px `ink-soft` 줄 + 해결 방법 한 줄.
+- **불러오는 중**: 회색 빈 줄(skeleton) 대신 카드 머리는 바로 그리고 내용 자리에 `muted` "불러오는 중…".
 
 ### 말
 
@@ -186,158 +216,17 @@ IBM Plex Mono에는 한글이 없으므로 mono 스택 두 번째에 IBM Plex Sa
 - 버튼은 동사로 끝냅니다: "이슈로 만들기", "보드에서 보기".
 - 숫자 뒤에 단위: "3건", "12일째", "2일 전".
 
-## 6. 토큰 (`web/src/app/globals.css`에 그대로 넣기)
+## 6. 토큰
 
-Tailwind 4의 `@theme inline`으로 연결하면 `bg-paper`, `text-ink`, `border-rule`, `bg-status-review`,
-`text-accent`, `font-display`, `shadow-lift` 같은 클래스가 생깁니다.
+값은 `web/src/app/globals.css`에 있고, 이 문서 3장의 표와 같아야 합니다. Tailwind 4의 `@theme inline`으로 연결해
+`bg-canvas`, `bg-surface`, `text-ink`, `border-rule`, `bg-hover`, `bg-status-review`, `text-accent`, `font-mono`,
+`text-display`, `text-figure`, `rounded-control`, `shadow-panel`, `ease-tool` 같은 클래스가 생깁니다.
 
-```css
-@import "tailwindcss";
-
-:root {
-  --wb-paper: #f5f1e8;
-  --wb-surface: #fbf9f4;
-  --wb-sunken: #ece6d9;
-  --wb-ink: #1d1b16;
-  --wb-ink-soft: #3f3b32;
-  --wb-muted: #6b6557;
-  --wb-rule: #dcd4c3;
-  --wb-rule-strong: #1d1b16;
-  --wb-focus: #2b4fa8;
-  --wb-accent: #b8361a;
-  --wb-accent-wash: #f9e1d6;
-  --wb-status-todo: #9a9384;
-  --wb-status-progress: #2f67b2;
-  --wb-status-review: #b7821a;
-  --wb-status-done: #3f7f5a;
-  --wb-status-cancel: #b9b2a3;
-  --wb-shadow-lift: 0 1px 0 rgb(29 27 22 / 0.06), 0 4px 12px -6px rgb(29 27 22 / 0.18);
-  --wb-shadow-panel: 0 0 0 1px rgb(29 27 22 / 0.08), 0 24px 48px -16px rgb(29 27 22 / 0.28);
-  color-scheme: light;
-}
-
-/* 다크 값은 아래 블록과 :root[data-theme="dark"] 블록 두 곳에 같게 둡니다.
-   화면 오른쪽 위 "밝게 · 어둡게" 버튼이 <html data-theme>를 고정하면 OS 설정보다 우선합니다.
-   이슈 패널 뒤 어둑한 막은 --wb-scrim(라이트 rgb(22 20 15 / 0.28), 다크 rgb(0 0 0 / 0.5))입니다. */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --wb-paper: #16140f;
-    --wb-surface: #1e1c16;
-    --wb-sunken: #100f0b;
-    --wb-ink: #eee8da;
-    --wb-ink-soft: #cfc8b7;
-    --wb-muted: #968f80;
-    --wb-rule: #2f2c24;
-    --wb-rule-strong: #eee8da;
-    --wb-focus: #8fa8f0;
-    --wb-accent: #ff6b42;
-    --wb-accent-wash: #3a1c12;
-    --wb-status-todo: #8c8576;
-    --wb-status-progress: #6fa1ea;
-    --wb-status-review: #e2b04a;
-    --wb-status-done: #6dbb8b;
-    --wb-status-cancel: #5a554a;
-    --wb-shadow-lift: 0 1px 0 rgb(0 0 0 / 0.3), 0 6px 16px -8px rgb(0 0 0 / 0.6);
-    --wb-shadow-panel: 0 0 0 1px rgb(238 232 218 / 0.08), 0 24px 48px -16px rgb(0 0 0 / 0.7);
-    color-scheme: dark;
-  }
-}
-
-:root[data-theme="dark"] {
-  --wb-paper: #16140f;
-  --wb-surface: #1e1c16;
-  --wb-sunken: #100f0b;
-  --wb-ink: #eee8da;
-  --wb-ink-soft: #cfc8b7;
-  --wb-muted: #968f80;
-  --wb-rule: #2f2c24;
-  --wb-rule-strong: #eee8da;
-  --wb-focus: #8fa8f0;
-  --wb-accent: #ff6b42;
-  --wb-accent-wash: #3a1c12;
-  --wb-status-todo: #8c8576;
-  --wb-status-progress: #6fa1ea;
-  --wb-status-review: #e2b04a;
-  --wb-status-done: #6dbb8b;
-  --wb-status-cancel: #5a554a;
-  --wb-shadow-lift: 0 1px 0 rgb(0 0 0 / 0.3), 0 6px 16px -8px rgb(0 0 0 / 0.6);
-  --wb-shadow-panel: 0 0 0 1px rgb(238 232 218 / 0.08), 0 24px 48px -16px rgb(0 0 0 / 0.7);
-  color-scheme: dark;
-}
-
-@theme inline {
-  --color-paper: var(--wb-paper);
-  --color-surface: var(--wb-surface);
-  --color-sunken: var(--wb-sunken);
-  --color-ink: var(--wb-ink);
-  --color-ink-soft: var(--wb-ink-soft);
-  --color-muted: var(--wb-muted);
-  --color-rule: var(--wb-rule);
-  --color-rule-strong: var(--wb-rule-strong);
-  --color-focus: var(--wb-focus);
-  --color-accent: var(--wb-accent);
-  --color-accent-wash: var(--wb-accent-wash);
-  --color-status-todo: var(--wb-status-todo);
-  --color-status-progress: var(--wb-status-progress);
-  --color-status-review: var(--wb-status-review);
-  --color-status-done: var(--wb-status-done);
-  --color-status-cancel: var(--wb-status-cancel);
-
-  /* next/font/google sets --font-hahmlet, --font-plex-kr, --font-plex-mono */
-  --font-display: var(--font-hahmlet), "Hahmlet", serif;
-  --font-sans: var(--font-plex-kr), "IBM Plex Sans KR", sans-serif;
-  --font-mono: var(--font-plex-mono), "IBM Plex Mono", var(--font-plex-kr), monospace;
-
-  --text-display: 2.25rem;
-  --text-display--line-height: 1.25;
-  --text-title: 1.5rem;
-  --text-title--line-height: 1.3;
-  --text-heading: 1.0625rem;
-  --text-heading--line-height: 1.4;
-  --text-body: 0.9375rem;
-  --text-body--line-height: 1.6;
-  --text-ui: 0.875rem;
-  --text-ui--line-height: 1.45;
-  --text-meta: 0.78125rem;
-  --text-meta--line-height: 1.4;
-  --text-eyebrow: 0.71875rem;
-  --text-eyebrow--line-height: 1.2;
-
-  --radius-mark: 2px;
-  --radius-card: 6px;
-  --radius-panel: 10px;
-
-  --shadow-lift: var(--wb-shadow-lift);
-  --shadow-panel: var(--wb-shadow-panel);
-
-  --ease-paper: cubic-bezier(0.2, 0.7, 0.2, 1);
-}
-
-body {
-  background: var(--wb-paper);
-  color: var(--wb-ink);
-  font-family: var(--font-sans);
-  font-size: var(--text-body);
-  line-height: 1.6;
-  word-break: keep-all;
-  font-variant-numeric: tabular-nums;
-}
-
-:focus-visible {
-  outline: 2px solid var(--wb-focus);
-  outline-offset: 2px;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation: none !important;
-    transition: none !important;
-  }
-}
-```
-
-상태 색은 코드에서 한 곳(`web/src/lib/labels.ts`의 `STATUS_DOT`)에서만 클래스 이름으로 연결합니다:
-`bg-status-todo`, `bg-status-progress`, `bg-status-review`, `bg-status-done`.
+- 다크 값은 `@media (prefers-color-scheme: dark)`의 `:root:not([data-theme="light"])`와 `:root[data-theme="dark"]` 두 곳에 같게 둡니다.
+  기본은 OS 설정을 따르고, 밝게·어둡게 토글이 `<html data-theme>`를 고정하면 그쪽이 우선합니다.
+- 이슈 패널 뒤 어둑한 막은 `--wb-scrim`(라이트 `rgb(14 16 19 / 0.32)`, 다크 `rgb(0 0 0 / 0.55)`)입니다.
+- 공용 클래스: `.card`(흰 판), `.flag` / `.flag-fill`(주의), `.gutter`(왼쪽 주홍 거터), `.kbd`(단축키), `.bar`(막대), `.link`, `.reveal`.
+- 상태 색은 코드에서 한 곳(`web/src/lib/labels.ts`의 `STATUS_DOT`)에서만 클래스 이름으로 연결합니다.
 
 ## 7. 화면을 만들 때 확인할 것 (PR 체크리스트)
 
@@ -346,13 +235,15 @@ PR 설명에 아래 항목을 복사해 확인 표시합니다.
 - [ ] 새 화면을 만들기 전에, 기존 화면이나 이슈 패널에 붙일 수 없는지 먼저 따졌다(흩어지면 아무도 안 봄).
 - [ ] 화면 맨 위가 "이 화면에서 가장 중요한 사실 하나"를 말한다.
 - [ ] 색은 토큰만 썼다. `slate-*`, `blue-*` 같은 Tailwind 기본 색이나 16진수 값을 직접 쓰지 않았다.
-- [ ] 인주(`accent`)는 주의 표시에만 썼고, 한 화면에 칠해진 면이 3곳 이하다.
+- [ ] 주홍(`accent`)은 주의 표시에만 썼고, 한 화면에 칠해진 면이 3곳 이하다.
 - [ ] 상태는 점 + 한국어 이름으로 보이고, 이름이 할 일 / 진행 중 / 리뷰 중 / 완료 / 취소 중 하나다.
+- [ ] 번호, 날짜, 경과, 핵심 숫자는 Mono, 한글 문장은 Sans다.
 - [ ] 지라 용어가 없다. 고급 필드(주기, 크기, 우선순위)는 설정에서 켠 경우에만 보인다.
-- [ ] 이슈가 보이는 모든 곳은 클릭하면 이슈 패널(`?issue=`)이 열린다.
+- [ ] 이슈가 보이는 모든 곳은 클릭하면 이슈 패널(`?issue=`)이 열린다. 목록 줄에는 `data-row`가 있어 `j`/`k`로 갈 수 있다.
+- [ ] 화면에 보여 준 단축키는 모두 동작하고, 입력 중에는 동작하지 않는다.
 - [ ] 빈 상태, 불러오는 중, 오류 문구를 모두 넣었다.
 - [ ] 라이트와 다크 모두에서 확인했다.
-- [ ] 휴대폰 너비(375px)에서 가로 스크롤 없이 읽힌다(넓은 표는 그 표만 가로 스크롤).
+- [ ] 휴대폰 너비(390px)에서 가로 스크롤 없이 읽힌다(넓은 표는 그 표만 가로 스크롤).
 - [ ] 키보드로 모든 클릭 대상에 갈 수 있고 초점 테두리가 보인다.
 - [ ] 움직임은 4장 규칙 안이고 `prefers-reduced-motion`에서 꺼진다.
 

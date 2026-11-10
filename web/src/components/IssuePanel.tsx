@@ -7,7 +7,7 @@ import { PRIORITY_LABEL, SIZE_LABEL, TYPE_LABEL, daysSince, formatDate, isStale,
 import { useSettings } from "@/lib/me";
 import type { IssueDetail } from "@/lib/types";
 import { ErrorBox, Loading } from "./Feedback";
-import { Avatar, Stamp, StatusBadge } from "./ui";
+import { Avatar, Count, Flag, Kbd, StatusBadge } from "./ui";
 import { useIssuePanel } from "./useIssuePanel";
 
 const PR_STATE: Record<IssueDetail["pullRequests"][number]["state"], string> = {
@@ -50,36 +50,37 @@ export function IssuePanel() {
         aria-label="이슈 상세"
         role="dialog"
       >
-        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-rule bg-surface px-5 py-3">
+        <div className="sticky top-0 z-10 flex h-12 shrink-0 items-center justify-between gap-3 border-b border-rule bg-surface px-4">
           <span className="font-mono text-meta text-muted">{shown ? `${shown.repository.name} #${shown.number}` : "이슈"}</span>
           <button
             ref={closeRef}
             type="button"
             onClick={close}
-            className="h-8 cursor-pointer rounded-card border border-rule bg-surface px-2.5 text-[13px] text-ink-soft hover:border-ink-soft"
+            aria-keyshortcuts="Escape"
+            className="inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-control border border-rule bg-surface px-2 text-meta text-ink-soft hover:border-rule-strong hover:text-ink"
           >
-            닫기 ✕
+            닫기 <Kbd>Esc</Kbd>
           </button>
         </div>
 
-        <div className="flex flex-col gap-6 px-5 py-5">
+        <div className="flex flex-col gap-5 px-4 py-[18px]">
           {loading && !shown && <Loading />}
           {error && <ErrorBox error={error} />}
           {shown && (
             <>
               <header>
                 {shown.parent && (
-                  <button type="button" onClick={() => open(shown.parent!.id)} className="link mb-1.5 cursor-pointer text-meta text-ink-soft">
+                  <button type="button" onClick={() => open(shown.parent!.id)} className="link mb-1.5 cursor-pointer text-left text-meta text-ink-soft">
                     상위 일 · #{shown.parent.number} {shown.parent.title}
                   </button>
                 )}
-                <h2 className="font-display text-[22px] font-semibold leading-[1.35] tracking-[-0.01em]">{shown.title}</h2>
-                <dl className="mt-4 grid grid-cols-[6rem_1fr] gap-x-3 gap-y-2 text-ui">
+                <h2 className="text-title font-semibold tracking-[-0.01em]">{shown.title}</h2>
+                <dl className="mt-4 grid grid-cols-[6.5rem_minmax(0,1fr)] overflow-hidden rounded-card border border-rule text-ui [&>dd]:flex [&>dd]:min-h-9 [&>dd]:items-center [&>dd]:border-t [&>dd]:border-rule [&>dd]:px-3 [&>dd]:py-1.5 [&>dt]:flex [&>dt]:items-center [&>dt]:border-t [&>dt]:border-rule [&>dt]:px-3 [&>dt]:py-1.5 [&>dt]:text-meta [&>dt:first-of-type]:border-t-0 [&>dd:first-of-type]:border-t-0">
                   <dt className="text-muted">상태</dt>
                   <dd className="flex flex-wrap items-center gap-2">
                     <StatusBadge status={shown.status} />
-                    {urgent && <Stamp fill>긴급</Stamp>}
-                    {isStale(shown) && <Stamp>{daysSince(shown.updatedAt)}일째 멈춤</Stamp>}
+                    {urgent && <Flag fill>긴급</Flag>}
+                    {isStale(shown) && <Flag>{daysSince(shown.updatedAt)}일째 멈춤</Flag>}
                   </dd>
                   <dt className="text-muted">담당자</dt>
                   <dd className="flex flex-wrap items-center gap-3">
@@ -121,7 +122,7 @@ export function IssuePanel() {
                     </>
                   )}
                   <dt className="text-muted">마지막 활동</dt>
-                  <dd>{relativeDays(shown.updatedAt)}</dd>
+                  <dd className="font-mono text-meta">{relativeDays(shown.updatedAt)}</dd>
                 </dl>
               </header>
 
@@ -148,7 +149,7 @@ export function IssuePanel() {
                     <button
                       type="button"
                       onClick={() => open(c.id)}
-                      className="flex w-full cursor-pointer items-center justify-between gap-3 py-2 text-left text-ui hover:underline hover:underline-offset-3"
+                      className="-mx-1.5 flex w-[calc(100%+0.75rem)] cursor-pointer items-center justify-between gap-3 rounded-control px-1.5 py-2 text-left text-ui hover:bg-hover"
                     >
                       <span className="truncate">
                         <span className="font-mono text-meta text-muted">
@@ -175,9 +176,9 @@ export function IssuePanel() {
 
               <Section title="대화" count={shown.comments.length} divided={false}>
                 {shown.comments.map((c) => (
-                  <li key={c.id} className="border-l-2 border-rule py-1 pl-3 text-ui">
+                  <li key={c.id} className="border-l-2 border-rule-strong py-0.5 pl-3 text-ui">
                     <div className="mb-1 text-meta text-muted">
-                      <span className="font-medium text-ink-soft">{personName(c.author)}</span> · {relativeDays(c.createdAt)}
+                      <span className="font-medium text-ink-soft">{personName(c.author)}</span> · <span className="font-mono">{relativeDays(c.createdAt)}</span>
                     </div>
                     <p className="whitespace-pre-wrap text-ink-soft">{c.body}</p>
                   </li>
@@ -193,9 +194,9 @@ export function IssuePanel() {
 
 function Section({ title, count, divided = true, children }: { title: string; count: number; divided?: boolean; children: React.ReactNode }) {
   return (
-    <section className="border-t border-rule pt-3">
-      <h3 className="mb-1.5 text-meta font-semibold text-ink-soft">
-        {title} <span className="font-mono font-normal text-muted">{count}</span>
+    <section>
+      <h3 className="mb-1 flex items-center gap-2 border-b border-rule pb-1.5 text-heading font-semibold">
+        {title} <Count n={count} />
       </h3>
       {count === 0 ? (
         <p className="text-meta text-muted">없음</p>

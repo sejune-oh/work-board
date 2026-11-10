@@ -62,7 +62,7 @@ export function FilterChips({ filters, personName = (l) => l, sprintName = () =>
 
   return (
     <div className="flex flex-wrap items-center gap-2" aria-label="적용된 필터">
-      <span className="eyebrow text-muted">필터</span>
+      <span className="font-mono text-meta text-muted">필터</span>
       {chips.map((c) => (
         <button
           key={c.key}
@@ -70,7 +70,7 @@ export function FilterChips({ filters, personName = (l) => l, sprintName = () =>
           onClick={c.onRemove}
           title={c.title}
           aria-label={c.title}
-          className="inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-card border border-rule bg-surface px-2 text-meta font-medium text-ink transition-colors duration-[120ms] ease-paper hover:border-ink-soft"
+          className="inline-flex h-[26px] cursor-pointer items-center gap-1.5 rounded-control border border-rule bg-surface px-2 text-meta font-medium text-ink transition-colors duration-[120ms] ease-tool hover:border-rule-strong"
         >
           {c.label}
           <span aria-hidden className="text-muted">

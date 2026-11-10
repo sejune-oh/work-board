@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Empty, ErrorBox, Loading } from "@/components/Feedback";
-import { PageHeader, Stamp } from "@/components/ui";
+import { Flag, PageHeader } from "@/components/ui";
+import { ROW_ATTR } from "@/components/useShortcuts";
 import { useApi } from "@/lib/api";
 import { formatDate } from "@/lib/labels";
 import type { MeetingNoteSummary } from "@/lib/types";
@@ -19,8 +20,8 @@ export default function MeetingNotesPage() {
   const projectName = projectId ? list.find((n) => n.project?.id === projectId)?.project?.name : null;
 
   return (
-    <div className="flex max-w-[900px] flex-col gap-6">
-      <PageHeader eyebrow={projectName ? `회의 노트 · ${projectName}` : "기록"} title="회의 노트">
+    <div className="flex max-w-[900px] flex-col gap-4">
+      <PageHeader meta={projectName ? `회의 노트 · ${projectName}` : "기록"} title="회의 노트">
         {notes.data
           ? unlinked > 0
             ? `회의에서 정한 할 일 중 ${unlinked}건이 아직 이슈로 이어지지 않았습니다.`
@@ -39,14 +40,15 @@ export default function MeetingNotesPage() {
       ) : list.length === 0 ? (
         <Empty>회의 노트가 없습니다.</Empty>
       ) : (
-        <ul className="reveal [animation-delay:40ms]">
+        <ul className="card reveal [animation-delay:30ms]">
           {list.map((n) => {
             const missing = n.actionItemCount - n.linkedActionItemCount;
             return (
               <li key={n.id} className="border-b border-rule last:border-b-0">
                 <Link
                   href={`/notes/view?id=${n.id}`}
-                  className="-mx-2.5 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1 rounded-card px-2.5 py-3 transition-[background-color,box-shadow] duration-[120ms] ease-paper hover:bg-surface hover:shadow-lift"
+                  {...{ [ROW_ATTR]: "" }}
+                  className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1 px-3.5 py-2.5 transition-colors duration-[120ms] ease-tool hover:bg-hover focus-visible:bg-hover focus-visible:-outline-offset-2 max-[640px]:grid-cols-1"
                 >
                   <div className="min-w-0">
                     <p className="truncate text-ui font-medium">{n.title}</p>
@@ -60,10 +62,11 @@ export default function MeetingNotesPage() {
                       <span className="text-muted">할 일 없음</span>
                     ) : (
                       <span>
-                        할 일 {n.actionItemCount} · 이슈 연결 {n.linkedActionItemCount}
+                        할 일 <b className="font-mono font-medium">{n.actionItemCount}</b> · 이슈 연결{" "}
+                        <b className="font-mono font-medium">{n.linkedActionItemCount}</b>
                       </span>
                     )}
-                    {missing > 0 && <Stamp>이슈 없음 {missing}</Stamp>}
+                    {missing > 0 && <Flag>이슈 없음 {missing}</Flag>}
                   </div>
                 </Link>
               </li>

@@ -1,16 +1,31 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { THEME_KEY } from "@/lib/theme";
 
-/** Flips between light and dark and remembers the choice; without one, the OS setting wins. */
+type Theme = "light" | "dark";
+
+function currentTheme(): Theme {
+  const pinned = document.documentElement.dataset.theme;
+  if (pinned === "light" || pinned === "dark") return pinned;
+  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+}
+
+/** Two-way switch that pins a theme and remembers it; until one is picked, the OS setting wins. */
 export function ThemeToggle() {
-  const toggle = () => {
-    const root = document.documentElement;
-    const dark = root.dataset.theme
-      ? root.dataset.theme === "dark"
-      : window.matchMedia("(prefers-color-scheme: dark)").matches;
-    const next = dark ? "light" : "dark";
-    root.dataset.theme = next;
+  const [theme, setTheme] = useState<Theme | null>(null);
+
+  useEffect(() => {
+    setTheme(currentTheme());
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    const onChange = () => setTheme(currentTheme());
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+
+  const pick = (next: Theme) => {
+    document.documentElement.dataset.theme = next;
+    setTheme(next);
     try {
       window.localStorage.setItem(THEME_KEY, next);
     } catch {
@@ -18,14 +33,27 @@ export function ThemeToggle() {
     }
   };
 
+  const options: { value: Theme; icon: string; label: string }[] = [
+    { value: "light", icon: "☼", label: "밝게" },
+    { value: "dark", icon: "☾", label: "어둡게" },
+  ];
+
   return (
-    <button
-      type="button"
-      onClick={toggle}
-      aria-label="밝기 바꾸기"
-      className="h-8 shrink-0 cursor-pointer rounded-card border border-rule bg-surface px-2.5 text-[13px] text-ink-soft transition-colors duration-[120ms] ease-paper hover:border-ink-soft"
-    >
-      밝게 · 어둡게
-    </button>
+    <div role="group" aria-label="밝기" className="inline-flex shrink-0 overflow-hidden rounded-control border border-rule">
+      {options.map((o) => (
+        <button
+          key={o.value}
+          type="button"
+          aria-pressed={theme === o.value}
+          onClick={() => pick(o.value)}
+          className={`h-[26px] cursor-pointer px-2 text-meta transition-colors duration-[120ms] ease-tool ${
+            theme === o.value ? "bg-sunken font-semibold text-ink" : "text-muted hover:text-ink"
+          }`}
+        >
+          <span aria-hidden>{o.icon}</span>
+          <span className="max-[640px]:sr-only"> {o.label}</span>
+        </button>
+      ))}
+    </div>
   );
 }

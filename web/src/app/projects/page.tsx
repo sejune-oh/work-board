@@ -39,20 +39,20 @@ export default function ProjectsBoardPage() {
 
   const error = projects.error ?? all.error ?? notes.error;
   const header = (
-    <PageHeader eyebrow="보드" title="프로젝트별 보드">
+    <PageHeader meta="보드" title="프로젝트별 보드">
       프로젝트는 저장소 묶음입니다. 진행률은 그 프로젝트의 모든 이슈 기준입니다.
     </PageHeader>
   );
   if (error)
     return (
-      <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-4">
         {header}
         <ErrorBox error={error} />
       </div>
     );
   if (!projects.data || !all.data || !notes.data)
     return (
-      <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-4">
         {header}
         <Loading />
       </div>
@@ -85,8 +85,8 @@ export default function ProjectsBoardPage() {
     : null;
 
   return (
-    <div className="flex flex-col gap-8">
-      <PageHeader eyebrow="보드" title="프로젝트별 보드">
+    <div className="flex flex-col gap-4">
+      <PageHeader meta="보드" title="프로젝트별 보드">
         {stats.length === 0
           ? "프로젝트(저장소 묶음)가 없습니다. 설정에서 만드세요."
           : leading
@@ -95,7 +95,7 @@ export default function ProjectsBoardPage() {
       </PageHeader>
 
       {stats.length > 0 && (
-        <div className="reveal grid grid-cols-1 gap-2.5 [animation-delay:40ms] md:grid-cols-2 xl:grid-cols-3">
+        <div className="reveal mt-2 grid grid-cols-1 gap-3 [animation-delay:30ms] md:grid-cols-2 xl:grid-cols-3">
           {stats.map(({ project: p, counts, total, pct }) => {
             const recentNotes = notes.data!.filter((n) => n.project?.id === p.id).slice(0, 2);
             const isSelected = p.id === selected?.id;
@@ -105,26 +105,23 @@ export default function ProjectsBoardPage() {
                 type="button"
                 aria-pressed={isSelected}
                 onClick={() => select(isSelected ? null : p.id)}
-                className={`cursor-pointer rounded-card border bg-surface px-4 py-3.5 text-left transition-[border-color,box-shadow] duration-[120ms] ease-paper hover:shadow-lift ${
-                  isSelected ? "border-ink shadow-[inset_0_0_0_1px_var(--wb-ink)]" : "border-rule hover:border-ink-soft"
+                className={`flex cursor-pointer flex-col rounded-card border bg-surface px-3.5 pb-3 pt-2.5 text-left transition-colors duration-[120ms] ease-tool ${
+                  isSelected ? "border-ink shadow-[inset_0_0_0_1px_var(--wb-ink)]" : "border-rule hover:border-rule-strong"
                 }`}
               >
-                <div className="mb-1 flex items-center gap-2">
+                <div className="mb-2 flex min-w-0 items-center gap-2">
                   <span aria-hidden className="h-2 w-2 shrink-0 rounded-mark" style={{ background: p.color ?? "var(--wb-muted)" }} />
-                  <h2 className="font-display text-base font-semibold">{p.name}</h2>
-                  <span className="ml-auto font-display text-xl font-semibold tracking-[-0.02em]">
-                    {pct}
-                    <small className="text-[13px] text-muted">%</small>
-                  </span>
+                  <h2 className="shrink-0 text-heading font-semibold">{p.name}</h2>
+                  <span className="truncate font-mono text-[11.5px] text-muted">{p.repositories.map((r) => r.name).join(" · ") || "저장소 없음"}</span>
+                  <span className="ml-auto shrink-0 font-mono text-ui font-medium">{pct}%</span>
                 </div>
-                <p className="mb-2.5 truncate font-mono text-meta text-muted">{p.repositories.map((r) => r.name).join(" · ") || "저장소 없음"}</p>
                 <ProgressBar counts={counts} />
-                <p className="mt-2 text-meta text-ink-soft">
+                <p className="mt-1.5 text-meta text-muted">
                   {total > 0 ? progressLine(counts) : ""}
                   {total > 0 && ` · 진행 중 ${counts.inProgress} · 리뷰 중 ${counts.inReview} · 할 일 ${counts.todo}`}
                 </p>
                 {recentNotes.length > 0 && (
-                  <ul className="mt-2.5 border-t border-rule pt-2 text-meta text-muted">
+                  <ul className="mt-2 border-t border-rule pt-1.5 text-meta text-muted">
                     {recentNotes.map((n) => (
                       <li key={n.id} className="truncate">
                         회의 · {n.title} · {formatDate(n.heldAt)}
@@ -139,13 +136,13 @@ export default function ProjectsBoardPage() {
       )}
 
       {showBoard && (
-        <section className="flex flex-col gap-3">
+        <section className="mt-2 flex flex-col gap-3">
           <SectionHead
-            eyebrow={selected ? "프로젝트" : "필터"}
+            hint={selected ? "프로젝트" : "필터"}
             title={selected ? selected.name : "조건에 맞는 일"}
             action={
               selected && (
-                <Link href={`/notes?project=${selected.id}`} className="link">
+                <Link href={`/notes?project=${selected.id}`} className="link text-ink-soft">
                   이 프로젝트의 회의 노트 →
                 </Link>
               )

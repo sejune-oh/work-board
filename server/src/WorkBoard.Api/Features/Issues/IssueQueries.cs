@@ -3,14 +3,25 @@ using WorkBoard.Api.Infrastructure.Data;
 
 namespace WorkBoard.Api.Features.Issues;
 
-public sealed record IssueFilter(Guid? ProjectId, string? Assignee, int DoneWithinDays);
+public sealed record IssueFilter(
+    Guid? ProjectId,
+    string? Person,
+    int DoneWithinDays,
+    IReadOnlyList<string>? Statuses = null,
+    bool Stale = false,
+    Guid? SprintId = null,
+    bool AllClosed = false);
 
 public static class IssueQueries
 {
     public static async Task<List<BoardIssue>> ListAsync(TenantSession s, IssueFilter filter)
     {
         var issues = await FetchAsync(s, """
-            (i.state = 'open' or i.closed_at >= now() - make_interval(days => @doneWithinDays))
+            (i.state = 'open' or @allClosed or i.closed_at >= now() - make_interval(days => @doneWithinDays))
+            and (@statuses::text[] is null or st.status = any(@statuses::text[]))
+            and (not @stale or (i.state = 'open'
+                   and i.github_updated_at < now() - make_interval(days => @staleDays)))
+            and (@sprintId::uuid is null or bf.sprint_id = @sprintId::uuid)
             and (@projectId::uuid is null or exists (
                    select 1 from project_repositories pr
                     where pr.repository_id = i.repository_id and pr.project_id = @projectId::uuid))
@@ -18,7 +29,17 @@ public static class IssueQueries
                    select 1 from issue_assignees ia
                      join members am on am.github_user_id = ia.github_user_id
                     where ia.issue_id = i.id and am.github_login = @assignee::text))
-            """, new { filter.ProjectId, filter.Assignee, filter.DoneWithinDays });
+            """, new
+        {
+            filter.ProjectId,
+            assignee = filter.Person,
+            filter.DoneWithinDays,
+            allClosed = filter.AllClosed,
+            statuses = filter.Statuses?.ToArray(),
+            stale = filter.Stale,
+            staleDays = Overview.OverviewQueries.StaleDays,
+            filter.SprintId,
+        });
         return issues;
     }
 

@@ -7,7 +7,7 @@ import { FilterChips } from "@/components/FilterChips";
 import { StatusColumns } from "@/components/StatusColumns";
 import { PageHeader, ProgressBar, SectionHead, progressLine } from "@/components/ui";
 import { useApi } from "@/lib/api";
-import { applyFilters, hasFilters, issuesQuery, readFilters } from "@/lib/filters";
+import { NO_FILTERS, applyFilters, hasFilters, issuesQuery, readFilters } from "@/lib/filters";
 import { STATUS_ORDER, formatDate, isCanceled, percent, personName } from "@/lib/labels";
 import type { BoardIssue, MeetingNoteSummary, Member, Project, StatusCounts } from "@/lib/types";
 
@@ -30,7 +30,7 @@ export default function ProjectsBoardPage() {
   const filters = readFilters(params);
   const projects = useApi<Project[]>("/api/projects");
   // Progress counts every issue of a project, not only the last 7 days of done work.
-  const all = useApi<BoardIssue[]>(issuesQuery({ statuses: [], stale: false, person: null, sprint: null }, { scope: "all" }));
+  const all = useApi<BoardIssue[]>(issuesQuery(NO_FILTERS, { scope: "all" }));
   const board = useApi<BoardIssue[]>(
     selectedId || hasFilters(filters) ? issuesQuery(filters, selectedId ? { projectId: selectedId } : {}) : null,
   );

@@ -47,6 +47,8 @@ export function FilterChips({ filters, personName = (l) => l, sprintName = () =>
   ];
   if (filters.stale)
     chips.push({ key: "stale", label: `${STALE_DAYS}일 넘게 멈춤`, title: "멈춤 필터 빼기", onRemove: () => removeKey("stale") });
+  if (filters.doneThisWeek)
+    chips.push({ key: "doneSince", label: "이번 주 완료", title: "이번 주 완료 필터 빼기", onRemove: () => removeKey("doneSince") });
   if (filters.person) {
     const name = personName(filters.person);
     chips.push({ key: "person", label: `담당 ${name}`, title: `${name} 필터 빼기`, onRemove: () => removeKey("person") });

@@ -141,7 +141,7 @@ function Headline({ o }: { o: Overview }) {
     );
 
   const { lead, rest } = headlineClauses(o);
-  const allClear = lead.length === 1 && rest.length === 0 && o.attention.totals.stale === 0 && o.attention.totals.reviewWaiting === 0;
+  const allClear = lead.length === 1 && rest.length === 0 && o.counts.stale === 0 && o.attention.totals.reviewWaiting === 0;
   const good = clearNotes(o, settings.priorityEnabled);
   const sub = rest.length ? `그 밖에 ${rest.map(clauseText).join(" ")}` : allClear ? "" : good.slice(0, 2).map((g) => `${g}.`).join(" ");
 
@@ -173,7 +173,7 @@ function Figures({ o }: { o: Overview }) {
     { href: "/people?status=in_progress", dot: STATUS_DOT.in_progress, label: "진행 중", n: o.counts.inProgress, note: moving ? `팀원 ${moving}명이 움직이는 중` : "움직이는 사람 없음", title: "사람별 보드에서 진행 중만 보기" },
     { href: "/people?status=in_review", dot: STATUS_DOT.in_review, label: "리뷰 대기", n: o.counts.inReview, note: wait === null ? "리뷰 요청된 PR 없음" : `가장 오래된 것 ${wait}일`, title: "사람별 보드에서 리뷰 중만 보기" },
     { href: "/people?stale=1", dot: STATUS_DOT.todo, label: "7일 넘게 멈춤", n: o.counts.stale, note: o.counts.stale ? `최장 ${maxIdle}일째` : "멈춘 일 없음", title: "7일 넘게 멈춘 일 보기", warn: o.counts.stale > 0 },
-    { href: "/people?status=done", dot: STATUS_DOT.done, label: "이번 주 완료", n: o.counts.doneThisWeek, note: finishers || "월요일부터 센 값", title: "최근 완료한 일 보기" },
+    { href: "/people?status=done&doneSince=week", dot: STATUS_DOT.done, label: "이번 주 완료", n: o.counts.doneThisWeek, note: finishers || "월요일부터 센 값", title: "이번 주 완료한 일 보기" },
   ];
 
   return (
@@ -381,7 +381,7 @@ function Attention({ o, myLogin }: { o: O; myLogin: string | null }) {
         </Group>
       )}
       {a.stale.length > 0 && (
-        <Group stamp={<Stamp>멈춤</Stamp>} total={t.stale} why="7일 넘게 아무 움직임 없음" more={{ href: "/people?stale=1", shown: a.stale.length }}>
+        <Group stamp={<Stamp>멈춤</Stamp>} total={t.stale} why={o.counts.stale > t.stale ? `7일 넘게 아무 움직임 없음, 위 묶음에 나온 ${o.counts.stale - t.stale}건은 뺌` : "7일 넘게 아무 움직임 없음"} more={{ href: "/people?stale=1", shown: a.stale.length }}>
           {a.stale.map(({ issue, idleDays }) => (
             <IssueRow key={issue.id} issue={issue} faded sub={STATUS_LABEL[issue.status]} meta={<Stamp>{idleDays}일째</Stamp>} />
           ))}

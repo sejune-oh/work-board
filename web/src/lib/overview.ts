@@ -15,13 +15,14 @@ const has = (n: number) => n > 0;
  */
 export function headlineClauses(o: Overview): { lead: Clause[]; rest: Clause[] } {
   const t = o.attention.totals;
-  const notStarted = o.attention.urgent.filter((u) => u.notStarted).length;
   const clauses: Clause[] = [];
 
-  if (has(notStarted)) clauses.push({ parts: [`긴급 ${t.urgent}건 중 `, notStarted, "건은 아직 시작 전"], and: "이고, ", end: "입니다." });
+  if (has(t.urgentNotStarted))
+    clauses.push({ parts: [`긴급 ${t.urgent}건 중 `, t.urgentNotStarted, "건은 아직 시작 전"], and: "이고, ", end: "입니다." });
   if (has(t.reviewWaiting)) clauses.push({ parts: ["리뷰를 기다리는 PR이 ", t.reviewWaiting, "건 있"], and: "고, ", end: "습니다." });
   if (has(t.unassigned)) clauses.push({ parts: ["담당자 없는 일이 ", t.unassigned, "건 있"], and: "고, ", end: "습니다." });
-  if (has(t.stale)) clauses.push({ parts: ["", t.stale, "건이 7일 넘게 멈춰 있"], and: "고, ", end: "습니다." });
+  // counts.stale, not attention.totals.stale: the figure tile shows the same number.
+  if (has(o.counts.stale)) clauses.push({ parts: ["", o.counts.stale, "건이 7일 넘게 멈춰 있"], and: "고, ", end: "습니다." });
 
   if (clauses.length === 0) {
     return { lead: [{ parts: ["막힌 곳 없이 ", o.counts.inProgress, "건이 진행 중"], and: "이고, ", end: "입니다." }], rest: [] };
@@ -39,7 +40,7 @@ export function clearNotes(o: Overview, priorityEnabled: boolean): string[] {
   const notes: string[] = [];
   if (priorityEnabled && t.urgent === 0) notes.push("긴급한 일 없음");
   if (t.reviewWaiting === 0) notes.push("리뷰 기다리는 PR 없음");
-  if (t.stale === 0) notes.push("7일 넘게 멈춘 일 없음");
+  if (o.counts.stale === 0) notes.push("7일 넘게 멈춘 일 없음");
   if (t.unassigned === 0) notes.push("담당자 없는 일 없음");
   if (t.actionItemsWithoutIssue === 0) notes.push("이슈 없는 회의 할 일 없음");
   return notes;

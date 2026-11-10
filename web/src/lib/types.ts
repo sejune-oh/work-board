@@ -133,8 +133,15 @@ export type Overview = {
     stale: { issue: OverviewIssueRef; idleDays: number }[];
     unassigned: OverviewIssueRef[];
     actionItemsWithoutIssue: { id: string; text: string; assignee: Member | null; note: OverviewNoteRef }[];
-    /** De-duplicated counts before the 5-per-group cut. */
-    totals: { urgent: number; reviewWaiting: number; stale: number; unassigned: number; actionItemsWithoutIssue: number };
+    /** De-duplicated counts before the 5-per-group cut; `stale` excludes issues already in an earlier group. */
+    totals: {
+      urgent: number;
+      urgentNotStarted: number;
+      reviewWaiting: number;
+      stale: number;
+      unassigned: number;
+      actionItemsWithoutIssue: number;
+    };
   };
   people: {
     member: Member;

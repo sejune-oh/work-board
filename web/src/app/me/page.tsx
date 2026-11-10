@@ -29,13 +29,13 @@ export default function MyWorkPage() {
         : `진행 중 ${progress}건, 리뷰 중 ${review}건을 맡고 있습니다.`;
 
   return (
-    <div className="flex flex-col gap-6">
-      <PageHeader eyebrow={`${personName(me.data.member)} · ${me.data.tenant.githubOrgLogin}`} title="내 작업">
+    <div className="flex flex-col gap-4">
+      <PageHeader meta={`${personName(me.data.member)} · ${me.data.tenant.githubOrgLogin}`} title="내 작업">
         {fact}
       </PageHeader>
       {issues.error && <ErrorBox error={issues.error} />}
       {issues.data ? (
-        <div className="reveal [animation-delay:40ms]">
+        <div className="reveal mt-2 [animation-delay:30ms]">
           <StatusColumns issues={issues.data} showAssignee={false} />
         </div>
       ) : (

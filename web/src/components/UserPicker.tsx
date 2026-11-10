@@ -22,12 +22,12 @@ export function UserPicker({ large = false }: { large?: boolean }) {
 
   return (
     <label className={large ? "flex flex-col gap-2" : "flex items-center gap-2 text-ui"}>
-      <span className={large ? "eyebrow text-muted" : "hidden text-meta text-muted sm:inline"}>개발용 사용자</span>
+      <span className={large ? "font-mono text-meta text-muted" : "hidden text-meta text-muted sm:inline"}>개발용 사용자</span>
       <select
         className={
           large
-            ? "h-11 cursor-pointer rounded-card border border-ink bg-surface px-3 text-body text-ink"
-            : "h-8 max-w-[11rem] cursor-pointer rounded-card border border-rule bg-surface px-2 text-ui font-medium text-ink hover:border-ink-soft"
+            ? "h-10 cursor-pointer rounded-control border border-rule-strong bg-surface px-3 text-body text-ink focus:border-focus"
+            : "h-[30px] max-w-[8rem] cursor-pointer rounded-control border border-rule bg-surface px-1.5 text-ui font-medium text-ink hover:border-rule-strong sm:max-w-[11rem]"
         }
         value={selected ? optionValue(selected) : ""}
         onChange={(e) => {

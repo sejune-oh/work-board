@@ -2,82 +2,79 @@
 
 /* Tokens: docs/design.md section 6. Change both together. */
 :root {
-  --wb-paper: #f5f1e8;
-  --wb-surface: #fbf9f4;
-  --wb-sunken: #ece6d9;
-  --wb-ink: #1d1b16;
-  --wb-ink-soft: #3f3b32;
-  --wb-muted: #6b6557;
-  --wb-rule: #dcd4c3;
-  --wb-rule-strong: #1d1b16;
-  --wb-focus: #2b4fa8;
-  --wb-accent: #b8361a;
-  --wb-accent-wash: #f9e1d6;
-  --wb-status-todo: #9a9384;
-  --wb-status-progress: #2f67b2;
-  --wb-status-review: #b7821a;
-  --wb-status-done: #3f7f5a;
-  --wb-status-cancel: #b9b2a3;
-  --wb-shadow-lift: 0 1px 0 rgb(29 27 22 / 0.06), 0 4px 12px -6px rgb(29 27 22 / 0.18);
-  --wb-shadow-panel: 0 0 0 1px rgb(29 27 22 / 0.08), 0 24px 48px -16px rgb(29 27 22 / 0.28);
-  --wb-scrim: rgb(22 20 15 / 0.28);
-  --wb-grain-opacity: 0.035;
+  --wb-canvas: #f6f7f9;
+  --wb-surface: #ffffff;
+  --wb-sunken: #edeff2;
+  --wb-ink: #15181c;
+  --wb-ink-soft: #3a4048;
+  --wb-muted: #5b636d;
+  --wb-rule: #e1e4e8;
+  --wb-rule-strong: #c8cdd4;
+  --wb-focus: #2f5bd3;
+  --wb-accent: #c2381c;
+  --wb-accent-wash: #fceae5;
+  --wb-status-todo: #8a929c;
+  --wb-status-progress: #2f6fcf;
+  --wb-status-review: #b07a12;
+  --wb-status-done: #2f8556;
+  --wb-status-cancel: #b5bbc3;
+  --wb-hover: rgb(21 24 28 / 0.04);
+  --wb-shadow-panel: 0 0 0 1px rgb(21 24 28 / 0.08), 0 16px 40px -12px rgb(21 24 28 / 0.24);
+  --wb-scrim: rgb(14 16 19 / 0.32);
   color-scheme: light;
 }
 
 /* Dark follows the OS unless the toggle pinned a theme on <html data-theme>. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --wb-paper: #16140f;
-    --wb-surface: #1e1c16;
-    --wb-sunken: #100f0b;
-    --wb-ink: #eee8da;
-    --wb-ink-soft: #cfc8b7;
-    --wb-muted: #968f80;
-    --wb-rule: #2f2c24;
-    --wb-rule-strong: #eee8da;
-    --wb-focus: #8fa8f0;
-    --wb-accent: #ff6b42;
-    --wb-accent-wash: #3a1c12;
-    --wb-status-todo: #8c8576;
-    --wb-status-progress: #6fa1ea;
-    --wb-status-review: #e2b04a;
-    --wb-status-done: #6dbb8b;
-    --wb-status-cancel: #5a554a;
-    --wb-shadow-lift: 0 1px 0 rgb(0 0 0 / 0.3), 0 6px 16px -8px rgb(0 0 0 / 0.6);
-    --wb-shadow-panel: 0 0 0 1px rgb(238 232 218 / 0.08), 0 24px 48px -16px rgb(0 0 0 / 0.7);
-    --wb-scrim: rgb(0 0 0 / 0.5);
-    --wb-grain-opacity: 0;
+    --wb-canvas: #0e1013;
+    --wb-surface: #16191d;
+    --wb-sunken: #0a0b0d;
+    --wb-ink: #e7eaee;
+    --wb-ink-soft: #b8bfc8;
+    --wb-muted: #8c949e;
+    --wb-rule: #262a30;
+    --wb-rule-strong: #363b43;
+    --wb-focus: #7fa3ff;
+    --wb-accent: #ff6d4f;
+    --wb-accent-wash: #3b1a12;
+    --wb-status-todo: #7d858f;
+    --wb-status-progress: #5c9bff;
+    --wb-status-review: #e0aa3e;
+    --wb-status-done: #4fbf7f;
+    --wb-status-cancel: #4a5058;
+    --wb-hover: rgb(231 234 238 / 0.05);
+    --wb-shadow-panel: 0 0 0 1px rgb(231 234 238 / 0.08), 0 16px 40px -12px rgb(0 0 0 / 0.7);
+    --wb-scrim: rgb(0 0 0 / 0.55);
     color-scheme: dark;
   }
 }
 
 :root[data-theme="dark"] {
-  --wb-paper: #16140f;
-  --wb-surface: #1e1c16;
-  --wb-sunken: #100f0b;
-  --wb-ink: #eee8da;
-  --wb-ink-soft: #cfc8b7;
-  --wb-muted: #968f80;
-  --wb-rule: #2f2c24;
-  --wb-rule-strong: #eee8da;
-  --wb-focus: #8fa8f0;
-  --wb-accent: #ff6b42;
-  --wb-accent-wash: #3a1c12;
-  --wb-status-todo: #8c8576;
-  --wb-status-progress: #6fa1ea;
-  --wb-status-review: #e2b04a;
-  --wb-status-done: #6dbb8b;
-  --wb-status-cancel: #5a554a;
-  --wb-shadow-lift: 0 1px 0 rgb(0 0 0 / 0.3), 0 6px 16px -8px rgb(0 0 0 / 0.6);
-  --wb-shadow-panel: 0 0 0 1px rgb(238 232 218 / 0.08), 0 24px 48px -16px rgb(0 0 0 / 0.7);
-  --wb-scrim: rgb(0 0 0 / 0.5);
-  --wb-grain-opacity: 0;
+  --wb-canvas: #0e1013;
+  --wb-surface: #16191d;
+  --wb-sunken: #0a0b0d;
+  --wb-ink: #e7eaee;
+  --wb-ink-soft: #b8bfc8;
+  --wb-muted: #8c949e;
+  --wb-rule: #262a30;
+  --wb-rule-strong: #363b43;
+  --wb-focus: #7fa3ff;
+  --wb-accent: #ff6d4f;
+  --wb-accent-wash: #3b1a12;
+  --wb-status-todo: #7d858f;
+  --wb-status-progress: #5c9bff;
+  --wb-status-review: #e0aa3e;
+  --wb-status-done: #4fbf7f;
+  --wb-status-cancel: #4a5058;
+  --wb-hover: rgb(231 234 238 / 0.05);
+  --wb-shadow-panel: 0 0 0 1px rgb(231 234 238 / 0.08), 0 16px 40px -12px rgb(0 0 0 / 0.7);
+  --wb-scrim: rgb(0 0 0 / 0.55);
   color-scheme: dark;
 }
 
 @theme inline {
-  --color-paper: var(--wb-paper);
+  --color-canvas: var(--wb-canvas);
   --color-surface: var(--wb-surface);
   --color-sunken: var(--wb-sunken);
   --color-ink: var(--wb-ink);
@@ -93,76 +90,57 @@
   --color-status-review: var(--wb-status-review);
   --color-status-done: var(--wb-status-done);
   --color-status-cancel: var(--wb-status-cancel);
+  --color-hover: var(--wb-hover);
   --color-scrim: var(--wb-scrim);
 
-  /* next/font/google sets --font-hahmlet, --font-plex-kr, --font-plex-mono on <html>. */
-  --font-display: var(--font-hahmlet), "Hahmlet", serif;
+  /* next/font/google sets --font-plex-kr and --font-plex-mono on <html>. */
   --font-sans: var(--font-plex-kr), "IBM Plex Sans KR", sans-serif;
   --font-mono: var(--font-plex-mono), "IBM Plex Mono", var(--font-plex-kr), monospace;
 
-  --text-display: 2.25rem;
-  --text-display--line-height: 1.25;
-  --text-title: 1.5rem;
-  --text-title--line-height: 1.3;
-  --text-heading: 1.0625rem;
+  --text-display: 1.375rem;
+  --text-display--line-height: 1.4;
+  --text-title: 1.125rem;
+  --text-title--line-height: 1.4;
+  --text-heading: 0.84375rem;
   --text-heading--line-height: 1.4;
-  --text-body: 0.9375rem;
-  --text-body--line-height: 1.6;
-  --text-ui: 0.875rem;
+  --text-body: 0.875rem;
+  --text-body--line-height: 1.55;
+  --text-ui: 0.84375rem;
   --text-ui--line-height: 1.45;
-  --text-meta: 0.78125rem;
-  --text-meta--line-height: 1.4;
-  --text-eyebrow: 0.71875rem;
-  --text-eyebrow--line-height: 1.2;
+  --text-meta: 0.75rem;
+  --text-meta--line-height: 1.45;
+  --text-figure: 1.75rem;
+  --text-figure--line-height: 1.15;
 
   --radius-mark: 2px;
+  --radius-control: 4px;
   --radius-card: 6px;
-  --radius-panel: 10px;
 
-  --shadow-lift: var(--wb-shadow-lift);
   --shadow-panel: var(--wb-shadow-panel);
 
-  --ease-paper: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --ease-tool: cubic-bezier(0.2, 0.7, 0.2, 1);
 }
 
 body {
-  background: var(--wb-paper);
+  background: var(--wb-canvas);
   color: var(--wb-ink);
   font-family: var(--font-sans);
   font-size: var(--text-body);
-  line-height: 1.6;
+  line-height: 1.55;
   word-break: keep-all;
   font-variant-numeric: tabular-nums;
   -webkit-font-smoothing: antialiased;
 }
 
-/* Paper grain, at most 3.5% and off in dark. */
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
-  opacity: var(--wb-grain-opacity);
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
-}
-
 :focus-visible {
   outline: 2px solid var(--wb-focus);
-  outline-offset: 2px;
-  border-radius: 2px;
+  outline-offset: 1px;
+  border-radius: 4px;
 }
 
 @layer components {
-  .eyebrow {
-    font-size: var(--text-eyebrow);
-    line-height: 1.2;
-    font-weight: 600;
-    letter-spacing: 0.08em;
-  }
-
-  /* Attention mark: the only place vermilion appears. */
-  .stamp {
+  /* Attention mark: the only place the accent appears. */
+  .flag {
     display: inline-flex;
     align-items: center;
     gap: 4px;
@@ -170,15 +148,52 @@ body::before {
     font-size: 11.5px;
     font-weight: 600;
     line-height: 1;
-    letter-spacing: 0.01em;
     color: var(--wb-accent);
-    border: 1px solid currentColor;
-    border-radius: 2px;
-    padding: 4px 6px 3px;
+    border: 1px solid color-mix(in srgb, var(--wb-accent) 45%, transparent);
+    border-radius: 3px;
+    padding: 3px 5px;
     opacity: 1;
   }
-  .stamp-fill {
+  .flag-fill {
     background: var(--wb-accent-wash);
+    border-color: transparent;
+  }
+
+  /* Left accent gutter on a row that needs action now. */
+  .gutter {
+    position: relative;
+  }
+  .gutter::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 6px;
+    bottom: 6px;
+    width: 2px;
+    border-radius: 0 2px 2px 0;
+    background: var(--wb-accent);
+  }
+
+  .kbd {
+    display: inline-block;
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    line-height: 1;
+    color: var(--wb-muted);
+    background: var(--wb-surface);
+    border: 1px solid var(--wb-rule-strong);
+    border-bottom-width: 2px;
+    border-radius: 3px;
+    padding: 2px 4px 1px;
+    white-space: nowrap;
+  }
+
+  .card {
+    min-width: 0;
+    background: var(--wb-surface);
+    border: 1px solid var(--wb-rule);
+    border-radius: var(--radius-card);
+    overflow: hidden;
   }
 
   .bar {
@@ -193,20 +208,20 @@ body::before {
     display: block;
     height: 100%;
     transform-origin: left;
-    animation: wb-fill 700ms var(--ease-paper) both;
-    animation-delay: 300ms;
+    animation: wb-fill 600ms var(--ease-tool) both;
+    animation-delay: 200ms;
   }
 
   .reveal {
-    animation: wb-rise 360ms var(--ease-paper) both;
+    animation: wb-rise 280ms var(--ease-tool) both;
   }
 
   .link {
     color: var(--wb-ink);
     text-decoration: underline;
-    text-decoration-color: var(--wb-rule);
+    text-decoration-color: var(--wb-rule-strong);
     text-underline-offset: 3px;
-    transition: text-decoration-color 120ms var(--ease-paper);
+    transition: text-decoration-color 120ms var(--ease-tool);
   }
   .link:hover {
     text-decoration-color: currentColor;
@@ -216,7 +231,7 @@ body::before {
 @keyframes wb-rise {
   from {
     opacity: 0;
-    transform: translateY(6px);
+    transform: translateY(4px);
   }
   to {
     opacity: 1;

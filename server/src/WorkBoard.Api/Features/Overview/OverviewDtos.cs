@@ -19,7 +19,7 @@ public sealed record NoteRef(Guid Id, string Title, DateTime HeldAt);
 
 public sealed record ActionItemWithoutIssue(Guid Id, string Text, Member? Assignee, NoteRef Note);
 
-public sealed record AttentionTotals(int Urgent, int ReviewWaiting, int Stale, int Unassigned, int ActionItemsWithoutIssue);
+public sealed record AttentionTotals(int Urgent, int UrgentNotStarted, int ReviewWaiting, int Stale, int Unassigned, int ActionItemsWithoutIssue);
 
 public sealed record Attention(
     IReadOnlyList<UrgentItem> Urgent,

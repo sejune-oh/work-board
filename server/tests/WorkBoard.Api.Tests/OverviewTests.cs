@@ -64,6 +64,29 @@ public class OverviewTests(WebApplicationFactory<Program> factory) : IClassFixtu
     }
 
     [DbFact]
+    public async Task Urgent_not_started_total_counts_beyond_the_first_five()
+    {
+        await using var t = await TestTenant.CreateAsync(factory);
+        var repo = await t.AddRepoAsync("r");
+        for (var i = 0; i < 5; i++)
+        {
+            var started = await t.AddIssueAsync(repo, idle: TimeSpan.FromDays(10 + i));
+            await t.BoardAsync(started, priority: "urgent", statusOverride: "in_progress");
+        }
+        for (var i = 0; i < 3; i++)
+        {
+            var notStarted = await t.AddIssueAsync(repo, idle: TimeSpan.FromHours(1 + i));
+            await t.BoardAsync(notStarted, priority: "urgent");
+        }
+
+        var attention = (await t.OverviewAsync()).GetProperty("attention");
+
+        Assert.All(attention.GetProperty("urgent").EnumerateArray(), u => Assert.False(u.GetProperty("notStarted").GetBoolean()));
+        Assert.Equal(8, attention.GetProperty("totals").GetProperty("urgent").GetInt32());
+        Assert.Equal(3, attention.GetProperty("totals").GetProperty("urgentNotStarted").GetInt32());
+    }
+
+    [DbFact]
     public async Task Urgent_is_empty_when_priority_is_disabled()
     {
         await using var t = await TestTenant.CreateAsync(factory, priority: false);

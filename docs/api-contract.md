@@ -48,6 +48,7 @@ first calls `select set_config('app.tenant_id', @tenantId, true)`. RLS policies 
 | `status` | comma list of `todo`, `in_progress`, `in_review`, `done` (derived status). Any other value, or an empty list → `400 {"error": "invalid_status"}` |
 | `stale` | `true` keeps only open issues whose `updatedAt` is 7 or more days old. `false` or absent: no filter |
 | `sprint` | only issues in this sprint (uuid) |
+| `doneSince` | `week` keeps only issues closed since Monday 00:00 in Asia/Seoul (same boundary as the overview's `doneThisWeek`); open issues are dropped and `doneWithinDays` is ignored. Any other value → `400 {"error": "invalid_doneSince"}` |
 | `scope` | `all` includes every closed issue regardless of `doneWithinDays` (use it for progress over all issues). Any other value → `400 {"error": "invalid_scope"}` |
 | `doneWithinDays` | closed issues are included only if closed within N days, integer 0..365 (default 7). Ignored when `scope=all`. Out of range → `400 {"error": "invalid_doneWithinDays"}` |
 
@@ -68,6 +69,9 @@ tenant transaction (no cache). Rules:
   (not a rolling 7 days).
 - `attention` groups are ordered urgent, reviewWaiting, stale, unassigned. An issue shows only in the first group
   it belongs to; each group is capped at 5, oldest first; `totals` are counted after de-duplication and before the cap.
+  `totals.urgentNotStarted` is the number of listed-urgent issues whose status is `todo`.
+  `counts.stale` is every stale open issue; `attention.totals.stale` only counts stale issues not already shown
+  in an earlier group (urgent, reviewWaiting), so it can be smaller.
   Epics are excluded from `unassigned`.
 - `reviewWaiting` lists open PRs with review requested that are linked to an open issue (one entry per issue, the
   longest waiting PR). `waitingSince` is the PR's `github_updated_at`, so it is **approximate**: it moves whenever the PR
@@ -107,7 +111,7 @@ type Overview = {
     unassigned: OverviewIssueRef[];
     actionItemsWithoutIssue: { id: string; text: string; assignee: Member | null;
                                note: { id: string; title: string; heldAt: string } }[];
-    totals: { urgent: number; reviewWaiting: number; stale: number; unassigned: number;
+    totals: { urgent: number; urgentNotStarted: number; reviewWaiting: number; stale: number; unassigned: number;
               actionItemsWithoutIssue: number };
   };
   people: {

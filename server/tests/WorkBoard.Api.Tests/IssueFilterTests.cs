@@ -149,4 +149,34 @@ public class IssueFilterTests(WebApplicationFactory<Program> factory) : IClassFi
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Equal("""{"error":"invalid_scope"}""", await response.Content.ReadAsStringAsync());
     }
+
+    [DbFact]
+    public async Task Done_since_week_keeps_issues_closed_since_monday_midnight_in_seoul()
+    {
+        var (t, repo) = await NewTenant(factory);
+        await using var _ = t;
+        var kst = TimeZoneInfo.FindSystemTimeZoneById("Asia/Seoul");
+        var local = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, kst);
+        var monday = TimeZoneInfo.ConvertTimeToUtc(local.Date.AddDays(-(((int)local.DayOfWeek + 6) % 7)), kst);
+        await t.AddIssueAsync(repo, closed: true, closedAt: monday.AddSeconds(-1));
+        var atStart = await t.AddIssueAsync(repo, closed: true, closedAt: monday);
+        var after = await t.AddIssueAsync(repo, closed: true, closedAt: monday.AddSeconds(1));
+        await t.AddIssueAsync(repo);
+
+        var expected = new[] { atStart.ToString(), after.ToString() }.Order();
+        Assert.Equal(expected, Ids(await t.GetAsync("/api/issues?doneSince=week")).Order());
+        Assert.Equal(expected, Ids(await t.GetAsync("/api/issues?doneSince=week&status=done")).Order());
+        Assert.Equal(expected, Ids(await t.GetAsync("/api/issues?doneSince=week&doneWithinDays=0")).Order());
+    }
+
+    [DbFact]
+    public async Task Unknown_done_since_is_rejected()
+    {
+        using var client = ClientFor("haneul-dev");
+
+        var response = await client.GetAsync("/api/issues?doneSince=month");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal("""{"error":"invalid_doneSince"}""", await response.Content.ReadAsStringAsync());
+    }
 }

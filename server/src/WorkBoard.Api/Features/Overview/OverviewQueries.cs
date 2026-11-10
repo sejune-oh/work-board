@@ -128,7 +128,7 @@ public static class OverviewQueries
             actionRows.Take(GroupLimit)
                 .Select(a => new ActionItemWithoutIssue(a.Id, a.Text, a.ToMember(), new NoteRef(a.NoteId, a.NoteTitle, a.HeldAt)))
                 .ToList(),
-            new AttentionTotals(urgent.Count, review.Count, stale.Count, unassigned.Count, actionRows.Count));
+            new AttentionTotals(urgent.Count, urgent.Count(r => r.Status == "todo"), review.Count, stale.Count, unassigned.Count, actionRows.Count));
     }
 
     private static async Task<Dictionary<Guid, OverviewIssueRef>> LoadRefsAsync(TenantSession s, Guid[] ids)

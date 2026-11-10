@@ -10,14 +10,16 @@ public sealed record IssueFilter(
     IReadOnlyList<string>? Statuses = null,
     bool Stale = false,
     Guid? SprintId = null,
-    bool AllClosed = false);
+    bool AllClosed = false,
+    bool DoneThisWeek = false);
 
 public static class IssueQueries
 {
     public static async Task<List<BoardIssue>> ListAsync(TenantSession s, IssueFilter filter)
     {
-        var issues = await FetchAsync(s, """
-            (i.state = 'open' or @allClosed or i.closed_at >= now() - make_interval(days => @doneWithinDays))
+        var issues = await FetchAsync(s, $$"""
+            (i.state = 'open' or @allClosed or @doneThisWeek or i.closed_at >= now() - make_interval(days => @doneWithinDays))
+            and (not @doneThisWeek or (i.state = 'closed' and i.closed_at >= {{Overview.OverviewQueries.WeekStartSql}}))
             and (@statuses::text[] is null or st.status = any(@statuses::text[]))
             and (not @stale or (i.state = 'open'
                    and i.github_updated_at < now() - make_interval(days => @staleDays)))
@@ -35,6 +37,7 @@ public static class IssueQueries
             assignee = filter.Person,
             filter.DoneWithinDays,
             allClosed = filter.AllClosed,
+            doneThisWeek = filter.DoneThisWeek,
             statuses = filter.Statuses?.ToArray(),
             stale = filter.Stale,
             staleDays = Overview.OverviewQueries.StaleDays,

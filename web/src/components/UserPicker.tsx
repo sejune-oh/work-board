@@ -24,12 +24,12 @@ export function UserPicker({ large = false }: { large?: boolean }) {
 
   return (
     <label className={large ? "flex flex-col gap-2" : "flex items-center gap-2 text-ui"}>
-      <span className={large ? "font-mono text-meta text-muted" : "hidden text-meta text-muted sm:inline"}>{t.userPicker.label}</span>
+      <span className={large ? "text-small font-semibold text-ink" : "hidden text-meta text-muted min-[1024px]:inline"}>{t.userPicker.label}</span>
       <select
         className={
           large
-            ? "h-10 cursor-pointer rounded-control border border-rule-strong bg-surface px-3 text-body text-ink focus:border-focus"
-            : "h-[30px] max-w-[8rem] cursor-pointer rounded-control border border-rule bg-surface px-1.5 text-ui font-medium text-ink hover:border-rule-strong sm:max-w-[11rem]"
+            ? "h-12 cursor-pointer rounded-item bg-surface px-3.5 text-body text-ink shadow-[inset_0_0_0_1px_var(--wb-rule-strong)] focus:shadow-[inset_0_0_0_2px_var(--wb-focus)] focus:outline-none"
+            : "h-8 max-w-[6.5rem] cursor-pointer rounded-control bg-surface px-2 text-small font-medium text-ink shadow-elev-1 min-[640px]:max-w-[11rem]"
         }
         value={selected ? optionValue(selected) : ""}
         onChange={(e) => {

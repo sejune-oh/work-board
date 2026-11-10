@@ -33,31 +33,33 @@ export function IssueCard({ issue, showAssignee = true, showStatus = false }: Pr
       type="button"
       {...{ [ROW_ATTR]: "" }}
       onClick={() => open(issue.id)}
-      className={`group block w-full cursor-pointer overflow-hidden rounded-control border border-rule bg-surface px-3 py-2 text-left transition-colors duration-[120ms] ease-tool hover:border-rule-strong hover:bg-[linear-gradient(var(--wb-hover),var(--wb-hover))] ${
-        urgent && issue.status === "todo" ? "gutter" : ""
-      }`}
+      className={`group block w-full cursor-pointer overflow-hidden rounded-item px-4 py-3.5 text-left transition-shadow duration-[120ms] ease-tool hover:shadow-[0_0_0_1px_var(--wb-rule-strong),0_4px_12px_-6px_rgb(16_19_23/0.16)] ${
+        done ? "shadow-[0_0_0_1px_var(--wb-ring)]" : "bg-surface shadow-elev-1"
+      } ${urgent && issue.status === "todo" ? "gutter" : ""}`}
     >
-      <div className={`flex items-center gap-2 font-mono text-meta text-muted ${fade}`}>
+      <div className={`flex min-h-[22px] items-center gap-2 text-meta text-muted ${fade}`}>
         <span className="truncate">
-          {issue.repository.name} #{issue.number}
+          <span className="font-mono">
+            {issue.repository.name} #{issue.number}
+          </span>
           {issue.issueType && ` · ${fmt.issueType(issue.issueType)}`}
         </span>
-        <span className="ml-auto shrink-0 font-sans">
+        <span className="ml-auto shrink-0">
           {urgent && <Flag fill>{t.priority.urgent}</Flag>}
           {high && <span className="text-meta text-ink-soft">{t.priority.high}</span>}
         </span>
       </div>
       <p
-        className={`mt-0.5 line-clamp-2 text-ui font-medium ${done ? "text-muted" : "text-ink"} ${canceled ? "line-through" : ""} ${fade}`}
+        className={`mt-1.5 line-clamp-2 text-ui font-medium ${done ? "text-muted" : "text-ink"} ${canceled ? "line-through" : ""} ${fade}`}
       >
         {issue.title}
       </p>
       {showStatus && !canceled && (
-        <div className={`mt-1 ${fade}`}>
+        <div className={`mt-1.5 ${fade}`}>
           <StatusBadge status={issue.status} />
         </div>
       )}
-      <div className="mt-1.5 flex items-center justify-between gap-2 text-meta text-muted">
+      <div className="mt-2 flex items-center justify-between gap-2 text-meta text-muted">
         <span className={`truncate ${unassigned ? "" : fade}`}>
           {showAssignee &&
             (unassigned ? (
@@ -79,7 +81,7 @@ export function IssueCard({ issue, showAssignee = true, showStatus = false }: Pr
           {stale ? (
             <Flag>{t.common.stalledFor(daysSince(issue.updatedAt))}</Flag>
           ) : (
-            <span className="font-mono" title={t.common.staleHint(STALE_DAYS)}>{fmt.relativeDays(issue.updatedAt)}</span>
+            <span title={t.common.staleHint(STALE_DAYS)}>{fmt.relativeDays(issue.updatedAt)}</span>
           )}
         </span>
       </div>

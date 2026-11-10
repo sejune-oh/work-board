@@ -99,7 +99,7 @@ export default function ProjectsBoardPage() {
       </PageHeader>
 
       {stats.length > 0 && (
-        <div className="reveal mt-2 grid grid-cols-1 gap-3 [animation-delay:30ms] md:grid-cols-2 xl:grid-cols-3">
+        <div className="reveal mt-2 grid grid-cols-1 gap-4 [animation-delay:30ms] md:grid-cols-2 xl:grid-cols-3">
           {stats.map(({ project: p, counts, total, pct }) => {
             const recentNotes = notes.data!.filter((n) => n.project?.id === p.id).slice(0, 2);
             const isSelected = p.id === selected?.id;
@@ -109,23 +109,23 @@ export default function ProjectsBoardPage() {
                 type="button"
                 aria-pressed={isSelected}
                 onClick={() => select(isSelected ? null : p.id)}
-                className={`flex cursor-pointer flex-col rounded-card border bg-surface px-3.5 pb-3 pt-2.5 text-left transition-colors duration-[120ms] ease-tool ${
-                  isSelected ? "border-ink shadow-[inset_0_0_0_1px_var(--wb-ink)]" : "border-rule hover:border-rule-strong"
+                className={`flex cursor-pointer flex-col rounded-card bg-surface px-5 py-4 text-left transition-shadow duration-[120ms] ease-tool ${
+                  isSelected ? "shadow-[0_0_0_2px_var(--wb-ink)]" : "shadow-elev-1 hover:shadow-[0_0_0_1px_var(--wb-rule-strong)]"
                 }`}
               >
-                <div className="mb-2 flex min-w-0 items-center gap-2">
-                  <span aria-hidden className="h-2 w-2 shrink-0 rounded-mark" style={{ background: p.color ?? "var(--wb-muted)" }} />
-                  <h2 className="shrink-0 text-heading font-semibold">{p.name}</h2>
-                  <span className="truncate font-mono text-[11.5px] text-muted">{p.repositories.map((r) => r.name).join(" · ") || t.common.noRepos}</span>
-                  <span className="ml-auto shrink-0 font-mono text-ui font-medium">{pct}%</span>
+                <div className="mb-3 flex min-w-0 items-center gap-2">
+                  <span aria-hidden className="h-2.5 w-2.5 shrink-0 rounded-mark" style={{ background: p.color ?? "var(--wb-muted)" }} />
+                  <h2 className="shrink-0 text-ui font-semibold">{p.name}</h2>
+                  <span className={`truncate text-meta text-muted ${p.repositories.length ? "font-mono" : ""}`}>{p.repositories.map((r) => r.name).join(" · ") || t.common.noRepos}</span>
+                  <span className="ml-auto shrink-0 font-mono text-small font-medium">{pct}%</span>
                 </div>
                 <ProgressBar counts={counts} />
-                <p className="mt-1.5 text-meta text-muted">
+                <p className="mt-2.5 text-small text-muted">
                   {total > 0 ? progressLine(counts, t) : ""}
                   {total > 0 && pt.breakdown(counts.inProgress, counts.inReview, counts.todo)}
                 </p>
                 {recentNotes.length > 0 && (
-                  <ul className="mt-2 border-t border-rule pt-1.5 text-meta text-muted">
+                  <ul className="mt-3 border-t border-rule pt-2.5 text-small text-muted">
                     {recentNotes.map((n) => (
                       <li key={n.id} className="truncate">
                         {pt.meeting(n.title, fmt.date(n.heldAt))}
@@ -140,7 +140,7 @@ export default function ProjectsBoardPage() {
       )}
 
       {showBoard && (
-        <section className="mt-2 flex flex-col gap-3">
+        <section className="mt-4 flex flex-col gap-4">
           <SectionHead
             hint={selected ? pt.project : pt.filter}
             title={selected ? selected.name : t.board.matching}

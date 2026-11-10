@@ -44,36 +44,36 @@ export function IssuePanel() {
     <>
       <div className="fixed inset-0 z-30 bg-scrim" onClick={close} aria-hidden />
       <aside
-        className="fixed inset-y-0 right-0 z-40 flex w-full max-w-[560px] flex-col overflow-y-auto bg-surface shadow-panel"
+        className="fixed inset-y-0 right-0 z-40 flex w-full max-w-[560px] flex-col overflow-y-auto bg-surface shadow-panel min-[561px]:rounded-l-sheet"
         aria-label={p.aria}
         role="dialog"
       >
-        <div className="sticky top-0 z-10 flex h-12 shrink-0 items-center justify-between gap-3 border-b border-rule bg-surface px-4">
+        <div className="sticky top-0 z-10 flex h-14 shrink-0 items-center justify-between gap-3 border-b border-rule bg-surface px-6">
           <span className="font-mono text-meta text-muted">{shown ? `${shown.repository.name} #${shown.number}` : p.issue}</span>
           <button
             ref={closeRef}
             type="button"
             onClick={close}
             aria-keyshortcuts="Escape"
-            className="inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-control border border-rule bg-surface px-2 text-meta text-ink-soft hover:border-rule-strong hover:text-ink"
+            className="btn h-8 gap-1.5 px-2.5 text-meta font-medium text-ink-soft hover:text-ink"
           >
             {p.close} <Kbd>Esc</Kbd>
           </button>
         </div>
 
-        <div className="flex flex-col gap-5 px-4 py-[18px]">
+        <div className="flex flex-col gap-7 px-6 py-6 max-[639px]:px-4">
           {loading && !shown && <Loading />}
           {error && <ErrorBox error={error} />}
           {shown && (
             <>
               <header>
                 {shown.parent && (
-                  <button type="button" onClick={() => open(shown.parent!.id)} className="link mb-1.5 cursor-pointer text-left text-meta text-ink-soft">
+                  <button type="button" onClick={() => open(shown.parent!.id)} className="link mb-2 cursor-pointer text-left text-small text-ink-soft">
                     {p.parent(shown.parent.number, shown.parent.title)}
                   </button>
                 )}
-                <h2 className="text-title font-semibold tracking-[-0.01em]">{shown.title}</h2>
-                <dl className="mt-4 grid grid-cols-[6.5rem_minmax(0,1fr)] overflow-hidden rounded-card border border-rule text-ui [&>dd]:flex [&>dd]:min-h-9 [&>dd]:items-center [&>dd]:border-t [&>dd]:border-rule [&>dd]:px-3 [&>dd]:py-1.5 [&>dt]:flex [&>dt]:items-center [&>dt]:border-t [&>dt]:border-rule [&>dt]:px-3 [&>dt]:py-1.5 [&>dt]:text-meta [&>dt:first-of-type]:border-t-0 [&>dd:first-of-type]:border-t-0">
+                <h2 className="text-title font-semibold">{shown.title}</h2>
+                <dl className="mt-5 grid grid-cols-[7rem_minmax(0,1fr)] overflow-hidden rounded-item text-ui shadow-elev-1 [&>dd]:flex [&>dd]:min-h-10 [&>dd]:items-center [&>dd]:border-t [&>dd]:border-rule [&>dd]:px-3 [&>dd]:py-1.5 [&>dt]:flex [&>dt]:items-center [&>dt]:border-t [&>dt]:border-rule [&>dt]:px-3 [&>dt]:py-1.5 [&>dt]:text-small [&>dt:first-of-type]:border-t-0 [&>dd:first-of-type]:border-t-0">
                   <dt className="text-muted">{p.status}</dt>
                   <dd className="flex flex-wrap items-center gap-2">
                     <StatusBadge status={shown.status} />
@@ -120,7 +120,7 @@ export function IssuePanel() {
                     </>
                   )}
                   <dt className="text-muted">{p.lastActivity}</dt>
-                  <dd className="font-mono text-meta">{fmt.relativeDays(shown.updatedAt)}</dd>
+                  <dd className="text-small">{fmt.relativeDays(shown.updatedAt)}</dd>
                 </dl>
               </header>
 
@@ -132,7 +132,7 @@ export function IssuePanel() {
                     <span className="truncate">
                       <span className="font-mono text-meta text-muted">#{pr.number}</span> {pr.title}
                     </span>
-                    <span className="shrink-0 text-meta text-muted">
+                    <span className="shrink-0 text-small text-muted">
                       {p.prState[pr.state]}
                       {pr.reviewRequested && pr.state === "open" ? p.reviewRequested : ""}
                       {pr.draft ? p.draft : ""}
@@ -167,7 +167,7 @@ export function IssuePanel() {
                     <Link href={`/notes/view?id=${n.id}`} className="link">
                       {n.title}
                     </Link>{" "}
-                    <span className="font-mono text-meta text-muted">{fmt.date(n.heldAt)}</span>
+                    <span className="text-small text-muted">{fmt.date(n.heldAt)}</span>
                   </li>
                 ))}
               </Section>
@@ -175,8 +175,8 @@ export function IssuePanel() {
               <Section title={p.conversation} count={shown.comments.length} divided={false}>
                 {shown.comments.map((c) => (
                   <li key={c.id} className="border-l-2 border-rule-strong py-0.5 pl-3 text-ui">
-                    <div className="mb-1 text-meta text-muted">
-                      <span className="font-medium text-ink-soft">{fmt.person(c.author)}</span> · <span className="font-mono">{fmt.relativeDays(c.createdAt)}</span>
+                    <div className="mb-1 text-small text-muted">
+                      <span className="font-medium text-ink-soft">{fmt.person(c.author)}</span> · <span>{fmt.relativeDays(c.createdAt)}</span>
                     </div>
                     <p className="whitespace-pre-wrap text-ink-soft">{c.body}</p>
                   </li>
@@ -194,11 +194,11 @@ function Section({ title, count, divided = true, children }: { title: string; co
   const t = useT();
   return (
     <section>
-      <h3 className="mb-1 flex items-center gap-2 border-b border-rule pb-1.5 text-heading font-semibold">
+      <h3 className="mb-2 flex items-center gap-2 text-heading font-semibold">
         {title} <Count n={count} />
       </h3>
       {count === 0 ? (
-        <p className="text-meta text-muted">{t.common.none}</p>
+        <p className="text-small text-muted">{t.common.none}</p>
       ) : (
         <ul className={divided ? "divide-y divide-rule" : "flex flex-col gap-3"}>{children}</ul>
       )}

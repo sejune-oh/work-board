@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { ApiError, setDevIdentity } from "@/lib/api";
 import { authEnabled, markLeaving, setTenant, signInWithGitHub, signOut } from "@/lib/auth";
 import { useT } from "@/lib/i18n";
@@ -16,33 +16,54 @@ export function GitHubMark({ size = 16 }: { size?: number }) {
   );
 }
 
-const BUTTON =
-  "inline-flex h-10 w-full cursor-pointer items-center justify-center gap-2 rounded-control border border-rule-strong bg-surface px-4 text-ui font-medium text-ink transition-colors duration-[120ms] ease-tool hover:bg-hover disabled:cursor-default disabled:text-muted";
+/** The one main action of a gate screen. */
+const PRIMARY = "btn btn-primary btn-lg w-full";
 
 /** App problems stay in ink: no vermilion. */
 export function Notice({ children }: { children: React.ReactNode }) {
   return (
-    <div role="alert" className="rounded-control border border-rule border-l-2 border-l-ink-soft bg-surface px-4 py-3 text-ui text-ink">
+    <div role="alert" className="rounded-control border-l-2 border-ink-soft bg-sunken px-4 py-3 text-small text-ink">
       {children}
     </div>
+  );
+}
+
+/** `wb` mark and product name; the dev-mode badge sits beside it when sign-in is off. */
+function Brand() {
+  const t = useT();
+  return (
+    <span className="flex min-w-0 items-center gap-2.5">
+      <span aria-hidden className="grid h-7 w-7 shrink-0 place-items-center rounded-control bg-ink font-mono text-meta font-semibold text-on-ink">
+        wb
+      </span>
+      <span className="truncate text-ui font-semibold">{t.app.title}</span>
+      {!authEnabled && (
+        <span className="shrink-0 rounded-flag px-1.5 text-meta leading-5 text-ink-soft shadow-[inset_0_0_0_1px_var(--wb-rule-strong)]">
+          {t.gate.devMode}
+        </span>
+      )}
+    </span>
   );
 }
 
 /**
  * The frame for everything before the app: product mark, language and theme, one centred column.
  * No navigation, search or shortcuts live here. Focus moves to the title whenever it changes.
+ * `aside` fills a second column from 1024px up and is not rendered below that.
  */
 export function GateFrame({
   kicker,
   title,
   lead,
   footer,
+  aside,
   children,
 }: {
   kicker: string;
   title: string;
   lead?: React.ReactNode;
   footer?: React.ReactNode;
+  aside?: React.ReactNode;
   children: React.ReactNode;
 }) {
   const t = useT();
@@ -52,42 +73,79 @@ export function GateFrame({
     heading.current?.focus({ preventScroll: true });
   }, [title]);
 
-  return (
-    <div className="flex min-h-screen flex-col bg-canvas">
-      <header className="flex h-12 items-center gap-3 px-4 min-[900px]:px-6">
-        <span className="flex min-w-0 items-center gap-2">
-          <span
-            aria-hidden
-            className="grid h-[22px] w-[22px] shrink-0 place-items-center rounded-control bg-ink font-mono text-[11px] font-semibold text-surface"
-          >
-            wb
-          </span>
-          <span className="truncate text-[13.5px] font-semibold">{t.app.title}</span>
-          {!authEnabled && (
-            <span className="shrink-0 rounded-[2px] border border-rule-strong px-1.5 font-mono text-[11px] leading-[18px] text-ink-soft">
-              {t.gate.devMode}
-            </span>
-          )}
-        </span>
+  const column = (
+    <div className="flex min-h-dvh flex-col">
+      <header className="flex items-center gap-3 px-4 py-5 min-[640px]:px-6 min-[1024px]:px-10">
+        <Brand />
         <div className="ml-auto flex shrink-0 items-center gap-2">
           <LangToggle />
           <ThemeToggle />
         </div>
       </header>
-      <main className="flex flex-1 justify-center px-4 pb-16 pt-[clamp(24px,12vh,120px)]">
-        <div key={title} className="reveal flex w-full max-w-[400px] flex-col gap-5">
-          <div>
-            <p className="font-mono text-meta text-muted">{kicker}</p>
-            <h1 ref={heading} tabIndex={-1} style={{ outline: "none" }} className="mt-1 text-display font-semibold tracking-[-0.015em]">
-              {title}
-            </h1>
-            {lead && <p className="mt-1 text-body text-ink-soft">{lead}</p>}
-          </div>
-          <div className="card p-3.5">{children}</div>
-          {footer}
+      <main className="grid flex-1 items-center px-4 pb-16 pt-8 min-[640px]:px-6 min-[1024px]:px-10">
+        <div key={title} className="reveal mx-auto w-full max-w-[440px]">
+          <p className="flex items-center gap-2 text-small font-medium text-muted">
+            <span aria-hidden className="h-px w-4 bg-rule-strong" />
+            {kicker}
+          </p>
+          <h1 ref={heading} tabIndex={-1} style={{ outline: "none" }} className="mt-3 text-display font-semibold">
+            {title}
+          </h1>
+          {lead && <p className="mt-3 text-body text-ink-soft">{lead}</p>}
+          <div className="mt-8 rounded-sheet bg-surface p-6 shadow-elev-1 max-[639px]:p-5">{children}</div>
+          {footer && <div className="mt-5">{footer}</div>}
         </div>
       </main>
+      <footer className="px-4 py-5 text-meta text-faint min-[640px]:px-6 min-[1024px]:px-10">{t.gate.tagline}</footer>
     </div>
+  );
+
+  if (!aside) return <div className="bg-canvas">{column}</div>;
+  return (
+    <div className="grid bg-canvas min-[1024px]:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]">
+      {column}
+      <aside className="hidden content-center gap-5 border-l border-rule bg-sunken px-12 py-16 min-[1024px]:grid">{aside}</aside>
+    </div>
+  );
+}
+
+/** Sign-in screen sample: what the overview says each morning, labelled as an example. */
+function SignInPreview() {
+  const t = useT();
+  const p = t.gate.preview;
+  return (
+    <>
+      <figure aria-label={p.label} className="m-0 max-w-[520px] rounded-sheet bg-surface p-6 shadow-elev-2">
+        <div className="flex items-center justify-between gap-3">
+          <p className="flex items-center gap-2 text-small font-medium text-muted">
+            <span aria-hidden className="h-px w-4 bg-rule-strong" />
+            {p.kicker}
+          </p>
+          <span className="inline-flex h-[22px] items-center rounded-full bg-sunken px-2 text-meta font-semibold text-muted">{p.example}</span>
+        </div>
+        <p className="mt-2 text-title font-semibold text-balance">
+          {p.sentence.map((part, i) =>
+            typeof part === "number" ? (
+              <em key={i} className="font-mono not-italic text-accent">
+                {part}
+              </em>
+            ) : (
+              <Fragment key={i}>{part}</Fragment>
+            ),
+          )}
+        </p>
+        <ul className="mt-5">
+          {p.rows.map((r) => (
+            <li key={r.ref} className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 border-t border-rule py-3 text-ui">
+              <span className={`flag ${r.fill ? "flag-fill" : ""}`}>{r.flag}</span>
+              <span className="truncate">{r.title}</span>
+              <span className="font-mono text-meta text-muted">{r.ref}</span>
+            </li>
+          ))}
+        </ul>
+      </figure>
+      <p className="max-w-[520px] text-small text-muted">{p.note}</p>
+    </>
   );
 }
 
@@ -113,10 +171,10 @@ function SignedInAs() {
   const t = useT();
   const login = useLogin();
   return (
-    <p className="flex flex-wrap items-center gap-x-2 gap-y-1 px-0.5 text-meta text-muted">
+    <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-small text-muted">
       {login && <span>{t.gate.signedInAs(login)}</span>}
       {login && <span aria-hidden>·</span>}
-      <button type="button" onClick={() => void leave()} className="link cursor-pointer text-meta">
+      <button type="button" onClick={() => void leave()} className="link cursor-pointer">
         {t.auth.signOut}
       </button>
     </p>
@@ -141,8 +199,8 @@ export function SignInButton({ label, returnTo }: { label?: string; returnTo?: s
 
   return (
     <div className="flex flex-col gap-3">
-      <button type="button" className={BUTTON} onClick={start} disabled={busy} aria-busy={busy}>
-        <GitHubMark />
+      <button type="button" className={PRIMARY} onClick={start} disabled={busy} aria-busy={busy}>
+        <GitHubMark size={18} />
         {busy ? `${t.auth.redirecting}…` : (label ?? t.auth.signIn)}
       </button>
       {failed && <Notice>{t.auth.startFailed}</Notice>}
@@ -153,15 +211,14 @@ export function SignInButton({ label, returnTo }: { label?: string; returnTo?: s
 export function SignInScreen({ next, ended }: { next: string; ended: boolean }) {
   const t = useT();
   return (
-    <GateFrame kicker={t.gate.login.kicker} title={t.start.title} lead={t.start.lead}>
+    <GateFrame kicker={t.gate.login.kicker} title={t.start.title} lead={t.start.lead} aside={<SignInPreview />}>
       {ended && (
-        <div className="mb-3.5">
+        <div className="mb-5">
           <Notice>{t.auth.sessionEnded}</Notice>
         </div>
       )}
-      <p className="mb-3 text-ui text-ink-soft">{t.auth.lead}</p>
       <SignInButton returnTo={next} />
-      <p className="mt-3 text-meta text-muted">{t.auth.scopeNote}</p>
+      <p className="mt-4 text-small text-muted">{t.auth.scopeNote}</p>
     </GateFrame>
   );
 }
@@ -169,11 +226,10 @@ export function SignInScreen({ next, ended }: { next: string; ended: boolean }) 
 export function NoMembershipScreen({ onRecheck, busy }: { onRecheck: () => void; busy: boolean }) {
   const t = useT();
   return (
-    <GateFrame kicker={t.gate.company.kicker} title={t.auth.noMembership.title} footer={<SignedInAs />}>
-      <p className="text-body text-ink">{t.auth.noMembership.lead}</p>
-      <p className="mt-1 text-body text-ink-soft">{t.auth.noMembership.next}</p>
-      <div className="mt-4">
-        <button type="button" className={BUTTON} onClick={onRecheck} disabled={busy} aria-busy={busy}>
+    <GateFrame kicker={t.gate.company.kicker} title={t.auth.noMembership.title} lead={t.auth.noMembership.lead} footer={<SignedInAs />}>
+      <p className="text-body text-ink-soft">{t.auth.noMembership.next}</p>
+      <div className="mt-5">
+        <button type="button" className={PRIMARY} onClick={onRecheck} disabled={busy} aria-busy={busy}>
           {busy ? `${t.gate.error.retrying}…` : t.auth.noMembership.recheck}
         </button>
       </div>
@@ -198,21 +254,21 @@ export function TenantChoiceScreen({ error }: { error: ApiError }) {
   return (
     <GateFrame kicker={t.gate.company.kicker} title={t.auth.tenant.title} lead={t.auth.tenant.lead} footer={<SignedInAs />}>
       {options.length > 0 ? (
-        <ul className="-m-3.5">
-          {options.map((o, i) => (
-            <li key={o.id} className={i > 0 ? "border-t border-rule" : undefined}>
+        <ul className="-m-4 flex flex-col gap-0.5 max-[639px]:-m-3">
+          {options.map((o) => (
+            <li key={o.id}>
               <button
                 type="button"
                 onClick={() => setTenant(o.id)}
-                className="flex h-11 w-full cursor-pointer items-center gap-3 px-3.5 text-left text-ui font-medium text-ink hover:bg-hover focus-visible:bg-hover"
+                className="grid w-full cursor-pointer grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4 rounded-item p-4 text-left transition-colors duration-[120ms] ease-tool hover:bg-hover focus-visible:bg-hover"
               >
-                <span className="grid h-[22px] w-[22px] shrink-0 place-items-center rounded-control bg-sunken font-mono text-[11px] font-semibold text-ink-soft">
+                <span className="grid h-9 w-9 place-items-center rounded-control bg-sunken font-mono text-small font-semibold text-ink-soft">
                   {o.name.slice(0, 2)}
                 </span>
-                <span className="min-w-0 truncate">{o.name}</span>
-                <span aria-hidden className="ml-auto text-muted">
-                  →
-                </span>
+                <span className="truncate text-body font-semibold">{o.name}</span>
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden className="text-faint">
+                  <path d="M6 3.5 10.5 8 6 12.5" />
+                </svg>
               </button>
             </li>
           ))}
@@ -231,8 +287,8 @@ export function GateErrorScreen({ error, onRetry, busy }: { error: Error; onRetr
   return (
     <GateFrame kicker={t.gate.error.kicker} title={t.gate.error.title} lead={t.gate.error.lead}>
       <p className="border-l-2 border-ink-soft pl-3 text-ui text-ink">{detail}</p>
-      <div className="mt-4">
-        <button type="button" className={BUTTON} onClick={onRetry} disabled={busy} aria-busy={busy}>
+      <div className="mt-5">
+        <button type="button" className={PRIMARY} onClick={onRetry} disabled={busy} aria-busy={busy}>
           {busy ? `${t.gate.error.retrying}…` : t.gate.error.retry}
         </button>
       </div>
@@ -254,20 +310,17 @@ export function AccountMenu() {
     me?.member.displayName ?? me?.member.githubLogin ?? (session.user.user_metadata?.user_name as string | undefined) ?? session.user.email ?? "";
   return (
     <div className="flex items-center gap-2" aria-label={t.auth.account} role="group">
-      <span className="flex min-w-0 items-center gap-1.5 text-ui font-medium text-ink">
-        <span
-          aria-hidden
-          className="grid h-[22px] w-[22px] shrink-0 place-items-center rounded-full bg-sunken font-mono text-[10.5px] font-semibold text-ink-soft"
-        >
+      <span className="flex min-w-0 items-center gap-2 text-small font-medium text-ink">
+        <span aria-hidden className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-ink text-meta font-semibold text-on-ink">
           {initials(name)}
         </span>
-        <span className="hidden max-w-[10rem] truncate sm:inline">{name}</span>
-        <span className="sr-only sm:hidden">{name}</span>
+        <span className="hidden max-w-[10rem] truncate min-[1024px]:inline">{name}</span>
+        <span className="sr-only min-[1024px]:hidden">{name}</span>
       </span>
       <button
         type="button"
         onClick={() => void leave()}
-        className="h-[26px] shrink-0 cursor-pointer rounded-control border border-rule px-2 text-meta text-ink-soft transition-colors duration-[120ms] ease-tool hover:border-rule-strong hover:text-ink"
+        className="h-8 shrink-0 cursor-pointer rounded-control px-2.5 text-meta font-medium text-ink-soft transition-colors duration-[120ms] ease-tool hover:bg-hover hover:text-ink"
       >
         {t.auth.signOut}
       </button>

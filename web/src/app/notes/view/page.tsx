@@ -24,8 +24,8 @@ export default function MeetingNoteViewPage() {
   const missing = n.actionItems.filter((a) => !a.issue).length;
 
   return (
-    <article className="flex max-w-[820px] flex-col gap-4">
-      <Link href="/notes" className="link self-start text-meta text-ink-soft">
+    <article className="flex max-w-[820px] flex-col gap-6">
+      <Link href="/notes" className="link self-start text-small text-ink-soft">
         {nt.back}
       </Link>
       <PageHeader meta={`${fmt.date(n.heldAt)}${n.project ? ` · ${n.project.name}` : ""}`} title={n.title}>
@@ -40,13 +40,13 @@ export default function MeetingNoteViewPage() {
         className="reveal mt-2 [animation-delay:30ms]"
       >
         {n.actionItems.length === 0 ? (
-          <p className="px-3.5 py-2.5 text-meta text-muted">{nt.noActionItems}</p>
+          <p className="px-5 py-4 text-small text-muted">{nt.noActionItems}</p>
         ) : (
           <ul>
             {n.actionItems.map((a) => (
-              <li key={a.id} className="flex flex-col gap-1 border-b border-rule px-3.5 py-2.5 last:border-b-0">
+              <li key={a.id} className="flex flex-col gap-1 relative px-5 py-4 after:absolute after:inset-x-5 after:top-0 after:h-px after:bg-rule first:after:hidden">
                 <span className="text-ui font-medium">{a.text}</span>
-                <span className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-meta text-ink-soft">
+                <span className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-small text-ink-soft">
                   {a.assignee ? (
                     <span className="inline-flex items-center gap-1.5">
                       <Avatar person={a.assignee} size="sm" />

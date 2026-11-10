@@ -6,7 +6,7 @@ import { useT } from "@/lib/i18n";
 
 export function Loading({ label }: { label?: string }) {
   const t = useT();
-  return <p className="px-3.5 py-4 text-ui text-muted">{label ?? t.common.loading}…</p>;
+  return <p className="px-5 py-5 text-ui text-muted">{label ?? t.common.loading}…</p>;
 }
 
 /** Errors are about the app, not the work, so they stay in ink: no vermilion here. */
@@ -21,12 +21,12 @@ export function ErrorBox({ error }: { error: Error }) {
         ? t.errors.notFound
         : t.errors.noServer;
   return (
-    <div role="alert" className="rounded-control border border-rule border-l-2 border-l-ink-soft bg-surface px-4 py-3 text-ui text-ink">
+    <div role="alert" className="rounded-control border-l-2 border-ink-soft bg-surface px-4 py-3 text-ui text-ink shadow-elev-1">
       {message}
     </div>
   );
 }
 
 export function Empty({ children }: { children: React.ReactNode }) {
-  return <p className="rounded-control border border-dashed border-rule-strong px-3 py-2.5 text-meta text-muted">{children}</p>;
+  return <p className="rounded-item border border-dashed border-rule-strong px-4 py-3 text-small text-muted">{children}</p>;
 }

@@ -7,9 +7,9 @@ import type { Status, StatusCounts } from "@/lib/types";
 type Person = { displayName: string | null; githubLogin: string | null };
 
 export function Avatar({ person, size = "md", ghost = false }: { person: Person; size?: "sm" | "md" | "lg"; ghost?: boolean }) {
-  const dims = size === "sm" ? "h-[18px] w-[18px] text-[10px]" : size === "lg" ? "h-7 w-7 text-xs" : "h-[22px] w-[22px] text-[11px]";
+  const dims = size === "sm" ? "h-5 w-5 text-[10px]" : size === "lg" ? "h-8 w-8 text-small" : "h-6 w-6 text-[11px]";
   const fmt = useFormat();
-  const tone = ghost ? "border border-dashed border-muted text-muted" : "bg-ink-soft text-surface";
+  const tone = ghost ? "shadow-[inset_0_0_0_1px_var(--wb-rule-strong)] text-muted" : "bg-ink text-on-ink";
   return (
     <span aria-hidden className={`grid shrink-0 place-items-center rounded-full font-semibold ${dims} ${tone}`}>
       {initial(fmt.person(person))}
@@ -27,32 +27,32 @@ export function Kbd({ children, className = "" }: { children: React.ReactNode; c
 }
 
 export function Dot({ className }: { className: string }) {
-  return <span aria-hidden className={`inline-block h-[7px] w-[7px] shrink-0 rounded-full ${className}`} />;
+  return <span aria-hidden className={`inline-block h-2 w-2 shrink-0 rounded-full ${className}`} />;
 }
 
 export function StatusBadge({ status }: { status: Status }) {
   const t = useT();
   return (
-    <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-[12.5px] text-ink-soft">
+    <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-small text-ink-soft">
       <Dot className={STATUS_DOT[status]} />
       {t.status[status]}
     </span>
   );
 }
 
-/** Mono context line, the screen title, then the one most important fact in plain words. */
+/** Context line, the screen title, then the one most important fact in plain words. */
 export function PageHeader({ meta, title, children }: { meta?: React.ReactNode; title: React.ReactNode; children?: React.ReactNode }) {
   return (
-    <header className="reveal">
-      {meta && <p className="font-mono text-meta text-muted">{meta}</p>}
-      <h1 className="mt-1 text-title font-semibold tracking-[-0.01em]">{title}</h1>
-      {children && <div className="mt-0.5 text-body text-ink-soft">{children}</div>}
+    <header className="reveal flex max-w-[860px] flex-col gap-2">
+      {meta && <p className="text-small text-muted">{meta}</p>}
+      <h1 className="text-title font-semibold">{title}</h1>
+      {children && <div className="text-body text-ink-soft">{children}</div>}
     </header>
   );
 }
 
 export function Count({ n }: { n: number }) {
-  return <span className="rounded-[3px] border border-rule px-[5px] font-mono text-[11px] font-normal text-muted">{n}</span>;
+  return <span className="font-mono text-meta font-normal text-muted">{n}</span>;
 }
 
 /** Heading for a section that is not a card: title, count, a short hint, and a link on the right. */
@@ -70,18 +70,18 @@ export function SectionHead({
   action?: React.ReactNode;
 }) {
   return (
-    <div className="mb-2 flex min-h-8 items-center gap-2 border-b border-rule pb-2">
+    <div className="flex min-h-8 flex-wrap items-center gap-x-3 gap-y-1">
       <h2 id={id} className="text-heading font-semibold">
         {title}
       </h2>
       {count !== undefined && <Count n={count} />}
-      {hint && <span className="truncate text-meta text-muted">{hint}</span>}
-      {action && <div className="ml-auto whitespace-nowrap text-meta text-muted">{action}</div>}
+      {hint && <span className="truncate text-small text-muted">{hint}</span>}
+      {action && <div className="ml-auto whitespace-nowrap text-small text-muted">{action}</div>}
     </div>
   );
 }
 
-/** A white panel with a 40px head. Most overview sections live in one. */
+/** A panel with a head (title, count, hint, link) and no line under it. Most sections live in one. */
 export function Card({
   title,
   count,
@@ -101,13 +101,13 @@ export function Card({
 }) {
   return (
     <div className={`card ${className}`}>
-      <div className="flex h-10 items-center gap-2 border-b border-rule px-3.5">
+      <div className="flex min-h-[60px] items-center gap-3 px-5 pb-2 pt-4">
         <h2 id={id} className="whitespace-nowrap text-heading font-semibold">
           {title}
         </h2>
         {count !== undefined && <Count n={count} />}
-        {hint && <span className="truncate text-meta text-muted">{hint}</span>}
-        {action && <div className="ml-auto flex shrink-0 items-center gap-1.5 whitespace-nowrap text-meta text-muted">{action}</div>}
+        {hint && <span className="min-w-0 truncate text-small text-muted">{hint}</span>}
+        {action && <div className="ml-auto flex shrink-0 items-center gap-1.5 whitespace-nowrap text-small text-muted">{action}</div>}
       </div>
       {children}
     </div>
@@ -118,7 +118,7 @@ export function Card({
 export function ProgressBar({ counts, label }: { counts: StatusCounts; label?: string }) {
   const t = useT();
   const total = counts.todo + counts.inProgress + counts.inReview + counts.done;
-  if (total === 0) return <p className="text-meta text-muted">{t.progress.empty}</p>;
+  if (total === 0) return <p className="text-small text-muted">{t.progress.empty}</p>;
   const segs: [number, string][] = [
     [counts.done, "bg-status-done"],
     [counts.inReview, "bg-status-review"],

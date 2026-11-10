@@ -24,7 +24,7 @@ export default function SettingsPage() {
   ];
 
   return (
-    <div className="flex max-w-[720px] flex-col gap-4">
+    <div className="flex max-w-[720px] flex-col gap-6">
       <PageHeader meta={me.data.tenant.name} title={st.title}>
         {st.lead}
       </PageHeader>
@@ -32,12 +32,12 @@ export default function SettingsPage() {
       <Card title={st.advanced} hint={st.advancedHint} className="reveal mt-2 [animation-delay:30ms]">
         <ul>
           {features.map((f) => (
-            <li key={f.name} className="flex items-start justify-between gap-4 border-b border-rule px-3.5 py-2.5 last:border-b-0">
+            <li key={f.name} className="flex items-start justify-between gap-4 relative px-5 py-4 after:absolute after:inset-x-5 after:top-0 after:h-px after:bg-rule first:after:hidden">
               <div>
                 <p className="text-ui font-medium">{f.name}</p>
-                <p className="text-meta text-muted">{f.hint}</p>
+                <p className="text-small text-muted">{f.hint}</p>
               </div>
-              <span className={`inline-flex shrink-0 items-center gap-1.5 text-meta font-semibold ${f.on ? "text-ink" : "text-muted"}`}>
+              <span className={`inline-flex shrink-0 items-center gap-1.5 text-small font-semibold ${f.on ? "text-ink" : "text-muted"}`}>
                 <span aria-hidden className={`h-[7px] w-[7px] rounded-full ${f.on ? "bg-status-done" : "border border-muted"}`} />
                 {f.on ? st.on : st.off}
               </span>
@@ -48,13 +48,13 @@ export default function SettingsPage() {
 
       <Card title={st.projects} count={projects.data.length} hint={st.projectsHint} className="reveal [animation-delay:60ms]">
         {projects.data.length === 0 ? (
-          <div className="p-3.5">
+          <div className="px-5 pb-5">
             <Empty>{st.noProjects}</Empty>
           </div>
         ) : (
           <ul>
             {projects.data.map((p) => (
-              <li key={p.id} className="flex items-center gap-2.5 border-b border-rule px-3.5 py-2.5 last:border-b-0">
+              <li key={p.id} className="flex items-center gap-2.5 relative px-5 py-4 after:absolute after:inset-x-5 after:top-0 after:h-px after:bg-rule first:after:hidden">
                 <span aria-hidden className="h-2 w-2 shrink-0 rounded-mark" style={{ background: p.color ?? "var(--wb-muted)" }} />
                 <span className="text-ui font-medium">{p.name}</span>
                 <span className="truncate font-mono text-meta text-muted">{p.repositories.map((r) => r.name).join(" · ")}</span>

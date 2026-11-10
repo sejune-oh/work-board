@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>회사 만들기 · 업무 보드</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="v3.css" />
+<script src="v3.js"></script>
+</head>
+<body data-en-title="Create a company · Work board">
+<div class="gate">
+  <header class="gate-top">
+    <a class="brand" href="#"><span class="brand-mark">wb</span><span data-en="Work board">업무 보드</span></a>
+    <div class="gate-toggles">
+      <div class="seg" role="group" aria-label="언어" data-en-label="Language">
+        <button data-set-lang="ko"><span class="long">한국어</span><span class="short mono">KO</span></button>
+        <button data-set-lang="en"><span class="long">English</span><span class="short mono">EN</span></button>
+      </div>
+      <div class="seg" role="group" aria-label="밝기" data-en-label="Theme">
+        <button data-set-theme="light" aria-label="밝게" data-en-label="Light"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="3"/><path d="M8 1.5v1.5M8 13v1.5M1.5 8H3M13 8h1.5M3.4 3.4l1 1M11.6 11.6l1 1M3.4 12.6l1-1M11.6 4.4l1-1"/></svg></button>
+        <button data-set-theme="dark" aria-label="어둡게" data-en-label="Dark"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13.5 9.5A5.5 5.5 0 0 1 6.5 2.5a5.5 5.5 0 1 0 7 7Z"/></svg></button>
+      </div>
+    </div>
+  </header>
+
+  <main class="gate-main">
+    <div class="gate-col reveal">
+      <p class="kicker" data-en="Company">회사 확인</p>
+      <h1 class="t-display" tabindex="-1" data-en="You're not in a company yet">아직 속한 회사가 없습니다</h1>
+      <p class="t-body lead" data-en="Create one for your team now. You'll be its admin and can invite people by their GitHub login.">지금 팀의 회사를 만들면 관리자가 되고, 팀원은 GitHub 로그인으로 초대할 수 있습니다.</p>
+
+      <form class="gate-card" onsubmit="return false">
+        <div class="field">
+          <label for="company" data-en="Company name">회사 이름</label>
+          <input class="input" id="company" name="company" autocomplete="organization" placeholder="예: Acme Health" data-en-placeholder="e.g. Acme Health" aria-describedby="company-hint" />
+          <p class="hint" id="company-hint" data-en="Shown in the sidebar and on invites. You can change it later.">옆 메뉴와 초대에 보이는 이름입니다. 나중에 바꿀 수 있습니다.</p>
+        </div>
+        <button class="btn btn-primary btn-lg btn-block" type="submit" style="margin-top: 20px" data-en="Create company">회사 만들기</button>
+        <div class="or" data-en="or">또는</div>
+        <p class="hint" data-en="Waiting for an invite? Send your GitHub login, <span class='mono' style='color:var(--ink)'>octo-dev</span>, to your team's admin.">초대를 기다리는 중이라면 팀 관리자에게 GitHub 로그인 <span class="mono" style="color: var(--ink)">octo-dev</span>를 알려 주세요.</p>
+      </form>
+
+      <p class="gate-foot"><span data-en="Signed in as <span class='mono'>octo-dev</span>"><span class="mono">octo-dev</span> 계정으로 로그인함</span> · <a class="link" href="#" data-en="Sign out">로그아웃</a></p>
+    </div>
+  </main>
+  <footer class="gate-bottom"><span data-en="For a team of about ten">10명 안팎의 팀을 위한 업무 보드</span></footer>
+</div>
+</body>
+</html>

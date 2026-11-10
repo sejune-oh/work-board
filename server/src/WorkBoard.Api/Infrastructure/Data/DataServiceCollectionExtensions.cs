@@ -16,7 +16,6 @@ public static class DataServiceCollectionExtensions
         services.AddScoped<CurrentUser>();
         services.AddScoped<ICurrentUser>(sp => sp.GetRequiredService<CurrentUser>());
         services.AddScoped<TenantDb>();
-        services.AddScoped<DevUserFilter>();
         return services;
     }
 

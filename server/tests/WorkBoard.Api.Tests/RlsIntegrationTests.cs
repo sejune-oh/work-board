@@ -95,7 +95,10 @@ public class RlsIntegrationTests : IClassFixture<WebApplicationFactory<Program>>
         var response = await client.GetAsync("/api/issues");
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
-        Assert.Equal("""{"error":"tenant_required"}""", await response.Content.ReadAsStringAsync());
+        var body = await response.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+        Assert.Equal("tenant_required", body.GetProperty("error").GetString());
+        var names = body.GetProperty("tenants").EnumerateArray().Select(t => t.GetProperty("name").GetString()).ToList();
+        Assert.Equal(["Acme Health", "Globex Labs"], names);
     }
 
     [DbFact]

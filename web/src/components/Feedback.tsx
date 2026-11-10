@@ -1,6 +1,7 @@
 "use client";
 
 import { ApiError } from "@/lib/api";
+import { authEnabled } from "@/lib/auth";
 import { useT } from "@/lib/i18n";
 
 export function Loading({ label }: { label?: string }) {
@@ -13,7 +14,9 @@ export function ErrorBox({ error }: { error: Error }) {
   const t = useT();
   const message =
     error instanceof ApiError && error.status === 401
-      ? t.errors.pickUser
+      ? authEnabled
+        ? t.errors.signInAgain
+        : t.errors.pickUser
       : error instanceof ApiError && error.status === 404
         ? t.errors.notFound
         : t.errors.noServer;

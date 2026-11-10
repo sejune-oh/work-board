@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using WorkBoard.Api.Features.Members;
@@ -63,6 +64,11 @@ public class DevIdentityTests
         var factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
         {
             builder.UseEnvironment(environment);
+            builder.ConfigureAppConfiguration((_, cfg) => cfg.AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Auth:Supabase:Url"] = "https://test-project.supabase.example",
+                ["Auth:Supabase:ServiceRoleKey"] = "test-service-role-key",
+            }));
             builder.ConfigureServices(services =>
             {
                 services.RemoveAll<IMemberLookup>();
@@ -193,7 +199,9 @@ public class DevIdentityTests
         var response = await client.SendAsync(Get("/api/members", "shared-dev"));
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
-        Assert.Equal("""{"error":"tenant_required"}""", await response.Content.ReadAsStringAsync());
+        Assert.Equal(
+            $$"""{"error":"tenant_required","tenants":[{"id":"{{TenantId}}","name":"acme-health"},{"id":"{{GlobexId}}","name":"globex-labs"}]}""",
+            await response.Content.ReadAsStringAsync());
         Assert.Empty(db.Events);
     }
 
@@ -206,7 +214,7 @@ public class DevIdentityTests
         var response = await client.SendAsync(Get("/api/members", "shared-dev", Guid.NewGuid().ToString()));
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
-        Assert.Equal("""{"error":"tenant_required"}""", await response.Content.ReadAsStringAsync());
+        Assert.Contains(""""error":"tenant_required"""", await response.Content.ReadAsStringAsync());
     }
 
     [Theory]

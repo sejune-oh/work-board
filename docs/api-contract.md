@@ -2,20 +2,35 @@
 
 Base URL: `http://localhost:5080`. All JSON is camelCase. Times are ISO 8601 UTC strings.
 
-## Identity (local only)
+## Identity
 
-Until GitHub login exists, the caller identifies itself with the `X-Dev-User: <githubLogin>` header
-and, optionally, `X-Dev-Tenant: <tenantId>`.
+Logged-in requests send `Authorization: Bearer <Supabase access token>`. When the person belongs to
+several tenants they also send `X-Tenant: <tenantId>`.
 
-- The API resolves the login to a `github_user_id` once (sync role, bypasses RLS), then finds the
-  memberships by that id across all tenants and serves the request as that member's tenant. A user
-  can have one membership per tenant. A login that matches members with different user ids is
-  treated as unknown.
-- One membership: `X-Dev-Tenant` is optional and ignored.
-- Several memberships: `X-Dev-Tenant` must equal one of the login's `tenantId` values, otherwise
-  `401 {"error": "tenant_required"}`.
-- Missing or unknown login → `401 {"error": "unauthenticated"}`.
-- Only enabled when `ASPNETCORE_ENVIRONMENT=Development`.
+- The API validates signature, issuer (`{SupabaseUrl}/auth/v1`), audience `authenticated` and
+  lifetime. Keys come from `{SupabaseUrl}/auth/v1/.well-known/jwks.json`, or from the shared secret
+  when `Auth:Supabase:JwtSecret` is set (legacy HS256 projects).
+- Token `sub` is the Supabase auth user id. On first sight the API calls the Supabase Admin API
+  (`GET /auth/v1/admin/users/{sub}`, service role key), takes the `github` identity's provider id and
+  stores `auth_user_id -> github_user_id` in `auth_links` (global table, `workboard_sync` only).
+  `user_metadata` is never used. Members are found by `github_user_id` across all tenants.
+- One membership: `X-Tenant` is optional and ignored.
+- Several memberships: `X-Tenant` must equal one of them.
+
+Errors, JSON `{"error": "<code>"}`:
+
+| Status | Code | When |
+| --- | --- | --- |
+| 401 | `unauthenticated` | no token, bad signature, wrong issuer or audience, expired, no GitHub identity |
+| 401 | `tenant_required` | several memberships and `X-Tenant` missing or not one of them. Body also has `tenants`: `[{"id", "name"}]`, only the caller's own memberships |
+| 403 | `no_membership` | valid login with a GitHub identity, but no membership in any tenant |
+
+Development only, when there is no `Authorization` header: `X-Dev-User: <githubLogin>` and optional
+`X-Dev-Tenant: <tenantId>` still work (same tenant rules, unknown login or no membership is
+`401 unauthenticated`). With an `Authorization` header the dev headers are ignored. Outside
+Development they are always ignored.
+
+CORS allows the `Authorization` and `X-Tenant` request headers.
 
 ## Tenant isolation
 

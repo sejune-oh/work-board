@@ -17,6 +17,7 @@ DefaultTypeMap.MatchNamesWithUnderscores = true;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddWorkBoardData(builder.Configuration);
+builder.Services.AddWorkBoardAuth(builder.Configuration);
 builder.Services.AddCors(options => options.AddDefaultPolicy(policy => policy
     .WithOrigins("http://localhost:3000")
     .AllowAnyHeader()
@@ -31,7 +32,7 @@ open.MapHealth();
 if (app.Environment.IsDevelopment())
     open.MapDevUsers();
 
-var authed = app.MapGroup("/api").AddEndpointFilter<DevUserFilter>();
+var authed = app.MapGroup("/api").AddEndpointFilter<CurrentMemberFilter>();
 authed.MapMe();
 authed.MapMembers();
 authed.MapConnections();

@@ -2,6 +2,7 @@
 
 업무 보드의 화면은 모두 이 문서를 따릅니다. 새 화면, 새 컴포넌트, 기존 화면 손질 모두 해당합니다.
 기준을 바꿀 때는 이슈를 먼저 만들고 이 문서와 `web/src/app/globals.css`를 같은 PR에서 고칩니다.
+이 문서를 처음 추가한 PR은 문서만 담았고, 화면 코드(`globals.css`와 각 화면)는 Overview 구현 PR(#24)에서 반영합니다.
 
 ## 1. 방향
 
@@ -71,11 +72,11 @@ IBM Plex Mono에는 한글이 없으므로 mono 스택 두 번째에 IBM Plex Sa
 | `sunken` | `#ECE6D9` | `#100F0B` | 열 바탕, 입력창, 막대 바닥 |
 | `ink` | `#1D1B16` | `#EEE8DA` | 본문 글자, 기본 버튼 바탕 |
 | `ink-soft` | `#3F3B32` | `#CFC8B7` | 부제, 표 본문 |
-| `muted` | `#7A7466` | `#968F80` | 보조 글자, 날짜 |
+| `muted` | `#6B6557` | `#968F80` | 보조 글자, 날짜 |
 | `rule` | `#DCD4C3` | `#2F2C24` | 괘선, 테두리 |
 | `rule-strong` | `#1D1B16` | `#EEE8DA` | 구역 머리 굵은 줄 |
 | `focus` | `#2B4FA8` | `#8FA8F0` | 키보드 초점 테두리 |
-| `accent` (인주) | `#D2401C` | `#FF6B42` | 주의 표시 전용 |
+| `accent` (인주) | `#B8361A` | `#FF6B42` | 주의 표시 전용 |
 | `accent-wash` | `#F9E1D6` | `#3A1C12` | 주의 표시 바탕 |
 | `status-todo` | `#9A9384` | `#8C8576` | 할 일 |
 | `status-progress` | `#2F67B2` | `#6FA1EA` | 진행 중 |
@@ -89,6 +90,8 @@ IBM Plex Mono에는 한글이 없으므로 mono 스택 두 번째에 IBM Plex Sa
 - 상태는 언제나 **점 + 한국어 이름**을 같이 씁니다. 색만으로 구분하지 않습니다(색각 이상 대비).
 - 완료는 녹색이지만 "축하" 색이 아닙니다. 완료 항목은 기본적으로 `muted` 글자로 한발 물러섭니다.
 - 취소는 회색 점 + 제목 가운데 줄. 별도 열을 만들지 않고 완료 열 아래 접힌 묶음으로 둡니다.
+  지금 스키마에는 취소를 나타낼 값(`state_reason`)이 없어서, 상태 규칙 보완(#9) 이후에 실제로 나타납니다.
+- 라이트 모드의 `muted`와 `accent`는 `paper`, `surface`, `sunken`, `accent-wash` 위에서 글자 대비 4.5:1 이상이 되도록 정한 값입니다. 바꿀 때는 대비를 다시 계산합니다.
 
 인주 규칙:
 
@@ -194,11 +197,11 @@ Tailwind 4의 `@theme inline`으로 연결하면 `bg-paper`, `text-ink`, `border
   --wb-sunken: #ece6d9;
   --wb-ink: #1d1b16;
   --wb-ink-soft: #3f3b32;
-  --wb-muted: #7a7466;
+  --wb-muted: #6b6557;
   --wb-rule: #dcd4c3;
   --wb-rule-strong: #1d1b16;
   --wb-focus: #2b4fa8;
-  --wb-accent: #d2401c;
+  --wb-accent: #b8361a;
   --wb-accent-wash: #f9e1d6;
   --wb-status-todo: #9a9384;
   --wb-status-progress: #2f67b2;
@@ -210,8 +213,10 @@ Tailwind 4의 `@theme inline`으로 연결하면 `bg-paper`, `text-ink`, `border
   color-scheme: light;
 }
 
+/* 시스템 설정을 따르되, 화면의 밝기 전환 버튼은 <html data-theme="light|dark">로 덮어씁니다.
+   다크 값은 아래 미디어 쿼리 블록과 :root[data-theme="dark"] 블록에 똑같이 둡니다. */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --wb-paper: #16140f;
     --wb-surface: #1e1c16;
     --wb-sunken: #100f0b;
@@ -232,6 +237,28 @@ Tailwind 4의 `@theme inline`으로 연결하면 `bg-paper`, `text-ink`, `border
     --wb-shadow-panel: 0 0 0 1px rgb(238 232 218 / 0.08), 0 24px 48px -16px rgb(0 0 0 / 0.7);
     color-scheme: dark;
   }
+}
+
+:root[data-theme="dark"] {
+  --wb-paper: #16140f;
+  --wb-surface: #1e1c16;
+  --wb-sunken: #100f0b;
+  --wb-ink: #eee8da;
+  --wb-ink-soft: #cfc8b7;
+  --wb-muted: #968f80;
+  --wb-rule: #2f2c24;
+  --wb-rule-strong: #eee8da;
+  --wb-focus: #8fa8f0;
+  --wb-accent: #ff6b42;
+  --wb-accent-wash: #3a1c12;
+  --wb-status-todo: #8c8576;
+  --wb-status-progress: #6fa1ea;
+  --wb-status-review: #e2b04a;
+  --wb-status-done: #6dbb8b;
+  --wb-status-cancel: #5a554a;
+  --wb-shadow-lift: 0 1px 0 rgb(0 0 0 / 0.3), 0 6px 16px -8px rgb(0 0 0 / 0.6);
+  --wb-shadow-panel: 0 0 0 1px rgb(238 232 218 / 0.08), 0 24px 48px -16px rgb(0 0 0 / 0.7);
+  color-scheme: dark;
 }
 
 @theme inline {

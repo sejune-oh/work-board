@@ -16,6 +16,15 @@ public sealed class DbFactAttribute : FactAttribute
     }
 }
 
+public sealed class DbTheoryAttribute : TheoryAttribute
+{
+    public DbTheoryAttribute()
+    {
+        if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable(DbFactAttribute.EnvVar)))
+            Skip = $"Set {DbFactAttribute.EnvVar}=1 with the seeded Postgres from db/ running to enable.";
+    }
+}
+
 public class RlsIntegrationTests : IClassFixture<WebApplicationFactory<Program>>
 {
     private const string OtherTenantIssueId = "50000000-0000-0000-0000-000000000099";

@@ -38,6 +38,7 @@ create table members (
   avatar_url     text,
   role           text   not null default 'member' check (role in ('admin', 'member')),
   created_at     timestamptz not null default now(),
+  unique (tenant_id, id),
   unique (tenant_id, github_user_id),
   unique (tenant_id, github_login)
 );
@@ -56,6 +57,7 @@ create table repositories (
   github_repo_id bigint not null,
   name           text   not null,
   archived       boolean not null default false,
+  unique (tenant_id, id),
   unique (tenant_id, github_repo_id),
   unique (tenant_id, name)
 );
@@ -63,33 +65,37 @@ create table repositories (
 create table issues (
   id                uuid primary key default gen_random_uuid(),
   tenant_id         uuid not null references tenants(id) on delete cascade,
-  repository_id     uuid not null references repositories(id) on delete cascade,
+  repository_id     uuid not null,
   github_issue_id   bigint not null,
   number            int    not null,
   title             text   not null,
   body              text,
   issue_type        text,
   state             text   not null check (state in ('open', 'closed')),
-  parent_issue_id   uuid references issues(id) on delete set null,
+  parent_issue_id   uuid,
   author_github_id  bigint,
   github_created_at timestamptz not null,
   closed_at         timestamptz,
   github_updated_at timestamptz not null,
+  unique (tenant_id, id),
   unique (tenant_id, github_issue_id),
-  unique (repository_id, number)
+  unique (repository_id, number),
+  foreign key (tenant_id, repository_id) references repositories (tenant_id, id) on delete cascade,
+  foreign key (tenant_id, parent_issue_id) references issues (tenant_id, id) on delete set null (parent_issue_id)
 );
 
 create table issue_assignees (
   tenant_id      uuid   not null references tenants(id) on delete cascade,
-  issue_id       uuid   not null references issues(id) on delete cascade,
+  issue_id       uuid   not null,
   github_user_id bigint not null,
-  primary key (issue_id, github_user_id)
+  primary key (issue_id, github_user_id),
+  foreign key (tenant_id, issue_id) references issues (tenant_id, id) on delete cascade
 );
 
 create table pull_requests (
   id                uuid primary key default gen_random_uuid(),
   tenant_id         uuid not null references tenants(id) on delete cascade,
-  repository_id     uuid not null references repositories(id) on delete cascade,
+  repository_id     uuid not null,
   github_pr_id      bigint not null,
   number            int    not null,
   title             text   not null,
@@ -98,27 +104,32 @@ create table pull_requests (
   review_requested  boolean not null default false,
   author_github_id  bigint,
   github_updated_at timestamptz not null,
+  unique (tenant_id, id),
   unique (tenant_id, github_pr_id),
-  unique (repository_id, number)
+  unique (repository_id, number),
+  foreign key (tenant_id, repository_id) references repositories (tenant_id, id) on delete cascade
 );
 
 create table issue_pull_requests (
   tenant_id       uuid not null references tenants(id) on delete cascade,
-  issue_id        uuid not null references issues(id) on delete cascade,
-  pull_request_id uuid not null references pull_requests(id) on delete cascade,
-  primary key (issue_id, pull_request_id)
+  issue_id        uuid not null,
+  pull_request_id uuid not null,
+  primary key (issue_id, pull_request_id),
+  foreign key (tenant_id, issue_id) references issues (tenant_id, id) on delete cascade,
+  foreign key (tenant_id, pull_request_id) references pull_requests (tenant_id, id) on delete cascade
 );
 
 create table comments (
   id                uuid primary key default gen_random_uuid(),
   tenant_id         uuid not null references tenants(id) on delete cascade,
-  issue_id          uuid not null references issues(id) on delete cascade,
+  issue_id          uuid not null,
   github_comment_id bigint not null,
   author_github_id  bigint,
   body              text   not null,
   github_created_at timestamptz not null,
   github_updated_at timestamptz not null,
-  unique (tenant_id, github_comment_id)
+  unique (tenant_id, github_comment_id),
+  foreign key (tenant_id, issue_id) references issues (tenant_id, id) on delete cascade
 );
 
 -- Board-only data -------------------------------------------------------------
@@ -127,14 +138,17 @@ create table projects (
   tenant_id uuid not null references tenants(id) on delete cascade,
   name      text not null,
   color     text,
+  unique (tenant_id, id),
   unique (tenant_id, name)
 );
 
 create table project_repositories (
   tenant_id     uuid not null references tenants(id) on delete cascade,
-  project_id    uuid not null references projects(id) on delete cascade,
-  repository_id uuid not null references repositories(id) on delete cascade,
-  primary key (project_id, repository_id)
+  project_id    uuid not null,
+  repository_id uuid not null,
+  primary key (project_id, repository_id),
+  foreign key (tenant_id, project_id) references projects (tenant_id, id) on delete cascade,
+  foreign key (tenant_id, repository_id) references repositories (tenant_id, id) on delete cascade
 );
 
 create table sprints (
@@ -143,46 +157,57 @@ create table sprints (
   name       text not null,
   start_date date not null,
   end_date   date not null,
-  state      text not null default 'planned' check (state in ('planned', 'active', 'closed'))
+  state      text not null default 'planned' check (state in ('planned', 'active', 'closed')),
+  unique (tenant_id, id)
 );
 
 create table board_fields (
-  issue_id        uuid primary key references issues(id) on delete cascade,
+  issue_id        uuid primary key,
   tenant_id       uuid not null references tenants(id) on delete cascade,
-  sprint_id       uuid references sprints(id) on delete set null,
+  sprint_id       uuid,
   size            text check (size in ('S', 'M', 'L')),
   priority        text check (priority in ('urgent', 'high', 'normal', 'low')),
   status_override text check (status_override in ('todo', 'in_progress', 'in_review', 'done')),
-  updated_at      timestamptz not null default now()
+  updated_at      timestamptz not null default now(),
+  foreign key (tenant_id, issue_id) references issues (tenant_id, id) on delete cascade,
+  foreign key (tenant_id, sprint_id) references sprints (tenant_id, id) on delete set null (sprint_id)
 );
 
 create table meeting_notes (
   id         uuid primary key default gen_random_uuid(),
   tenant_id  uuid not null references tenants(id) on delete cascade,
-  project_id uuid references projects(id) on delete set null,
+  project_id uuid,
   title      text not null,
   held_at    timestamptz not null,
   body_md    text not null default '',
-  created_by uuid references members(id) on delete set null,
+  created_by uuid,
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  unique (tenant_id, id),
+  foreign key (tenant_id, project_id) references projects (tenant_id, id) on delete set null (project_id),
+  foreign key (tenant_id, created_by) references members (tenant_id, id) on delete set null (created_by)
 );
 
 create table meeting_attendees (
   tenant_id uuid not null references tenants(id) on delete cascade,
-  note_id   uuid not null references meeting_notes(id) on delete cascade,
-  member_id uuid not null references members(id) on delete cascade,
-  primary key (note_id, member_id)
+  note_id   uuid not null,
+  member_id uuid not null,
+  primary key (note_id, member_id),
+  foreign key (tenant_id, note_id) references meeting_notes (tenant_id, id) on delete cascade,
+  foreign key (tenant_id, member_id) references members (tenant_id, id) on delete cascade
 );
 
 create table meeting_action_items (
   id                 uuid primary key default gen_random_uuid(),
   tenant_id          uuid not null references tenants(id) on delete cascade,
-  note_id            uuid not null references meeting_notes(id) on delete cascade,
+  note_id            uuid not null,
   text               text not null,
-  assignee_member_id uuid references members(id) on delete set null,
-  issue_id           uuid references issues(id) on delete set null,
-  created_at         timestamptz not null default now()
+  assignee_member_id uuid,
+  issue_id           uuid,
+  created_at         timestamptz not null default now(),
+  foreign key (tenant_id, note_id) references meeting_notes (tenant_id, id) on delete cascade,
+  foreign key (tenant_id, assignee_member_id) references members (tenant_id, id) on delete set null (assignee_member_id),
+  foreign key (tenant_id, issue_id) references issues (tenant_id, id) on delete set null (issue_id)
 );
 
 -- Operations ------------------------------------------------------------------

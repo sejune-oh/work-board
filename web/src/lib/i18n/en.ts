@@ -69,6 +69,7 @@ export const en: Dict = {
 
   errors: {
     pickUser: "Pick a dev user at the top right.",
+    signInAgain: "Your sign-in has ended. Sign in again.",
     notFound: "Not found, or you don't have access.",
     noServer: "Can't reach the API server. Check that the API is running from the server folder.",
   },
@@ -92,6 +93,40 @@ export const en: Dict = {
     label: "Dev user",
     loadFailed: "Couldn't load users",
     placeholder: "Select",
+  },
+
+  auth: {
+    signIn: "Sign in with GitHub",
+    redirecting: "Going to GitHub",
+    lead: "Work board uses your GitHub account to sign in.",
+    scopeNote: "Only your GitHub profile is read. Repositories are not touched.",
+    startFailed: "Couldn't start sign-in. Try again in a moment.",
+    sessionEnded: "Your sign-in ended or the server didn't accept it. Sign in again.",
+    signOut: "Sign out",
+    account: "Signed-in account",
+    callback: {
+      working: "Finishing sign-in",
+      failedTitle: "Couldn't finish signing in",
+      denied: "Sign-in was canceled or not allowed on GitHub.",
+      missingCode: "The return address has no sign-in details.",
+      exchange: "Couldn't confirm the sign-in. The link may be old, or sign-in started in another browser.",
+      disabled: "GitHub sign-in is turned off here.",
+      fix: "Starting sign-in again usually fixes it.",
+      retry: "Sign in again",
+      home: "Back to start",
+    },
+    noMembership: {
+      title: "Your account isn't in a company yet",
+      lead: (login) => `You signed in as ${login}, but this account doesn't belong to any company.`,
+      leadNoLogin: "You signed in, but this account doesn't belong to any company.",
+      next: "Ask your company admin to add this GitHub account as a member.",
+      otherAccount: "Sign in with another account",
+    },
+    tenant: {
+      title: "Choose a company",
+      lead: "This account belongs to several companies. Your choice is remembered next time.",
+      noList: "Couldn't get the list of companies. Try signing out and in again.",
+    },
   },
 
   filters: {

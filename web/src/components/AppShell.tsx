@@ -4,8 +4,10 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { ApiError } from "@/lib/api";
+import { authEnabled } from "@/lib/auth";
 import { type Dict, useT } from "@/lib/i18n";
-import { useMe } from "@/lib/me";
+import { useAuthSession, useMe } from "@/lib/me";
+import { AccountMenu, NoMembershipScreen, SignInScreen, TenantChoiceScreen } from "./Auth";
 import { ErrorBox, Loading } from "./Feedback";
 import { IssuePanel } from "./IssuePanel";
 import { LangToggle } from "./LangToggle";
@@ -40,15 +42,25 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [q, setQ] = useState("");
   const searchRef = useRef<HTMLInputElement>(null);
   const me = useMe();
+  const session = useAuthSession();
   const t = useT();
-  const authError = me.error instanceof ApiError && me.error.status === 401 ? me.error : null;
+  const apiError = me.error instanceof ApiError ? me.error : null;
+  const authError = apiError && (apiError.status === 401 || (authEnabled && apiError.code === "no_membership")) ? apiError : null;
   const needsUser = authError !== null;
-  const org = me.data?.tenant.name ?? null;
+  const sessionRejected = authEnabled && authError?.code === "unauthenticated";
+  const signedOut = authEnabled && (session === null || sessionRejected);
+  const org = signedOut ? null : (me.data?.tenant.name ?? null);
+  const onAuthPage = pathname.startsWith("/auth/");
 
   useShortcuts(searchRef);
 
   let content: React.ReactNode;
-  if (authError) content = <StartScreen tenantRequired={authError.code === "tenant_required"} />;
+  if (onAuthPage) content = children;
+  else if (authEnabled && session === undefined) content = <Loading />;
+  else if (signedOut) content = <SignInScreen ended={sessionRejected} />;
+  else if (authEnabled && authError?.code === "tenant_required") content = <TenantChoiceScreen error={authError} />;
+  else if (authEnabled && authError?.code === "no_membership") content = <NoMembershipScreen />;
+  else if (authError && !authEnabled) content = <StartScreen tenantRequired={authError.code === "tenant_required"} />;
   else if (me.error) content = <ErrorBox error={me.error} />;
   else if (!me.data) content = <Loading />;
   else content = children;
@@ -134,7 +146,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div className="ml-auto flex items-center gap-2">
             <LangToggle />
             <ThemeToggle />
-            {!needsUser && <UserPicker />}
+            {authEnabled ? <AccountMenu /> : !needsUser && !onAuthPage && <UserPicker />}
           </div>
         </header>
         <nav
@@ -160,7 +172,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <main className="w-full max-w-[1280px] flex-1 px-4 pb-12 pt-4 min-[900px]:px-6 min-[900px]:pb-16 min-[900px]:pt-6">{content}</main>
       </div>
 
-      {me.data && !me.error && <IssuePanel />}
+      {me.data && !me.error && !signedOut && !onAuthPage && <IssuePanel />}
     </div>
   );
 }

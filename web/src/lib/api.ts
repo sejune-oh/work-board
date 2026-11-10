@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { AUTH_EVENT, authEnabled, getAccessToken, getTenant, signOutIfStill } from "./auth";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5080";
 const DEV_USER_KEY = "workboard.devUser";
@@ -38,37 +39,56 @@ export function setDevIdentity(identity: DevIdentity | null) {
 }
 
 export class ApiError extends Error {
-  /** The `error` field of the response body, e.g. `tenant_required`. */
-  constructor(public status: number, message: string, public code: string | null = null) {
+  /** `code` is the `error` field of the response body, e.g. `tenant_required`. */
+  constructor(public status: number, message: string, public code: string | null = null, public body: unknown = null) {
     super(message);
   }
 }
 
-async function errorCode(res: Response): Promise<string | null> {
+async function readBody(res: Response): Promise<{ code: string | null; body: unknown }> {
   try {
-    const body = (await res.json()) as { error?: unknown };
-    return typeof body.error === "string" ? body.error : null;
+    const body = (await res.json()) as { error?: unknown } | null;
+    return { code: typeof body?.error === "string" ? body.error : null, body };
   } catch {
-    return null;
+    return { code: null, body: null };
   }
 }
 
-export async function apiGet<T>(path: string): Promise<T> {
-  const headers: Record<string, string> = { Accept: "application/json" };
+async function authHeaders(): Promise<Record<string, string>> {
+  const headers: Record<string, string> = {};
+  if (authEnabled) {
+    const token = await getAccessToken();
+    if (token) headers.Authorization = `Bearer ${token}`;
+    const tenant = getTenant();
+    if (tenant) headers["X-Tenant"] = tenant;
+    return headers;
+  }
   const identity = getDevIdentity();
   if (identity) {
     headers["X-Dev-User"] = identity.login;
     if (identity.tenantId) headers["X-Dev-Tenant"] = identity.tenantId;
   }
+  return headers;
+}
 
+export async function apiGet<T>(path: string): Promise<T> {
+  const headers: Record<string, string> = { Accept: "application/json", ...(await authHeaders()) };
   const res = await fetch(`${API_URL}${path}`, { headers });
-  if (!res.ok) throw new ApiError(res.status, `${res.status} ${res.statusText}`, await errorCode(res));
+  if (!res.ok) {
+    const { code, body } = await readBody(res);
+    if (res.status === 401 && code === "unauthenticated" && headers.Authorization) {
+      // After the caller has stored this error, so the sign-in screen can say why it appeared.
+      const token = headers.Authorization.slice("Bearer ".length);
+      setTimeout(() => void signOutIfStill(token), 0);
+    }
+    throw new ApiError(res.status, `${res.status} ${res.statusText}`, code, body);
+  }
   return (await res.json()) as T;
 }
 
 export type Loadable<T> = { data: T | null; error: ApiError | Error | null; loading: boolean; reload: () => void };
 
-/** Fetches `path` and refetches when it changes or the dev user switches. `null` skips the request. */
+/** Fetches `path` and refetches when it changes or the person or tenant switches. `null` skips the request. */
 export function useApi<T>(path: string | null): Loadable<T> {
   const [data, setData] = useState<T | null>(null);
   const [error, setError] = useState<Error | null>(null);
@@ -79,7 +99,11 @@ export function useApi<T>(path: string | null): Loadable<T> {
   useEffect(() => {
     const onUser = () => reload();
     window.addEventListener("workboard:dev-user", onUser);
-    return () => window.removeEventListener("workboard:dev-user", onUser);
+    window.addEventListener(AUTH_EVENT, onUser);
+    return () => {
+      window.removeEventListener("workboard:dev-user", onUser);
+      window.removeEventListener(AUTH_EVENT, onUser);
+    };
   }, [reload]);
 
   useEffect(() => {

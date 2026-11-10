@@ -12,7 +12,8 @@
 | `docs/api-contract.md` | API 형식. 프론트와 백엔드는 이 문서를 기준으로 맞춥니다 | |
 
 브라우저 → C# API → Postgres 순서로 연결합니다. 회사별 데이터 분리는 DB의 RLS가 맡습니다. API는 요청마다 `app.tenant_id`를 설정합니다.
-로그인은 Supabase Auth의 GitHub 로그인입니다. Supabase를 설정하지 않은 로컬 개발에서는 화면 오른쪽 위의 **개발용 사용자 선택**이 로그인을 대신합니다(`X-Dev-User` 헤더).
+로그인은 Supabase Auth의 GitHub 로그인입니다. 화면은 `NEXT_PUBLIC_SUPABASE_URL`과 `NEXT_PUBLIC_SUPABASE_ANON_KEY`가 있으면 "GitHub으로 로그인"을 쓰고,
+없으면 화면 오른쪽 위의 **개발용 사용자 선택**이 로그인을 대신합니다(`X-Dev-User` 헤더). 화면 설정은 [web/README.md](web/README.md)에 있습니다.
 
 ## 실행
 

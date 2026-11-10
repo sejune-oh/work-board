@@ -70,6 +70,7 @@ export const ko = {
 
   errors: {
     pickUser: "오른쪽 위에서 개발용 사용자를 선택하세요.",
+    signInAgain: "로그인이 끝났습니다. 다시 로그인하세요.",
     notFound: "찾을 수 없거나 볼 권한이 없습니다.",
     noServer: "API 서버에 연결할 수 없습니다. server 폴더에서 API를 실행했는지 확인하세요.",
   },
@@ -94,6 +95,40 @@ export const ko = {
     label: "개발용 사용자",
     loadFailed: "사용자 목록을 불러오지 못했습니다",
     placeholder: "선택하세요",
+  },
+
+  auth: {
+    signIn: "GitHub으로 로그인",
+    redirecting: "GitHub으로 이동하는 중",
+    lead: "업무 보드는 GitHub 계정으로 로그인합니다.",
+    scopeNote: "GitHub 프로필만 확인합니다. 저장소에는 접근하지 않습니다.",
+    startFailed: "로그인을 시작하지 못했습니다. 잠시 뒤 다시 시도하세요.",
+    sessionEnded: "로그인이 끝났거나 서버가 받아들이지 않았습니다. 다시 로그인하세요.",
+    signOut: "로그아웃",
+    account: "로그인한 계정",
+    callback: {
+      working: "로그인을 마무리하는 중",
+      failedTitle: "로그인을 마치지 못했습니다",
+      denied: "GitHub에서 로그인을 취소했거나 허용하지 않았습니다.",
+      missingCode: "돌아온 주소에 로그인 정보가 없습니다.",
+      exchange: "로그인 정보를 확인하지 못했습니다. 로그인 링크가 오래되었거나 다른 브라우저에서 시작했을 수 있습니다.",
+      disabled: "이 환경에서는 GitHub 로그인이 꺼져 있습니다.",
+      fix: "처음부터 다시 로그인하면 대부분 해결됩니다.",
+      retry: "다시 로그인하기",
+      home: "처음 화면으로",
+    },
+    noMembership: {
+      title: "아직 소속된 회사가 없습니다",
+      lead: (login: string) => `${login} 계정으로 로그인했지만, 이 계정이 들어간 회사가 없습니다.`,
+      leadNoLogin: "로그인은 됐지만, 이 계정이 들어간 회사가 없습니다.",
+      next: "회사 관리자에게 이 GitHub 계정을 구성원으로 추가해 달라고 요청하세요.",
+      otherAccount: "다른 계정으로 로그인하기",
+    },
+    tenant: {
+      title: "어느 회사로 볼지 고르세요",
+      lead: "이 계정은 여러 회사에 속해 있습니다. 고른 회사는 다음에도 기억합니다.",
+      noList: "회사 목록을 받지 못했습니다. 로그아웃한 뒤 다시 로그인해 보세요.",
+    },
   },
 
   filters: {

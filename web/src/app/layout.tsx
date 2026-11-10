@@ -21,7 +21,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="ko" className={`${plexKr.variable} ${plexMono.variable}`} suppressHydrationWarning>
-      <head>
+      <head suppressHydrationWarning>
         <script dangerouslySetInnerHTML={{ __html: `${THEME_INIT_SCRIPT};${LANG_INIT_SCRIPT}` }} />
       </head>
       <body>

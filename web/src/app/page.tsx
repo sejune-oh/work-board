@@ -54,22 +54,22 @@ export default function OverviewPage() {
       </section>
 
       <div className="mt-12 grid grid-cols-1 items-start gap-12 max-[640px]:mt-8 max-[640px]:gap-8 min-[1100px]:grid-cols-[minmax(0,1.65fr)_minmax(0,1fr)]">
-        <div className="flex min-w-0 flex-col gap-12 max-[640px]:gap-8">
-          <section className="reveal [animation-delay:40ms]" aria-labelledby="att">
+        <div className="contents min-[1100px]:flex min-[1100px]:min-w-0 min-[1100px]:flex-col min-[1100px]:gap-12">
+          <section className="reveal order-1 min-w-0 [animation-delay:40ms]" aria-labelledby="att">
             <Attention o={o} myLogin={me.data?.member.githubLogin ?? null} />
           </section>
-          <section className="reveal [animation-delay:80ms]" aria-labelledby="people">
+          <section className="reveal order-2 min-w-0 [animation-delay:80ms]" aria-labelledby="people">
             <People o={o} myId={me.data?.member.githubUserId ?? null} />
           </section>
-          <section className="reveal [animation-delay:120ms]" aria-labelledby="feed">
+          <section className="reveal order-5 min-w-0 [animation-delay:120ms]" aria-labelledby="feed">
             <Activity o={o} />
           </section>
         </div>
-        <div className="flex min-w-0 flex-col gap-12 max-[640px]:gap-8">
-          <section className="reveal [animation-delay:80ms]" aria-labelledby="proj">
+        <div className="contents min-[1100px]:flex min-[1100px]:min-w-0 min-[1100px]:flex-col min-[1100px]:gap-12">
+          <section className="reveal order-3 min-w-0 [animation-delay:80ms]" aria-labelledby="proj">
             <Projects o={o} />
           </section>
-          <section className="reveal [animation-delay:120ms]" aria-labelledby="actions">
+          <section className="reveal order-4 min-w-0 [animation-delay:120ms]" aria-labelledby="actions">
             <ActionItems o={o} myLogin={me.data?.member.githubLogin ?? null} />
           </section>
         </div>

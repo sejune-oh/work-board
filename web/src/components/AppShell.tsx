@@ -91,7 +91,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <header className="flex flex-wrap items-center gap-3 border-b border-rule px-4 py-2.5 min-[900px]:px-8 min-[900px]:py-3">
           <form
             role="search"
-            className="flex max-w-[420px] flex-1 items-center gap-2 rounded-card border border-rule bg-surface px-2.5 py-1.5 text-ui text-muted focus-within:border-ink-soft"
+            className="order-last flex basis-full items-center min-[640px]:order-none min-[640px]:max-w-[420px] min-[640px]:flex-1 min-[640px]:basis-auto gap-2 rounded-card border border-rule bg-surface px-2.5 py-1.5 text-ui text-muted focus-within:border-ink-soft"
             onSubmit={(e) => {
               e.preventDefault();
               if (q.trim().length >= 2) router.push(`/search?q=${encodeURIComponent(q.trim())}`);

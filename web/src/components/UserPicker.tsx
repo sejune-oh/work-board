@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { type DevIdentity, getDevIdentity, setDevIdentity, useApi } from "@/lib/api";
+import { DEV_USER_EVENT, type DevIdentity, getDevIdentity, setDevIdentity, useApi } from "@/lib/api";
 import { useT } from "@/lib/i18n";
 import type { DevUser } from "@/lib/types";
 
@@ -16,8 +16,8 @@ export function UserPicker({ large = false }: { large?: boolean }) {
   useEffect(() => {
     const sync = () => setCurrent(getDevIdentity());
     sync();
-    window.addEventListener("workboard:dev-user", sync);
-    return () => window.removeEventListener("workboard:dev-user", sync);
+    window.addEventListener(DEV_USER_EVENT, sync);
+    return () => window.removeEventListener(DEV_USER_EVENT, sync);
   }, []);
 
   const selected = data?.find((u) => u.githubLogin === current?.login && u.tenantId === current?.tenantId);

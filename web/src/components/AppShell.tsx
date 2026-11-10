@@ -3,15 +3,12 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useRef, useState } from "react";
-import { ApiError } from "@/lib/api";
 import { authEnabled } from "@/lib/auth";
 import { type Dict, useT } from "@/lib/i18n";
-import { useAuthSession, useMe } from "@/lib/me";
-import { AccountMenu, NoMembershipScreen, SignInScreen, TenantChoiceScreen } from "./Auth";
-import { ErrorBox, Loading } from "./Feedback";
+import { useMe } from "@/lib/me";
+import { AccountMenu } from "./Auth";
 import { IssuePanel } from "./IssuePanel";
 import { LangToggle } from "./LangToggle";
-import { StartScreen } from "./StartScreen";
 import { ThemeToggle } from "./ThemeToggle";
 import { Kbd } from "./ui";
 import { UserPicker } from "./UserPicker";
@@ -36,45 +33,27 @@ function screenLabel(pathname: string, t: Dict) {
   return item ? t.nav[item.label] : t.app.title;
 }
 
+/** The app chrome. Only the sign-in gate renders it, once `/api/me` has succeeded. */
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const [q, setQ] = useState("");
   const searchRef = useRef<HTMLInputElement>(null);
-  const me = useMe();
-  const session = useAuthSession();
+  const org = useMe().data?.tenant.name ?? "";
   const t = useT();
-  const apiError = me.error instanceof ApiError ? me.error : null;
-  const authError = apiError && (apiError.status === 401 || (authEnabled && apiError.code === "no_membership")) ? apiError : null;
-  const needsUser = authError !== null;
-  const sessionRejected = authEnabled && authError?.code === "unauthenticated";
-  const signedOut = authEnabled && (session === null || sessionRejected);
-  const org = signedOut ? null : (me.data?.tenant.name ?? null);
-  const onAuthPage = pathname.startsWith("/auth/");
 
   useShortcuts(searchRef);
-
-  let content: React.ReactNode;
-  if (onAuthPage) content = children;
-  else if (authEnabled && session === undefined) content = <Loading />;
-  else if (signedOut) content = <SignInScreen ended={sessionRejected} />;
-  else if (authEnabled && authError?.code === "tenant_required") content = <TenantChoiceScreen error={authError} />;
-  else if (authEnabled && authError?.code === "no_membership") content = <NoMembershipScreen />;
-  else if (authError && !authEnabled) content = <StartScreen tenantRequired={authError.code === "tenant_required"} />;
-  else if (me.error) content = <ErrorBox error={me.error} />;
-  else if (!me.data) content = <Loading />;
-  else content = children;
 
   return (
     <div className="flex min-h-screen">
       <aside className="sticky top-0 hidden h-screen w-[224px] shrink-0 flex-col gap-4 border-r border-rule bg-surface px-2.5 py-3 min-[900px]:flex">
         <Link href="/" className="flex items-center gap-2 rounded-control px-2 py-1.5 hover:bg-hover">
           <span className="grid h-[22px] w-[22px] shrink-0 place-items-center rounded-control bg-ink font-mono text-[11px] font-semibold text-surface">
-            {org ? org.slice(0, 2) : "wb"}
+            {org.slice(0, 2) || "wb"}
           </span>
           <span className="min-w-0 leading-tight">
-            <span className="block truncate text-[13.5px] font-semibold">{org ?? t.app.title}</span>
-            <span className="block font-mono text-[11px] text-muted">{org ? t.app.title : t.app.noOrg}</span>
+            <span className="block truncate text-[13.5px] font-semibold">{org}</span>
+            <span className="block font-mono text-[11px] text-muted">{t.app.title}</span>
           </span>
         </Link>
         <nav aria-label={t.nav.screens}>
@@ -146,7 +125,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div className="ml-auto flex items-center gap-2">
             <LangToggle />
             <ThemeToggle />
-            {authEnabled ? <AccountMenu /> : !needsUser && !onAuthPage && <UserPicker />}
+            {authEnabled ? <AccountMenu /> : <UserPicker />}
           </div>
         </header>
         <nav
@@ -169,10 +148,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             );
           })}
         </nav>
-        <main className="w-full max-w-[1280px] flex-1 px-4 pb-12 pt-4 min-[900px]:px-6 min-[900px]:pb-16 min-[900px]:pt-6">{content}</main>
+        <main className="w-full max-w-[1280px] flex-1 px-4 pb-12 pt-4 min-[900px]:px-6 min-[900px]:pb-16 min-[900px]:pt-6">{children}</main>
       </div>
 
-      {me.data && !me.error && !signedOut && !onAuthPage && <IssuePanel />}
+      <IssuePanel />
     </div>
   );
 }

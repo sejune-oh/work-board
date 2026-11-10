@@ -132,6 +132,11 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* Pages are prerendered in Korean; another language stays hidden until React has swapped the text. */
+html[data-lang-pending] body {
+  visibility: hidden;
+}
+
 :focus-visible {
   outline: 2px solid var(--wb-focus);
   outline-offset: 1px;

@@ -1,3 +1,4 @@
+import type { Dict } from "./i18n/ko";
 import { daysSince } from "./labels";
 import type { Overview } from "./types";
 
@@ -11,22 +12,20 @@ const has = (n: number) => n > 0;
 
 /**
  * Rules from docs/overview.md 3-1: the first matching clause leads, the second is joined to it,
- * everything else drops to the sub line. The wording lives here, not in the API.
+ * everything else drops to the sub line. The wording lives in the dictionaries, not in the API.
  */
-export function headlineClauses(o: Overview): { lead: Clause[]; rest: Clause[] } {
+export function headlineClauses(o: Overview, dict: Dict): { lead: Clause[]; rest: Clause[] } {
   const t = o.attention.totals;
+  const h = dict.overview.headline;
   const clauses: Clause[] = [];
 
-  if (has(t.urgentNotStarted))
-    clauses.push({ parts: [`긴급 ${t.urgent}건 중 `, t.urgentNotStarted, "건은 아직 시작 전"], and: "이고, ", end: "입니다." });
-  if (has(t.reviewWaiting)) clauses.push({ parts: ["리뷰를 기다리는 PR이 ", t.reviewWaiting, "건 있"], and: "고, ", end: "습니다." });
-  if (has(t.unassigned)) clauses.push({ parts: ["담당자 없는 일이 ", t.unassigned, "건 있"], and: "고, ", end: "습니다." });
+  if (has(t.urgentNotStarted)) clauses.push(h.urgent(t.urgent, t.urgentNotStarted));
+  if (has(t.reviewWaiting)) clauses.push(h.reviewWaiting(t.reviewWaiting));
+  if (has(t.unassigned)) clauses.push(h.unassigned(t.unassigned));
   // counts.stale, not attention.totals.stale: the figure tile shows the same number.
-  if (has(o.counts.stale)) clauses.push({ parts: ["", o.counts.stale, "건이 7일 넘게 멈춰 있"], and: "고, ", end: "습니다." });
+  if (has(o.counts.stale)) clauses.push(h.stale(o.counts.stale));
 
-  if (clauses.length === 0) {
-    return { lead: [{ parts: ["막힌 곳 없이 ", o.counts.inProgress, "건이 진행 중"], and: "이고, ", end: "입니다." }], rest: [] };
-  }
+  if (clauses.length === 0) return { lead: [h.allClear(o.counts.inProgress)], rest: [] };
   return { lead: clauses.slice(0, 2), rest: clauses.slice(2) };
 }
 
@@ -35,14 +34,15 @@ export function clauseText(c: Clause): string {
 }
 
 /** Good news worth saying out loud on the sub line when a group is empty. */
-export function clearNotes(o: Overview, priorityEnabled: boolean): string[] {
+export function clearNotes(o: Overview, priorityEnabled: boolean, dict: Dict): string[] {
   const t = o.attention.totals;
+  const c = dict.overview.clear;
   const notes: string[] = [];
-  if (priorityEnabled && t.urgent === 0) notes.push("긴급한 일 없음");
-  if (t.reviewWaiting === 0) notes.push("리뷰 기다리는 PR 없음");
-  if (o.counts.stale === 0) notes.push("7일 넘게 멈춘 일 없음");
-  if (t.unassigned === 0) notes.push("담당자 없는 일 없음");
-  if (t.actionItemsWithoutIssue === 0) notes.push("이슈 없는 회의 할 일 없음");
+  if (priorityEnabled && t.urgent === 0) notes.push(c.urgent);
+  if (t.reviewWaiting === 0) notes.push(c.reviewWaiting);
+  if (o.counts.stale === 0) notes.push(c.stale);
+  if (t.unassigned === 0) notes.push(c.unassigned);
+  if (t.actionItemsWithoutIssue === 0) notes.push(c.actionItems);
   return notes;
 }
 
@@ -73,15 +73,4 @@ export function sprintCalendar(startDate: string, endDate: string, now = new Dat
     days.push({ key: String(t), past: t < today, today: t === today, weekend: d.getDay() === 0 || d.getDay() === 6 });
   }
   return days;
-}
-
-/** "오늘 · 11월 10일", "어제 · 11월 9일", "11월 8일". */
-export function dayLabel(iso: string, now = new Date()): string {
-  const d = new Date(iso);
-  const base = `${d.getMonth() + 1}월 ${d.getDate()}일`;
-  const startOf = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
-  const diff = Math.round((startOf(now) - startOf(d)) / 86_400_000);
-  if (diff === 0) return `오늘 · ${base}`;
-  if (diff === 1) return `어제 · ${base}`;
-  return base;
 }

@@ -1,6 +1,6 @@
 # 디자인 v3 제안 (#48)
 
-합의용 제안입니다. 합의되면 `docs/design.md`와 `web/src/app/globals.css`를 같은 PR에서 고칩니다.
+합의된 제안입니다(2026-11-10). 규칙은 이제 [design.md](design.md)에 있고, 이 문서는 바뀐 이유와 이전 화면과의 차이를 남깁니다.
 시안: [mockups/v3/](mockups/v3/) (`login`, `no-company`, `choose-company`, `overview`, `board`).
 각 파일은 `?lang=en`, `?theme=dark`로 언어와 밝기를 바꿉니다.
 

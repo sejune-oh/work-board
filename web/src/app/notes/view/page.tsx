@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { ErrorBox, Loading } from "@/components/Feedback";
-import { StatusBadge } from "@/components/StatusBadge";
 import { useIssuePanel } from "@/components/useIssuePanel";
+import { Avatar, PageHeader, SectionHead, Stamp, StatusBadge } from "@/components/ui";
 import { useApi } from "@/lib/api";
 import { formatDate, personName } from "@/lib/labels";
 import type { MeetingNote } from "@/lib/types";
@@ -14,49 +14,78 @@ export default function MeetingNoteViewPage() {
   const { open } = useIssuePanel();
   const note = useApi<MeetingNote>(id ? `/api/meeting-notes/${id}` : null);
 
-  if (!id) return <p className="text-sm text-slate-500">회의 노트를 선택하세요.</p>;
+  if (!id) return <p className="text-ui text-muted">회의 노트를 선택하세요.</p>;
   if (note.error) return <ErrorBox error={note.error} />;
   if (!note.data) return <Loading />;
   const n = note.data;
+  const missing = n.actionItems.filter((a) => !a.issue).length;
 
   return (
-    <article className="flex max-w-3xl flex-col gap-5">
-      <Link href="/notes" className="text-sm text-blue-600 hover:underline">
+    <article className="flex max-w-[820px] flex-col gap-8">
+      <Link href="/notes" className="link self-start text-meta text-ink-soft">
         ← 회의 노트 목록
       </Link>
-      <header>
-        <h1 className="text-xl font-bold">{n.title}</h1>
-        <p className="text-sm text-slate-500">
-          {formatDate(n.heldAt)}
-          {n.project && ` · ${n.project.name}`} · 참석 {n.attendees.map(personName).join(", ")}
-        </p>
-      </header>
+      <PageHeader eyebrow={`${formatDate(n.heldAt)}${n.project ? ` · ${n.project.name}` : ""}`} title={n.title}>
+        참석 {n.attendees.length ? n.attendees.map(personName).join(", ") : "기록 없음"}
+      </PageHeader>
 
-      <section>
-        <h2 className="mb-2 text-sm font-semibold">할 일</h2>
-        <ul className="flex flex-col gap-2">
-          {n.actionItems.map((a) => (
-            <li key={a.id} className="flex items-center gap-3 rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-800">
-              <span className="flex-1">{a.text}</span>
-              <span className="text-xs text-slate-500">{a.assignee ? personName(a.assignee) : "담당자 없음"}</span>
-              {a.issue ? (
-                <button type="button" onClick={() => open(a.issue!.id)} className="flex items-center gap-2 text-xs text-blue-600 hover:underline">
-                  {a.issue.repositoryName} #{a.issue.number}
-                  <StatusBadge status={a.issue.status} />
-                </button>
-              ) : (
-                <span className="rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-500 dark:bg-slate-800" title="M4에서 구현">
-                  이슈로 만들기 (예정)
+      <section className="reveal [animation-delay:40ms]">
+        <SectionHead
+          eyebrow="회의에서 정한 것"
+          title={
+            <>
+              할 일 <span className="font-mono text-meta font-normal text-muted">{n.actionItems.length}</span>
+            </>
+          }
+          action={missing > 0 ? <span className="text-muted">이슈 없음 {missing}건</span> : null}
+        />
+        {n.actionItems.length === 0 ? (
+          <p className="text-meta text-muted">이 회의에서 정한 할 일이 없습니다.</p>
+        ) : (
+          <ul>
+            {n.actionItems.map((a) => (
+              <li key={a.id} className="flex flex-col gap-1.5 border-b border-rule py-3 last:border-b-0">
+                <span className="text-ui font-medium">{a.text}</span>
+                <span className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-meta text-ink-soft">
+                  {a.assignee ? (
+                    <span className="inline-flex items-center gap-1.5">
+                      <Avatar person={a.assignee} size="sm" />
+                      {personName(a.assignee)}
+                    </span>
+                  ) : (
+                    <span className="text-accent">담당자 없음</span>
+                  )}
+                  {a.issue ? (
+                    <button
+                      type="button"
+                      onClick={() => open(a.issue!.id)}
+                      className="inline-flex cursor-pointer items-center gap-2 hover:underline hover:underline-offset-3"
+                    >
+                      <span className="font-mono">
+                        {a.issue.repositoryName} #{a.issue.number}
+                      </span>
+                      <StatusBadge status={a.issue.status} />
+                    </button>
+                  ) : (
+                    <>
+                      <Stamp>이슈 없음</Stamp>
+                      <span className="text-muted" title="쓰기 기능이 들어오면 여기서 이슈를 만듭니다">
+                        이슈로 만들기 (예정)
+                      </span>
+                    </>
+                  )}
                 </span>
-              )}
-            </li>
-          ))}
-        </ul>
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
 
-      <section>
-        <h2 className="mb-2 text-sm font-semibold">노트</h2>
-        <pre className="whitespace-pre-wrap rounded-lg bg-slate-50 p-4 font-sans text-sm dark:bg-slate-900">{n.bodyMd}</pre>
+      <section className="reveal [animation-delay:80ms]">
+        <SectionHead eyebrow="기록" title="노트" />
+        <pre className="whitespace-pre-wrap break-keep rounded-card border border-rule bg-surface p-4 font-sans text-body text-ink-soft">
+          {n.bodyMd}
+        </pre>
       </section>
     </article>
   );

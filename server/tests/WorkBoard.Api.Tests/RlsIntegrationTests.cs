@@ -16,6 +16,15 @@ public sealed class DbFactAttribute : FactAttribute
     }
 }
 
+public sealed class DbTheoryAttribute : TheoryAttribute
+{
+    public DbTheoryAttribute()
+    {
+        if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable(DbFactAttribute.EnvVar)))
+            Skip = $"Set {DbFactAttribute.EnvVar}=1 with the seeded Postgres from db/ running to enable.";
+    }
+}
+
 public class RlsIntegrationTests : IClassFixture<WebApplicationFactory<Program>>
 {
     private const string OtherTenantIssueId = "50000000-0000-0000-0000-000000000099";
@@ -24,10 +33,12 @@ public class RlsIntegrationTests : IClassFixture<WebApplicationFactory<Program>>
 
     public RlsIntegrationTests(WebApplicationFactory<Program> factory) => _factory = factory;
 
-    private HttpClient ClientFor(string login)
+    private HttpClient ClientFor(string login, string? tenantId = null)
     {
         var client = _factory.CreateClient();
         client.DefaultRequestHeaders.Add("X-Dev-User", login);
+        if (tenantId is not null)
+            client.DefaultRequestHeaders.Add("X-Dev-Tenant", tenantId);
         return client;
     }
 
@@ -74,5 +85,44 @@ public class RlsIntegrationTests : IClassFixture<WebApplicationFactory<Program>>
         var logins = members.EnumerateArray().Select(m => m.GetProperty("githubLogin").GetString()).ToList();
         Assert.Contains("haneul-dev", logins);
         Assert.DoesNotContain("other-org-dev", logins);
+    }
+
+    [DbFact]
+    public async Task Login_in_two_tenants_without_tenant_header_is_tenant_required()
+    {
+        using var client = ClientFor("shared-dev");
+
+        var response = await client.GetAsync("/api/issues");
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Equal("""{"error":"tenant_required"}""", await response.Content.ReadAsStringAsync());
+    }
+
+    [DbFact]
+    public async Task Login_in_two_tenants_sees_only_the_selected_tenants_issues()
+    {
+        using var globex = ClientFor("shared-dev", "10000000-0000-0000-0000-000000000002");
+        using var acme = ClientFor("shared-dev", "10000000-0000-0000-0000-000000000001");
+
+        var globexIssues = await globex.GetFromJsonAsync<JsonElement>("/api/issues");
+        var acmeIssues = await acme.GetFromJsonAsync<JsonElement>("/api/issues");
+
+        Assert.Equal([OtherTenantIssueId], globexIssues.EnumerateArray().Select(i => i.GetProperty("id").GetString()));
+        var acmeIds = acmeIssues.EnumerateArray().Select(i => i.GetProperty("id").GetString()).ToList();
+        Assert.NotEmpty(acmeIds);
+        Assert.DoesNotContain(OtherTenantIssueId, acmeIds);
+    }
+
+    [DbFact]
+    public async Task Dev_users_lists_one_entry_per_membership()
+    {
+        using var client = _factory.CreateClient();
+
+        var users = await client.GetFromJsonAsync<JsonElement>("/api/dev/users");
+
+        var shared = users.EnumerateArray().Where(u => u.GetProperty("githubLogin").GetString() == "shared-dev").ToList();
+        Assert.Equal(["acme-health", "globex-labs"], shared.Select(u => u.GetProperty("tenantLogin").GetString()));
+        Assert.All(shared, u => Assert.Equal(5100, u.GetProperty("githubUserId").GetInt64()));
+        Assert.All(shared, u => Assert.True(Guid.TryParse(u.GetProperty("tenantId").GetString(), out _)));
     }
 }

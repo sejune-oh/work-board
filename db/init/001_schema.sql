@@ -78,7 +78,7 @@ create table repositories (
   archived       boolean not null default false,
   unique (tenant_id, id),
   unique (tenant_id, github_repo_id),
-  unique (tenant_id, name),
+  unique (connection_id, name),
   foreign key (tenant_id, connection_id) references github_connections (tenant_id, id)
 );
 

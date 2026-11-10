@@ -18,6 +18,8 @@ public sealed class TestTenant : IAsyncDisposable
     private readonly NpgsqlDataSource _sync;
     private int _nextNumber = 1;
 
+    public static long NextId() => Interlocked.Increment(ref _seq);
+
     public Guid Id { get; } = Guid.NewGuid();
     public string Suffix { get; } = Guid.NewGuid().ToString("N")[..8];
     public Guid ConnectionId { get; } = Guid.NewGuid();

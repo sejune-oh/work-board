@@ -1,6 +1,7 @@
 "use client";
 
-import { STALE_DAYS, TYPE_LABEL, daysSince, isCanceled, isStale, personName, relativeDays } from "@/lib/labels";
+import { useFormat, useT } from "@/lib/i18n";
+import { STALE_DAYS, daysSince, isCanceled, isStale } from "@/lib/labels";
 import { useSettings } from "@/lib/me";
 import type { BoardIssue } from "@/lib/types";
 import { Flag, StatusBadge } from "./ui";
@@ -17,6 +18,8 @@ type Props = {
 export function IssueCard({ issue, showAssignee = true, showStatus = false }: Props) {
   const { open } = useIssuePanel();
   const settings = useSettings();
+  const t = useT();
+  const fmt = useFormat();
   const stale = isStale(issue);
   const canceled = isCanceled(issue);
   const done = issue.status === "done" || canceled;
@@ -37,11 +40,11 @@ export function IssueCard({ issue, showAssignee = true, showStatus = false }: Pr
       <div className={`flex items-center gap-2 font-mono text-meta text-muted ${fade}`}>
         <span className="truncate">
           {issue.repository.name} #{issue.number}
-          {issue.issueType && ` · ${TYPE_LABEL[issue.issueType] ?? issue.issueType}`}
+          {issue.issueType && ` · ${fmt.issueType(issue.issueType)}`}
         </span>
         <span className="ml-auto shrink-0 font-sans">
-          {urgent && <Flag fill>긴급</Flag>}
-          {high && <span className="text-meta text-ink-soft">높음</span>}
+          {urgent && <Flag fill>{t.priority.urgent}</Flag>}
+          {high && <span className="text-meta text-ink-soft">{t.priority.high}</span>}
         </span>
       </div>
       <p
@@ -60,23 +63,23 @@ export function IssueCard({ issue, showAssignee = true, showStatus = false }: Pr
             (unassigned ? (
               <span className="inline-flex items-center gap-1.5 text-accent">
                 <span aria-hidden className="inline-block h-3 w-3 rounded-full border border-dashed border-accent" />
-                담당자 없음
+                {t.common.unassigned}
               </span>
             ) : (
-              issue.assignees.map(personName).join(", ")
+              issue.assignees.map(fmt.person).join(", ")
             ))}
         </span>
         <span className="flex shrink-0 items-center gap-2">
           {issue.openPullRequestCount > 0 && (
-            <span className={fade} title="열린 PR">
+            <span className={fade} title={t.common.openPrTitle}>
               PR {issue.openPullRequestCount}
             </span>
           )}
-          {issue.commentCount > 0 && <span className={fade}>댓글 {issue.commentCount}</span>}
+          {issue.commentCount > 0 && <span className={fade}>{t.common.comments(issue.commentCount)}</span>}
           {stale ? (
-            <Flag>{daysSince(issue.updatedAt)}일째 멈춤</Flag>
+            <Flag>{t.common.stalledFor(daysSince(issue.updatedAt))}</Flag>
           ) : (
-            <span className="font-mono" title={`${STALE_DAYS}일 넘게 움직임이 없으면 멈춤으로 표시합니다`}>{relativeDays(issue.updatedAt)}</span>
+            <span className="font-mono" title={t.common.staleHint(STALE_DAYS)}>{fmt.relativeDays(issue.updatedAt)}</span>
           )}
         </span>
       </div>

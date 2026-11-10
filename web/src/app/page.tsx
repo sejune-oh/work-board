@@ -7,23 +7,13 @@ import { useIssuePanel } from "@/components/useIssuePanel";
 import { ROW_ATTR } from "@/components/useShortcuts";
 import { Avatar, Card, Dot, Flag, Kbd, ProgressBar, StatusBadge, progressLine } from "@/components/ui";
 import { useApi } from "@/lib/api";
-import {
-  STATUS_DOT,
-  STATUS_LABEL,
-  daysSince,
-  formatDate,
-  percent,
-  personName,
-  relativeDays,
-  relativeTime,
-  shortDate,
-} from "@/lib/labels";
+import { useFormat, useT } from "@/lib/i18n";
+import { STATUS_DOT, daysSince, percent } from "@/lib/labels";
 import { useMe, useSettings } from "@/lib/me";
 import {
   type Clause,
   clauseText,
   clearNotes,
-  dayLabel,
   headlineClauses,
   isEmptyTeam,
   oldestWaitDays,
@@ -85,17 +75,20 @@ export default function OverviewPage() {
 
 function MetaLine({ o }: { o: O }) {
   const settings = useSettings();
+  const t = useT();
+  const fmt = useFormat();
   return (
     <p className="flex flex-wrap gap-x-3.5 gap-y-1 font-mono text-meta text-muted">
-      <span>{formatDate(new Date().toISOString())}</span>
+      <span>{fmt.date(new Date().toISOString())}</span>
       {o && (
         <span>
-          열린 일 <b className="font-medium text-ink-soft">{o.counts.open}</b>
+          {t.overview.open} <b className="font-medium text-ink-soft">{fmt.num(o.counts.open)}</b>
         </span>
       )}
       {settings.sprintsEnabled && o?.sprint && (
         <span>
-          {o.sprint.name} · <b className="font-medium text-ink-soft">{o.sprint.daysLeft}</b>일 남음
+          {o.sprint.name} · <b className="font-medium text-ink-soft">{o.sprint.daysLeft}</b>
+          {t.overview.daysLeft(o.sprint.daysLeft)}
         </span>
       )}
     </p>
@@ -103,12 +96,13 @@ function MetaLine({ o }: { o: O }) {
 }
 
 function ClauseView({ clause, last }: { clause: Clause; last: boolean }) {
+  const fmt = useFormat();
   return (
     <>
       {clause.parts.map((p, i) =>
         typeof p === "number" ? (
           <em key={i} className="font-mono font-semibold not-italic text-accent">
-            {p}
+            {fmt.num(p)}
           </em>
         ) : (
           <Fragment key={i}>{p}</Fragment>
@@ -121,19 +115,20 @@ function ClauseView({ clause, last }: { clause: Clause; last: boolean }) {
 
 function Headline({ o }: { o: Overview }) {
   const settings = useSettings();
+  const t = useT();
   const h1 = "mt-2 max-w-[40em] text-[19px] font-semibold leading-[1.4] tracking-[-0.015em] min-[640px]:text-display";
 
   if (isEmptyTeam(o))
     return (
       <h1 id="headline" className={h1}>
-        아직 이슈가 없습니다. 저장소를 연결하면 여기에 모입니다.
+        {t.overview.emptyTeam}
       </h1>
     );
 
-  const { lead, rest } = headlineClauses(o);
+  const { lead, rest } = headlineClauses(o, t);
   const allClear = lead.length === 1 && rest.length === 0 && o.counts.stale === 0 && o.attention.totals.reviewWaiting === 0;
-  const good = clearNotes(o, settings.priorityEnabled);
-  const sub = rest.length ? `그 밖에 ${rest.map(clauseText).join(" ")}` : allClear ? "" : good.slice(0, 2).map((g) => `${g}.`).join(" ");
+  const good = clearNotes(o, settings.priorityEnabled, t);
+  const sub = rest.length ? t.overview.headline.rest(rest.map(clauseText).join(" ")) : allClear ? "" : good.slice(0, 2).map((g) => `${g}.`).join(" ");
 
   return (
     <>
@@ -148,6 +143,9 @@ function Headline({ o }: { o: Overview }) {
 }
 
 function Stats({ o }: { o: Overview }) {
+  const t = useT();
+  const fmt = useFormat();
+  const st = t.overview.stats;
   const moving = o.people.filter((p) => p.inProgress > 0).length;
   const wait = oldestWaitDays(o);
   const maxIdle = o.attention.stale.reduce((m, s) => Math.max(m, s.idleDays), 0);
@@ -155,15 +153,15 @@ function Stats({ o }: { o: Overview }) {
     .filter((p) => p.doneThisWeek > 0)
     .sort((a, b) => b.doneThisWeek - a.doneThisWeek)
     .slice(0, 3)
-    .map((p) => `${personName(p.member)} ${p.doneThisWeek}`)
+    .map((p) => `${fmt.person(p.member)} ${p.doneThisWeek}`)
     .join(" · ");
   const todo = Math.max(0, o.counts.open - o.counts.inProgress - o.counts.inReview);
 
   const stats = [
-    { href: "/people?status=in_progress", dot: STATUS_DOT.in_progress, label: "진행 중", n: o.counts.inProgress, note: moving ? `${moving}명이 움직이는 중` : "움직이는 사람 없음", title: "사람별 보드에서 진행 중만 보기" },
-    { href: "/people?status=in_review", dot: STATUS_DOT.in_review, label: "리뷰 대기", n: o.counts.inReview, note: wait === null ? "리뷰 요청된 PR 없음" : `가장 오래된 것 ${wait}일`, title: "사람별 보드에서 리뷰 중만 보기" },
-    { href: "/people?stale=1", dot: STATUS_DOT.todo, label: "7일 넘게 멈춤", n: o.counts.stale, note: o.counts.stale ? `최장 ${maxIdle}일째` : "멈춘 일 없음", title: "7일 넘게 멈춘 일 보기", warn: o.counts.stale > 0 },
-    { href: "/people?status=done&doneSince=week", dot: STATUS_DOT.done, label: "이번 주 완료", n: o.counts.doneThisWeek, note: finishers || "월요일부터 센 값", title: "이번 주 완료한 일 보기" },
+    { href: "/people?status=in_progress", dot: STATUS_DOT.in_progress, label: st.inProgress, n: o.counts.inProgress, note: moving ? st.movingPeople(moving) : st.nobodyMoving, title: st.inProgressTitle },
+    { href: "/people?status=in_review", dot: STATUS_DOT.in_review, label: st.review, n: o.counts.inReview, note: wait === null ? st.noReviewRequested : st.oldestWait(wait), title: st.reviewTitle },
+    { href: "/people?stale=1", dot: STATUS_DOT.todo, label: st.stale, n: o.counts.stale, note: o.counts.stale ? st.longestIdle(maxIdle) : st.nothingStale, title: st.staleTitle, warn: o.counts.stale > 0 },
+    { href: "/people?status=done&doneSince=week", dot: STATUS_DOT.done, label: st.doneThisWeek, n: o.counts.doneThisWeek, note: finishers || st.sinceMonday, title: st.doneTitle },
   ];
 
   return (
@@ -185,8 +183,8 @@ function Stats({ o }: { o: Overview }) {
               {s.label}
             </span>
             <span className={`font-mono text-[24px] font-medium leading-[1.15] tracking-[-0.02em] min-[640px]:text-figure ${s.warn ? "text-accent" : ""}`}>
-              {s.n}
-              <small className="ml-0.5 font-sans text-meta font-normal tracking-normal text-muted">건</small>
+              {fmt.num(s.n)}
+              {t.common.countUnit && <small className="ml-0.5 font-sans text-meta font-normal tracking-normal text-muted">{t.common.countUnit}</small>}
             </span>
             <span className="truncate pb-1 text-right text-meta text-muted max-[640px]:col-span-full max-[640px]:pb-0 max-[640px]:text-left">
               {s.note}
@@ -194,7 +192,7 @@ function Stats({ o }: { o: Overview }) {
           </Link>
         ))}
       </div>
-      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2" aria-label="팀 전체 상태">
+      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2" aria-label={st.teamAria}>
         <div className="min-w-[240px] flex-[1_1_280px]">
           <ProgressBar counts={{ done: o.counts.doneThisWeek, inReview: o.counts.inReview, inProgress: o.counts.inProgress, todo }} />
         </div>
@@ -209,10 +207,10 @@ function Stats({ o }: { o: Overview }) {
           ).map(([s, n]) => (
             <span key={s} className="inline-flex items-center gap-[5px]">
               <Dot className={STATUS_DOT[s]} />
-              {STATUS_LABEL[s]} <b className="font-mono font-medium text-ink">{n}</b>
+              {t.status[s]} <b className="font-mono font-medium text-ink">{fmt.num(n)}</b>
             </span>
           ))}
-          <span className="text-muted">완료는 이번 주(월요일부터)</span>
+          <span className="text-muted">{st.doneNote}</span>
         </div>
       </div>
     </>
@@ -233,11 +231,13 @@ const cell = {
 };
 
 function Who({ people }: { people: { displayName: string | null; githubLogin: string | null }[] }) {
+  const t = useT();
+  const fmt = useFormat();
   if (people.length === 0)
     return (
       <span className="inline-flex items-center gap-1.5 text-accent">
         <span aria-hidden className="h-[18px] w-[18px] rounded-full border border-dashed border-accent" />
-        <span className="@max-[44rem]:sr-only">담당자 없음</span>
+        <span className="@max-[44rem]:sr-only">{t.common.unassigned}</span>
       </span>
     );
   const first = people[0];
@@ -245,8 +245,8 @@ function Who({ people }: { people: { displayName: string | null; githubLogin: st
     <span className="inline-flex items-center gap-1.5">
       <Avatar person={first} size="sm" />
       <span className="@max-[44rem]:sr-only">
-        {personName(first)}
-        {people.length > 1 && ` 외 ${people.length - 1}`}
+        {fmt.person(first)}
+        {people.length > 1 && t.overview.attention.others(people.length - 1)}
       </span>
     </span>
   );
@@ -302,6 +302,7 @@ function Group({
   more: { href: string; shown: number };
   children: React.ReactNode;
 }) {
+  const t = useT();
   return (
     <div>
       <h3 className="flex flex-wrap items-center gap-2 px-3.5 pb-1.5 pt-2.5 text-meta font-normal text-muted">
@@ -312,7 +313,7 @@ function Group({
       <ul className="[&>li:first-child>*]:border-t-transparent">{children}</ul>
       {total > more.shown && (
         <Link href={more.href} className="link mx-3.5 mb-2 mt-1 inline-block text-meta text-ink-soft">
-          외 {total - more.shown}건 보드에서 보기 →
+          {t.overview.attention.more(total - more.shown)}
         </Link>
       )}
     </div>
@@ -321,23 +322,26 @@ function Group({
 
 function Attention({ o, myLogin }: { o: O; myLogin: string | null }) {
   const settings = useSettings();
+  const t = useT();
+  const fmt = useFormat();
+  const at = t.overview.attention;
   const card = (n: number | undefined, body: React.ReactNode) => (
-    <Card id="att" title="손봐야 할 일" count={n} hint="지금 봐야 할 것" className="@container">
+    <Card id="att" title={at.title} count={n} hint={at.hint} className="@container">
       {body}
     </Card>
   );
   if (!o) return card(undefined, <Loading />);
 
   const a = o.attention;
-  const t = a.totals;
-  const sum = t.urgent + t.reviewWaiting + t.stale + t.unassigned + t.actionItemsWithoutIssue;
-  const clear = clearNotes(o, settings.priorityEnabled);
+  const tt = a.totals;
+  const sum = tt.urgent + tt.reviewWaiting + tt.stale + tt.unassigned + tt.actionItemsWithoutIssue;
+  const clear = clearNotes(o, settings.priorityEnabled, t);
 
   if (sum === 0)
     return card(
       0,
       <div className="p-3.5">
-        <Empty>지금 손봐야 할 일이 없습니다.</Empty>
+        <Empty>{at.empty}</Empty>
       </div>,
     );
 
@@ -345,71 +349,71 @@ function Attention({ o, myLogin }: { o: O; myLogin: string | null }) {
     sum,
     <>
       <div aria-hidden className={`${gridCols} hidden h-[30px] items-center border-b border-rule bg-canvas px-3.5 font-mono text-[11px] text-muted @[36rem]:grid`}>
-        <span>저장소 #번호</span>
-        <span>제목</span>
-        <span>상태</span>
-        <span>담당</span>
-        <span className="text-right">경과</span>
+        <span>{at.colRef}</span>
+        <span>{at.colTitle}</span>
+        <span>{at.colStatus}</span>
+        <span>{at.colWho}</span>
+        <span className="text-right">{at.colAge}</span>
       </div>
       {a.urgent.length > 0 && (
-        <Group flag={<Flag fill>긴급</Flag>} total={t.urgent} why="우선순위 긴급, 아직 끝나지 않음" more={{ href: "/people", shown: a.urgent.length }}>
+        <Group flag={<Flag fill>{t.priority.urgent}</Flag>} total={tt.urgent} why={at.urgentWhy} more={{ href: "/people", shown: a.urgent.length }}>
           {a.urgent.map(({ issue, notStarted }) => (
             <IssueRow
               key={issue.id}
               issue={issue}
               gutter={notStarted}
-              status={notStarted ? <Flag>시작 전</Flag> : <StatusBadge status={issue.status} />}
-              age={relativeDays(issue.updatedAt)}
+              status={notStarted ? <Flag>{at.notStarted}</Flag> : <StatusBadge status={issue.status} />}
+              age={fmt.relativeDays(issue.updatedAt, true)}
             />
           ))}
         </Group>
       )}
       {a.reviewWaiting.length > 0 && (
-        <Group flag={<Flag>리뷰 대기</Flag>} total={t.reviewWaiting} why="리뷰 요청된 PR, 오래된 순" more={{ href: "/people?status=in_review", shown: a.reviewWaiting.length }}>
+        <Group flag={<Flag>{at.review}</Flag>} total={tt.reviewWaiting} why={at.reviewWhy} more={{ href: "/people?status=in_review", shown: a.reviewWaiting.length }}>
           {a.reviewWaiting.map(({ issue, pullRequest: pr }) => {
             const mine = myLogin !== null && (pr.authorGithubLogin === myLogin || issue.assignees.some((x) => x.githubLogin === myLogin));
             return (
               <IssueRow
                 key={issue.id}
                 issue={issue}
-                sub={`PR #${pr.number} ${pr.title}${mine ? " · 내 PR" : ""}`}
+                sub={`PR #${pr.number} ${pr.title}${mine ? at.myPr : ""}`}
                 status={<StatusBadge status={issue.status} />}
-                age={<span title="PR이 마지막으로 바뀐 때부터 센 값">{daysSince(pr.waitingSince)}일</span>}
+                age={<span title={at.waitTitle}>{at.days(daysSince(pr.waitingSince))}</span>}
               />
             );
           })}
         </Group>
       )}
       {a.stale.length > 0 && (
-        <Group flag={<Flag>멈춤</Flag>} total={t.stale} why={o.counts.stale > t.stale ? `7일 넘게 아무 움직임 없음, 위 묶음에 나온 ${o.counts.stale - t.stale}건은 뺌` : "7일 넘게 아무 움직임 없음"} more={{ href: "/people?stale=1", shown: a.stale.length }}>
+        <Group flag={<Flag>{at.stalled}</Flag>} total={tt.stale} why={o.counts.stale > tt.stale ? at.staleWhyExcluded(o.counts.stale - tt.stale) : at.staleWhy} more={{ href: "/people?stale=1", shown: a.stale.length }}>
           {a.stale.map(({ issue, idleDays }) => (
-            <IssueRow key={issue.id} issue={issue} faded status={<StatusBadge status={issue.status} />} age={<Flag>{idleDays}일째</Flag>} />
+            <IssueRow key={issue.id} issue={issue} faded status={<StatusBadge status={issue.status} />} age={<Flag>{at.idleDays(idleDays)}</Flag>} />
           ))}
         </Group>
       )}
       {a.unassigned.length > 0 && (
-        <Group flag={<Flag>담당자 없음</Flag>} total={t.unassigned} why="열린 일인데 맡은 사람이 없음" more={{ href: "/people", shown: a.unassigned.length }}>
+        <Group flag={<Flag>{t.common.unassigned}</Flag>} total={tt.unassigned} why={at.unassignedWhy} more={{ href: "/people", shown: a.unassigned.length }}>
           {a.unassigned.map((issue) => (
-            <IssueRow key={issue.id} issue={issue} status={<StatusBadge status={issue.status} />} age={relativeDays(issue.updatedAt)} />
+            <IssueRow key={issue.id} issue={issue} status={<StatusBadge status={issue.status} />} age={fmt.relativeDays(issue.updatedAt, true)} />
           ))}
         </Group>
       )}
       {a.actionItemsWithoutIssue.length > 0 && (
-        <Group flag={<Flag>이슈 없음</Flag>} total={t.actionItemsWithoutIssue} why="회의에서 정했지만 이슈로 만들지 않은 할 일" more={{ href: "/notes", shown: a.actionItemsWithoutIssue.length }}>
+        <Group flag={<Flag>{t.common.noIssue}</Flag>} total={tt.actionItemsWithoutIssue} why={at.noIssueWhy} more={{ href: "/notes", shown: a.actionItemsWithoutIssue.length }}>
           {a.actionItemsWithoutIssue.map((item) => (
             <li key={item.id}>
               <Link href={`/notes/view?id=${item.note.id}`} {...row} className={rowClass}>
-                <span className={cell.ref}>{shortDate(item.note.heldAt)} 회의</span>
+                <span className={cell.ref}>{at.meetingOn(fmt.shortDate(item.note.heldAt))}</span>
                 <span className={cell.title}>
                   <span className="block truncate">{item.text}</span>
-                  <span className="block truncate text-meta font-normal text-muted">{item.note.title}에서 나옴</span>
+                  <span className="block truncate text-meta font-normal text-muted">{at.fromNote(item.note.title)}</span>
                 </span>
-                <span className={`${cell.status} text-[12.5px] text-muted`}>이슈 없음</span>
+                <span className={`${cell.status} text-[12.5px] text-muted`}>{t.common.noIssue}</span>
                 <span className={cell.who}>
                   <Who people={item.assignee ? [item.assignee] : []} />
-                  {item.assignee?.githubLogin === myLogin && <span className="ml-1 text-muted">(나)</span>}
+                  {item.assignee?.githubLogin === myLogin && <span className="ml-1 text-muted">{t.common.meParen}</span>}
                 </span>
-                <span className={cell.age}>{relativeDays(item.note.heldAt)}</span>
+                <span className={cell.age}>{fmt.relativeDays(item.note.heldAt, true)}</span>
               </Link>
             </li>
           ))}
@@ -433,16 +437,19 @@ function Attention({ o, myLogin }: { o: O; myLogin: string | null }) {
 
 function People({ o, myId }: { o: O; myId: number | null }) {
   const { open } = useIssuePanel();
+  const t = useT();
+  const fmt = useFormat();
+  const pp = t.overview.people;
   const card = (body: React.ReactNode) => (
     <Card
       id="people"
-      title="사람"
+      title={pp.title}
       count={o?.people.length}
-      hint="누가 무엇을"
+      hint={pp.hint}
       className="@container"
       action={
         <Link href="/people" className="inline-flex items-center gap-1.5 hover:text-ink">
-          사람별 보드 <Kbd>g p</Kbd>
+          {pp.board} <Kbd>g p</Kbd>
         </Link>
       }
     >
@@ -453,7 +460,7 @@ function People({ o, myId }: { o: O; myId: number | null }) {
   if (o.people.length === 0)
     return card(
       <div className="p-3.5">
-        <Empty>팀원이 없습니다. 설정에서 GitHub 조직을 연결하세요.</Empty>
+        <Empty>{pp.empty}</Empty>
       </div>,
     );
 
@@ -473,21 +480,21 @@ function People({ o, myId }: { o: O; myId: number | null }) {
               <Avatar person={p.member} ghost={openCount === 0} />
               <span className="min-w-0">
                 <span className="flex items-center gap-1.5 text-[13px] font-semibold group-hover:underline group-hover:underline-offset-3">
-                  <span className="truncate">{personName(p.member)}</span>
+                  <span className="truncate">{fmt.person(p.member)}</span>
                   {p.member.githubUserId === myId && (
-                    <span className="rounded-[3px] border border-rule px-[3px] font-mono text-[10px] font-medium text-muted">나</span>
+                    <span className="rounded-[3px] border border-rule px-[3px] font-mono text-[10px] font-medium text-muted">{t.common.me}</span>
                   )}
                 </span>
-                <span className="block font-mono text-[11px] text-muted">{p.lastActivityAt ? relativeTime(p.lastActivityAt) : "활동 없음"}</span>
+                <span className="block font-mono text-[11px] text-muted">{p.lastActivityAt ? fmt.relativeTime(p.lastActivityAt) : pp.noActivity}</span>
               </span>
             </Link>
             {openCount === 0 ? (
-              <span className="col-span-full row-start-2 text-[12.5px] text-muted @[40rem]:col-span-1 @[40rem]:row-start-auto">맡은 일 없음</span>
+              <span className="col-span-full row-start-2 text-[12.5px] text-muted @[40rem]:col-span-1 @[40rem]:row-start-auto">{pp.noWork}</span>
             ) : (
               <Link
                 href={href}
                 className="col-span-full row-start-2 block @[40rem]:col-span-1 @[40rem]:row-start-auto"
-                aria-label={`${personName(p.member)} 열린 일 ${openCount}건`}
+                aria-label={pp.openAria(fmt.person(p.member), openCount)}
               >
                 <div className="bar !bg-transparent">
                   <div className="flex h-full gap-0.5" style={{ width: `${(openCount / maxOpen) * 100}%` }}>
@@ -499,11 +506,11 @@ function People({ o, myId }: { o: O; myId: number | null }) {
               </Link>
             )}
             <span className="col-start-2 row-start-1 flex flex-wrap items-center justify-end gap-x-2 whitespace-nowrap font-mono text-meta text-muted @[40rem]:col-start-auto @[40rem]:row-start-auto @[40rem]:justify-start">
-              <span title={`진행·리뷰 ${p.inProgress + p.inReview}`}>
-                열린 <b className="font-medium text-ink">{openCount}</b>
+              <span title={pp.activeTitle(p.inProgress + p.inReview)}>
+                {pp.open} <b className="font-medium text-ink">{openCount}</b>
               </span>
-              {p.doneThisWeek > 0 && <span>· 완료 {p.doneThisWeek}</span>}
-              {p.overloaded && <Flag className="font-sans">몰림</Flag>}
+              {p.doneThisWeek > 0 && <span>{pp.done(p.doneThisWeek)}</span>}
+              {p.overloaded && <Flag className="font-sans">{t.common.crowded}</Flag>}
             </span>
             {p.current ? (
               <button
@@ -513,14 +520,14 @@ function People({ o, myId }: { o: O; myId: number | null }) {
                 className="group col-span-full flex min-w-0 cursor-pointer items-center gap-2 text-left text-[13px] @[40rem]:col-span-1"
               >
                 <Dot className={STATUS_DOT[p.current.status]} />
-                <span className="sr-only">{STATUS_LABEL[p.current.status]}</span>
+                <span className="sr-only">{t.status[p.current.status]}</span>
                 <span className="whitespace-nowrap font-mono text-meta text-muted">
                   {p.current.repositoryName} #{p.current.number}
                 </span>
                 <span className="truncate font-medium group-hover:underline group-hover:underline-offset-3">{p.current.title}</span>
               </button>
             ) : (
-              <span className="col-span-full text-[12.5px] text-muted @[40rem]:col-span-1">{openCount ? "지금 진행 중인 일 없음" : ""}</span>
+              <span className="col-span-full text-[12.5px] text-muted @[40rem]:col-span-1">{openCount ? pp.nothingInProgress : ""}</span>
             )}
           </li>
         );
@@ -533,14 +540,17 @@ function People({ o, myId }: { o: O; myId: number | null }) {
 
 function Projects({ o }: { o: O }) {
   const settings = useSettings();
+  const t = useT();
+  const fmt = useFormat();
+  const pj = t.overview.projects;
   const card = (body: React.ReactNode) => (
     <Card
       id="proj"
-      title="프로젝트와 목표"
-      hint="어디까지 왔나"
+      title={pj.title}
+      hint={pj.hint}
       action={
         <Link href="/projects" className="inline-flex items-center gap-1.5 hover:text-ink">
-          보드 <Kbd>g b</Kbd>
+          {pj.board} <Kbd>g b</Kbd>
         </Link>
       }
     >
@@ -553,7 +563,7 @@ function Projects({ o }: { o: O }) {
     <>
       {o.projects.length === 0 ? (
         <div className="p-3.5">
-          <Empty>프로젝트(저장소 묶음)가 없습니다. 설정에서 만드세요.</Empty>
+          <Empty>{pj.empty}</Empty>
         </div>
       ) : (
         <div>
@@ -568,7 +578,7 @@ function Projects({ o }: { o: O }) {
                 <div className="mb-[7px] flex min-w-0 items-center gap-2">
                   <span aria-hidden className="h-2 w-2 shrink-0 rounded-mark" style={{ background: p.color ?? "var(--wb-muted)" }} />
                   <span className="shrink-0 text-heading font-semibold">{p.name}</span>
-                  <span className="truncate font-mono text-[11.5px] text-muted">{p.repositories.join(" · ") || "저장소 없음"}</span>
+                  <span className="truncate font-mono text-[11.5px] text-muted">{p.repositories.join(" · ") || t.common.noRepos}</span>
                   <span className="ml-auto shrink-0 font-mono text-ui font-medium">{percent(byStatus.done, total)}%</span>
                 </div>
                 <ProgressBar counts={byStatus} />
@@ -576,14 +586,14 @@ function Projects({ o }: { o: O }) {
                   <span>
                     {total > 0 ? (
                       <>
-                        완료 <b className="font-mono font-medium text-ink-soft">{byStatus.done}/{total}</b>
+                        {pj.done} <b className="font-mono font-medium text-ink-soft">{byStatus.done}/{total}</b>
                       </>
                     ) : (
-                      "이슈 없음"
+                      pj.noIssues
                     )}{" "}
-                    · 열린 PR <b className="font-mono font-medium text-ink-soft">{openPullRequests}</b>
+                    {pj.openPrs} <b className="font-mono font-medium text-ink-soft">{openPullRequests}</b>
                   </span>
-                  <span>{latestNote ? `회의 ${relativeDays(latestNote.heldAt)}` : "회의 없음"}</span>
+                  <span>{latestNote ? pj.meeting(fmt.relativeDays(latestNote.heldAt)) : pj.noMeeting}</span>
                 </div>
               </Link>
             );
@@ -595,8 +605,8 @@ function Projects({ o }: { o: O }) {
 
       {o.milestones === null && (
         <p className="m-3.5 rounded-control border border-dashed border-rule-strong px-3 py-2 text-meta text-muted">
-          <b className="mr-1.5 font-semibold text-ink-soft">마일스톤</b>
-          GitHub 마일스톤을 가져오면 마감일과 진행률이 여기에 보입니다.
+          <b className="mr-1.5 font-semibold text-ink-soft">{pj.milestones}</b>
+          {pj.milestonesHint}
         </p>
       )}
     </>,
@@ -604,6 +614,8 @@ function Projects({ o }: { o: O }) {
 }
 
 function Sprint({ sprint }: { sprint: NonNullable<Overview["sprint"]> }) {
+  const t = useT();
+  const sp = t.overview.sprint;
   const days = sprintCalendar(sprint.startDate, sprint.endDate);
   const todayIndex = days.findIndex((d) => d.today);
   const s = sprint.byStatus;
@@ -621,7 +633,7 @@ function Sprint({ sprint }: { sprint: NonNullable<Overview["sprint"]> }) {
         </div>
         <div className="whitespace-nowrap font-mono text-[13px] font-medium">
           {sprint.daysLeft}
-          <small className="ml-0.5 font-sans text-meta font-normal text-muted">일 남음</small>
+          <small className="ml-0.5 font-sans text-meta font-normal text-muted">{sp.daysLeft(sprint.daysLeft)}</small>
         </div>
       </div>
       {days.length > 0 && (
@@ -629,7 +641,7 @@ function Sprint({ sprint }: { sprint: NonNullable<Overview["sprint"]> }) {
           className="mb-2.5 grid gap-0.5"
           style={{ gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))` }}
           role="img"
-          aria-label={todayIndex >= 0 ? `${days.length}일 중 ${todayIndex + 1}일째` : `${days.length}일 주기`}
+          aria-label={todayIndex >= 0 ? sp.dayOf(todayIndex + 1, days.length) : sp.length(days.length)}
         >
           {days.map((d) => (
             <i
@@ -643,10 +655,8 @@ function Sprint({ sprint }: { sprint: NonNullable<Overview["sprint"]> }) {
       )}
       <ProgressBar counts={s} />
       <div className="mt-1.5 flex flex-wrap justify-between gap-x-2.5 gap-y-0.5 text-meta text-muted">
-        <span className="font-mono">{progressLine(s)}</span>
-        <span>
-          리뷰 중 {s.inReview} · 진행 중 {s.inProgress}
-        </span>
+        <span className="font-mono">{progressLine(s, t)}</span>
+        <span>{sp.reviewAndProgress(s.inReview, s.inProgress)}</span>
       </div>
     </Link>
   );
@@ -656,14 +666,17 @@ function Sprint({ sprint }: { sprint: NonNullable<Overview["sprint"]> }) {
 
 function ActionItems({ o, myLogin }: { o: O; myLogin: string | null }) {
   const { open } = useIssuePanel();
+  const t = useT();
+  const fmt = useFormat();
+  const ac = t.overview.actions;
   const card = (body: React.ReactNode) => (
     <Card
       id="actions"
-      title="회의에서 나온 할 일"
-      hint="최근 14일"
+      title={ac.title}
+      hint={ac.hint}
       action={
         <Link href="/notes" className="inline-flex items-center gap-1.5 hover:text-ink">
-          회의 노트 <Kbd>g n</Kbd>
+          {ac.notes} <Kbd>g n</Kbd>
         </Link>
       }
     >
@@ -674,7 +687,7 @@ function ActionItems({ o, myLogin }: { o: O; myLogin: string | null }) {
   if (o.actionItems.length === 0)
     return card(
       <div className="p-3.5">
-        <Empty>최근 회의에서 남은 할 일이 없습니다.</Empty>
+        <Empty>{ac.empty}</Empty>
       </div>,
     );
 
@@ -687,11 +700,11 @@ function ActionItems({ o, myLogin }: { o: O; myLogin: string | null }) {
             {a.assignee ? (
               <span className="inline-flex items-center gap-1.5">
                 <Avatar person={a.assignee} size="sm" />
-                {personName(a.assignee)}
-                {a.assignee.githubLogin === myLogin && <span className="text-muted">(나)</span>}
+                {fmt.person(a.assignee)}
+                {a.assignee.githubLogin === myLogin && <span className="text-muted">{t.common.meParen}</span>}
               </span>
             ) : (
-              <span className="text-muted">담당자 없음</span>
+              <span className="text-muted">{t.common.unassigned}</span>
             )}
             {a.issue ? (
               <button
@@ -703,13 +716,13 @@ function ActionItems({ o, myLogin }: { o: O; myLogin: string | null }) {
                 <span className="font-mono group-hover:underline group-hover:underline-offset-3">
                   {a.issue.repositoryName} #{a.issue.number}
                 </span>
-                {STATUS_LABEL[a.issue.status]}
+                {t.status[a.issue.status]}
               </button>
             ) : (
-              <Flag>이슈 없음</Flag>
+              <Flag>{t.common.noIssue}</Flag>
             )}
             <Link href={`/notes/view?id=${a.note.id}`} className="link text-muted">
-              {a.note.title} · {formatDate(a.note.heldAt)}
+              {a.note.title} · {fmt.date(a.note.heldAt)}
             </Link>
           </span>
         </li>
@@ -720,19 +733,22 @@ function ActionItems({ o, myLogin }: { o: O; myLogin: string | null }) {
 
 /* 6. Activity log ----------------------------------------------------------------------------- */
 
-const KIND: Record<ActivityKind, { label: string; dot: string | null }> = {
-  comment: { label: "댓글", dot: null },
-  pr_opened: { label: "PR 열림", dot: STATUS_DOT.in_progress },
-  pr_review_requested: { label: "리뷰 요청", dot: STATUS_DOT.in_review },
-  pr_merged: { label: "병합", dot: STATUS_DOT.done },
-  issue_closed: { label: "완료", dot: STATUS_DOT.done },
-  meeting_note: { label: "회의 노트", dot: null },
+const KIND_DOT: Record<ActivityKind, string | null> = {
+  comment: null,
+  pr_opened: STATUS_DOT.in_progress,
+  pr_review_requested: STATUS_DOT.in_review,
+  pr_merged: STATUS_DOT.done,
+  issue_closed: STATUS_DOT.done,
+  meeting_note: null,
 };
 
 function Activity({ o }: { o: O }) {
   const { open } = useIssuePanel();
+  const t = useT();
+  const fmt = useFormat();
+  const av = t.overview.activity;
   const card = (body: React.ReactNode) => (
-    <Card id="feed" title="최근 흐름" hint="지난 3일">
+    <Card id="feed" title={av.title} hint={av.hint}>
       {body}
     </Card>
   );
@@ -740,13 +756,13 @@ function Activity({ o }: { o: O }) {
   if (o.activity.length === 0)
     return card(
       <div className="p-3.5">
-        <Empty>지난 3일 동안 움직임이 없습니다.</Empty>
+        <Empty>{av.empty}</Empty>
       </div>,
     );
 
   const days: { label: string; events: Overview["activity"] }[] = [];
   for (const e of o.activity) {
-    const label = dayLabel(e.at);
+    const label = fmt.dayLabel(e.at);
     const last = days[days.length - 1];
     if (last && last.label === label) last.events.push(e);
     else days.push({ label, events: [e] });
@@ -765,8 +781,8 @@ function Activity({ o }: { o: O }) {
         <li key={d.label}>
           <div className="px-3.5 pb-1 pt-2.5 font-mono text-[11px] text-muted">{d.label}</div>
           {d.events.map((e, i) => {
-            const k = KIND[e.kind];
-            const who = e.actor ? personName(e.actor) : null;
+            const dot = KIND_DOT[e.kind];
+            const who = e.actor ? fmt.person(e.actor) : null;
             return (
               <div
                 key={`${e.at}-${i}`}
@@ -776,7 +792,7 @@ function Activity({ o }: { o: O }) {
                   dateTime={e.at}
                   className="col-start-3 row-start-1 whitespace-nowrap pt-px font-mono text-[11.5px] text-muted min-[640px]:col-start-1"
                 >
-                  {relativeTime(e.at)}
+                  {fmt.relativeTime(e.at, true)}
                 </time>
                 <span className="col-start-1 row-start-1 pt-px min-[640px]:col-start-2">
                   {e.actor ? <Avatar person={e.actor} size="sm" /> : <span aria-hidden className="block h-[18px] w-[18px] rounded-full border border-dashed border-rule-strong" />}
@@ -784,16 +800,16 @@ function Activity({ o }: { o: O }) {
                 <div className="col-start-2 row-start-1 min-w-0 text-[13px] min-[640px]:col-start-3">
                   {e.kind !== "comment" && (
                     <span className="mr-1.5 inline-flex items-center gap-[5px] text-meta text-ink-soft">
-                      {k.dot && <Dot className={k.dot} />}
-                      {k.label}
+                      {dot && <Dot className={dot} />}
+                      {av.kind[e.kind]}
                     </span>
                   )}
                   {who && <b className="font-semibold">{who}</b>}{" "}
                   {e.kind === "comment" && e.issue && (
                     <>
-                      <span className="text-muted">님이 </span>
+                      <span className="text-muted">{av.commentBefore}</span>
                       {issueRef(e.issue)}
-                      <span className="text-muted">에 댓글</span>
+                      {av.commentAfter && <span className="text-muted">{av.commentAfter}</span>}
                       {e.snippet && <p className="mt-0.5 border-l-2 border-rule-strong pl-2 text-[12.5px] text-ink-soft">{e.snippet}</p>}
                     </>
                   )}

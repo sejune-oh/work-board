@@ -3,24 +3,22 @@
 import Link from "next/link";
 import { useEffect, useRef } from "react";
 import { useApi } from "@/lib/api";
-import { PRIORITY_LABEL, SIZE_LABEL, TYPE_LABEL, daysSince, formatDate, isStale, personName, relativeDays } from "@/lib/labels";
+import { useFormat, useT } from "@/lib/i18n";
+import { daysSince, isStale } from "@/lib/labels";
 import { useSettings } from "@/lib/me";
 import type { IssueDetail } from "@/lib/types";
 import { ErrorBox, Loading } from "./Feedback";
 import { Avatar, Count, Flag, Kbd, StatusBadge } from "./ui";
 import { useIssuePanel } from "./useIssuePanel";
 
-const PR_STATE: Record<IssueDetail["pullRequests"][number]["state"], string> = {
-  open: "열림",
-  closed: "닫힘",
-  merged: "병합됨",
-};
-
 /** Everything about one issue in one place: PRs, sub-issues, comments and the meetings it came from. */
 export function IssuePanel() {
   const { issueId, open, close } = useIssuePanel();
   const { data, error, loading } = useApi<IssueDetail>(issueId ? `/api/issues/${issueId}` : null);
   const settings = useSettings();
+  const t = useT();
+  const p = t.panel;
+  const fmt = useFormat();
   const closeRef = useRef<HTMLButtonElement>(null);
 
   const isOpen = issueId !== null;
@@ -47,11 +45,11 @@ export function IssuePanel() {
       <div className="fixed inset-0 z-30 bg-scrim" onClick={close} aria-hidden />
       <aside
         className="fixed inset-y-0 right-0 z-40 flex w-full max-w-[560px] flex-col overflow-y-auto bg-surface shadow-panel"
-        aria-label="이슈 상세"
+        aria-label={p.aria}
         role="dialog"
       >
         <div className="sticky top-0 z-10 flex h-12 shrink-0 items-center justify-between gap-3 border-b border-rule bg-surface px-4">
-          <span className="font-mono text-meta text-muted">{shown ? `${shown.repository.name} #${shown.number}` : "이슈"}</span>
+          <span className="font-mono text-meta text-muted">{shown ? `${shown.repository.name} #${shown.number}` : p.issue}</span>
           <button
             ref={closeRef}
             type="button"
@@ -59,7 +57,7 @@ export function IssuePanel() {
             aria-keyshortcuts="Escape"
             className="inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-control border border-rule bg-surface px-2 text-meta text-ink-soft hover:border-rule-strong hover:text-ink"
           >
-            닫기 <Kbd>Esc</Kbd>
+            {p.close} <Kbd>Esc</Kbd>
           </button>
         </div>
 
@@ -71,79 +69,79 @@ export function IssuePanel() {
               <header>
                 {shown.parent && (
                   <button type="button" onClick={() => open(shown.parent!.id)} className="link mb-1.5 cursor-pointer text-left text-meta text-ink-soft">
-                    상위 일 · #{shown.parent.number} {shown.parent.title}
+                    {p.parent(shown.parent.number, shown.parent.title)}
                   </button>
                 )}
                 <h2 className="text-title font-semibold tracking-[-0.01em]">{shown.title}</h2>
                 <dl className="mt-4 grid grid-cols-[6.5rem_minmax(0,1fr)] overflow-hidden rounded-card border border-rule text-ui [&>dd]:flex [&>dd]:min-h-9 [&>dd]:items-center [&>dd]:border-t [&>dd]:border-rule [&>dd]:px-3 [&>dd]:py-1.5 [&>dt]:flex [&>dt]:items-center [&>dt]:border-t [&>dt]:border-rule [&>dt]:px-3 [&>dt]:py-1.5 [&>dt]:text-meta [&>dt:first-of-type]:border-t-0 [&>dd:first-of-type]:border-t-0">
-                  <dt className="text-muted">상태</dt>
+                  <dt className="text-muted">{p.status}</dt>
                   <dd className="flex flex-wrap items-center gap-2">
                     <StatusBadge status={shown.status} />
-                    {urgent && <Flag fill>긴급</Flag>}
-                    {isStale(shown) && <Flag>{daysSince(shown.updatedAt)}일째 멈춤</Flag>}
+                    {urgent && <Flag fill>{t.priority.urgent}</Flag>}
+                    {isStale(shown) && <Flag>{t.common.stalledFor(daysSince(shown.updatedAt))}</Flag>}
                   </dd>
-                  <dt className="text-muted">담당자</dt>
+                  <dt className="text-muted">{p.assignees}</dt>
                   <dd className="flex flex-wrap items-center gap-3">
                     {shown.assignees.length ? (
                       shown.assignees.map((a) => (
                         <span key={a.githubUserId} className="inline-flex items-center gap-1.5">
                           <Avatar person={a} size="sm" />
-                          {personName(a)}
+                          {fmt.person(a)}
                         </span>
                       ))
                     ) : shown.state === "open" ? (
-                      <span className="text-accent">담당자 없음</span>
+                      <span className="text-accent">{t.common.unassigned}</span>
                     ) : (
-                      <span className="text-muted">없음</span>
+                      <span className="text-muted">{t.common.none}</span>
                     )}
                   </dd>
                   {shown.issueType && (
                     <>
-                      <dt className="text-muted">종류</dt>
-                      <dd>{TYPE_LABEL[shown.issueType] ?? shown.issueType}</dd>
+                      <dt className="text-muted">{p.type}</dt>
+                      <dd>{fmt.issueType(shown.issueType)}</dd>
                     </>
                   )}
                   {settings.sprintsEnabled && shown.sprint && (
                     <>
-                      <dt className="text-muted">주기</dt>
+                      <dt className="text-muted">{p.sprint}</dt>
                       <dd>{shown.sprint.name}</dd>
                     </>
                   )}
                   {settings.priorityEnabled && shown.priority && shown.priority !== "urgent" && (
                     <>
-                      <dt className="text-muted">우선순위</dt>
-                      <dd>{PRIORITY_LABEL[shown.priority]}</dd>
+                      <dt className="text-muted">{p.priority}</dt>
+                      <dd>{t.priority[shown.priority]}</dd>
                     </>
                   )}
                   {settings.sizeEnabled && shown.size && (
                     <>
-                      <dt className="text-muted">크기</dt>
-                      <dd>{SIZE_LABEL[shown.size]}</dd>
+                      <dt className="text-muted">{p.size}</dt>
+                      <dd>{t.size[shown.size]}</dd>
                     </>
                   )}
-                  <dt className="text-muted">마지막 활동</dt>
-                  <dd className="font-mono text-meta">{relativeDays(shown.updatedAt)}</dd>
+                  <dt className="text-muted">{p.lastActivity}</dt>
+                  <dd className="font-mono text-meta">{fmt.relativeDays(shown.updatedAt)}</dd>
                 </dl>
               </header>
 
               {shown.body && <p className="whitespace-pre-wrap text-body text-ink-soft">{shown.body}</p>}
 
-              <Section title="연결된 PR" count={shown.pullRequests.length}>
+              <Section title={p.pullRequests} count={shown.pullRequests.length}>
                 {shown.pullRequests.map((pr) => (
                   <li key={pr.id} className="flex justify-between gap-3 py-2 text-ui">
                     <span className="truncate">
                       <span className="font-mono text-meta text-muted">#{pr.number}</span> {pr.title}
                     </span>
                     <span className="shrink-0 text-meta text-muted">
-                      {PR_STATE[pr.state]}
-                      {pr.reviewRequested && pr.state === "open" ? " · 리뷰 요청" : ""}
-                      {pr.draft ? " · 초안" : ""}
+                      {p.prState[pr.state]}
+                      {pr.reviewRequested && pr.state === "open" ? p.reviewRequested : ""}
+                      {pr.draft ? p.draft : ""}
                     </span>
                   </li>
                 ))}
               </Section>
 
-              <Section title="하위 일" count={shown.children.length}>
+              <Section title={p.children} count={shown.children.length}>
                 {shown.children.map((c) => (
                   <li key={c.id}>
                     <button
@@ -163,22 +161,22 @@ export function IssuePanel() {
                 ))}
               </Section>
 
-              <Section title="이 일이 나온 회의" count={shown.meetingNotes.length}>
+              <Section title={p.meetings} count={shown.meetingNotes.length}>
                 {shown.meetingNotes.map((n) => (
                   <li key={n.id} className="py-2 text-ui">
                     <Link href={`/notes/view?id=${n.id}`} className="link">
                       {n.title}
                     </Link>{" "}
-                    <span className="font-mono text-meta text-muted">{formatDate(n.heldAt)}</span>
+                    <span className="font-mono text-meta text-muted">{fmt.date(n.heldAt)}</span>
                   </li>
                 ))}
               </Section>
 
-              <Section title="대화" count={shown.comments.length} divided={false}>
+              <Section title={p.conversation} count={shown.comments.length} divided={false}>
                 {shown.comments.map((c) => (
                   <li key={c.id} className="border-l-2 border-rule-strong py-0.5 pl-3 text-ui">
                     <div className="mb-1 text-meta text-muted">
-                      <span className="font-medium text-ink-soft">{personName(c.author)}</span> · <span className="font-mono">{relativeDays(c.createdAt)}</span>
+                      <span className="font-medium text-ink-soft">{fmt.person(c.author)}</span> · <span className="font-mono">{fmt.relativeDays(c.createdAt)}</span>
                     </div>
                     <p className="whitespace-pre-wrap text-ink-soft">{c.body}</p>
                   </li>
@@ -193,13 +191,14 @@ export function IssuePanel() {
 }
 
 function Section({ title, count, divided = true, children }: { title: string; count: number; divided?: boolean; children: React.ReactNode }) {
+  const t = useT();
   return (
     <section>
       <h3 className="mb-1 flex items-center gap-2 border-b border-rule pb-1.5 text-heading font-semibold">
         {title} <Count n={count} />
       </h3>
       {count === 0 ? (
-        <p className="text-meta text-muted">없음</p>
+        <p className="text-meta text-muted">{t.common.none}</p>
       ) : (
         <ul className={divided ? "divide-y divide-rule" : "flex flex-col gap-3"}>{children}</ul>
       )}

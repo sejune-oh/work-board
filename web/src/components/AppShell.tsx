@@ -4,31 +4,34 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { ApiError } from "@/lib/api";
+import { type Dict, useT } from "@/lib/i18n";
 import { useMe } from "@/lib/me";
 import { ErrorBox, Loading } from "./Feedback";
 import { IssuePanel } from "./IssuePanel";
+import { LangToggle } from "./LangToggle";
 import { StartScreen } from "./StartScreen";
 import { ThemeToggle } from "./ThemeToggle";
 import { Kbd } from "./ui";
 import { UserPicker } from "./UserPicker";
 import { useShortcuts } from "./useShortcuts";
 
-const NAV = [
-  { href: "/", label: "개요", key: "o" },
-  { href: "/me", label: "내 작업", key: "m" },
-  { href: "/people", label: "사람별 보드", key: "p" },
-  { href: "/projects", label: "프로젝트별 보드", key: "b" },
-  { href: "/notes", label: "회의 노트", key: "n" },
-  { href: "/settings", label: "설정", key: "s" },
+const NAV: { href: string; label: keyof Dict["nav"]; key: string }[] = [
+  { href: "/", label: "overview", key: "o" },
+  { href: "/me", label: "me", key: "m" },
+  { href: "/people", label: "people", key: "p" },
+  { href: "/projects", label: "projects", key: "b" },
+  { href: "/notes", label: "notes", key: "n" },
+  { href: "/settings", label: "settings", key: "s" },
 ];
 
 function isActive(pathname: string, href: string) {
   return href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`);
 }
 
-function screenLabel(pathname: string) {
-  if (pathname.startsWith("/search")) return "검색";
-  return NAV.find((n) => isActive(pathname, n.href))?.label ?? "업무 보드";
+function screenLabel(pathname: string, t: Dict) {
+  if (pathname.startsWith("/search")) return t.nav.search;
+  const item = NAV.find((n) => isActive(pathname, n.href));
+  return item ? t.nav[item.label] : t.app.title;
 }
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -37,6 +40,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [q, setQ] = useState("");
   const searchRef = useRef<HTMLInputElement>(null);
   const me = useMe();
+  const t = useT();
   const authError = me.error instanceof ApiError && me.error.status === 401 ? me.error : null;
   const needsUser = authError !== null;
   const org = me.data?.tenant.githubOrgLogin ?? null;
@@ -57,12 +61,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             {org ? org.slice(0, 2) : "wb"}
           </span>
           <span className="min-w-0 leading-tight">
-            <span className="block truncate text-[13.5px] font-semibold">{org ?? "업무 보드"}</span>
-            <span className="block font-mono text-[11px] text-muted">{org ? "업무 보드" : "조직 선택 전"}</span>
+            <span className="block truncate text-[13.5px] font-semibold">{org ?? t.app.title}</span>
+            <span className="block font-mono text-[11px] text-muted">{org ? t.app.title : t.app.noOrg}</span>
           </span>
         </Link>
-        <nav aria-label="화면">
-          <p className="px-2 pb-1 font-mono text-[11px] text-muted">화면</p>
+        <nav aria-label={t.nav.screens}>
+          <p className="px-2 pb-1 font-mono text-[11px] text-muted">{t.nav.screens}</p>
           <ul className="flex flex-col gap-px">
             {NAV.map((item) => {
               const active = isActive(pathname, item.href);
@@ -76,7 +80,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       active ? "bg-sunken font-semibold text-ink" : "font-medium text-ink-soft hover:bg-hover hover:text-ink"
                     }`}
                   >
-                    {item.label}
+                    {t.nav[item.label]}
                     <Kbd className="ml-auto opacity-0 transition-opacity duration-[120ms] group-hover:opacity-100 group-focus-visible:opacity-100">
                       g {item.key}
                     </Kbd>
@@ -88,10 +92,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </nav>
         <div className="mt-auto border-t border-rule px-2 pt-2 font-mono text-[11px] leading-relaxed text-muted">
           <p>
-            <Kbd>/</Kbd> 검색 · <Kbd>j</Kbd> <Kbd>k</Kbd> 이동
+            <Kbd>/</Kbd> {t.shell.hintSearch} · <Kbd>j</Kbd> <Kbd>k</Kbd> {t.shell.hintMove}
           </p>
           <p className="mt-1">
-            <Kbd>Enter</Kbd> 열기 · <Kbd>Esc</Kbd> 닫기
+            <Kbd>Enter</Kbd> {t.shell.hintOpen} · <Kbd>Esc</Kbd> {t.shell.hintClose}
           </p>
         </div>
       </aside>
@@ -100,7 +104,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <header className="sticky top-0 z-20 flex h-12 items-center gap-3 border-b border-rule bg-surface px-3 min-[900px]:px-6">
           <span className="hidden whitespace-nowrap font-mono text-meta text-muted min-[900px]:inline">
             {org && <>{org} / </>}
-            <b className="font-medium text-ink">{screenLabel(pathname)}</b>
+            <b className="font-medium text-ink">{screenLabel(pathname, t)}</b>
           </span>
           <form
             role="search"
@@ -120,20 +124,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               value={q}
               onChange={(e) => setQ(e.target.value)}
               onKeyDown={(e) => e.key === "Escape" && e.currentTarget.blur()}
-              placeholder="이슈, 댓글, 회의 노트 검색"
-              aria-label="검색"
+              placeholder={t.shell.searchPlaceholder}
+              aria-label={t.shell.searchLabel}
               aria-keyshortcuts="/"
               className="w-full min-w-0 bg-transparent text-ink outline-none placeholder:text-muted"
             />
             <Kbd className="hidden sm:inline-block">/</Kbd>
           </form>
           <div className="ml-auto flex items-center gap-2">
+            <LangToggle />
             <ThemeToggle />
             {!needsUser && <UserPicker />}
           </div>
         </header>
         <nav
-          aria-label="화면"
+          aria-label={t.nav.screens}
           className="flex gap-0.5 overflow-x-auto border-b border-rule bg-surface px-3 py-1.5 [scrollbar-width:none] min-[900px]:hidden"
         >
           {NAV.map((item) => {
@@ -147,7 +152,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   active ? "bg-sunken font-semibold text-ink" : "text-ink-soft"
                 }`}
               >
-                {item.label}
+                {t.nav[item.label]}
               </Link>
             );
           })}

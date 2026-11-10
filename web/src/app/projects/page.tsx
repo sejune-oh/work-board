@@ -8,7 +8,8 @@ import { StatusColumns } from "@/components/StatusColumns";
 import { PageHeader, ProgressBar, SectionHead, progressLine } from "@/components/ui";
 import { useApi } from "@/lib/api";
 import { NO_FILTERS, applyFilters, hasFilters, issuesQuery, readFilters } from "@/lib/filters";
-import { STATUS_ORDER, formatDate, isCanceled, percent, personName } from "@/lib/labels";
+import { useFormat, useT } from "@/lib/i18n";
+import { STATUS_ORDER, isCanceled, percent } from "@/lib/labels";
 import type { BoardIssue, MeetingNoteSummary, Member, Project, StatusCounts } from "@/lib/types";
 
 function countByStatus(issues: BoardIssue[]): StatusCounts {
@@ -25,6 +26,9 @@ function countByStatus(issues: BoardIssue[]): StatusCounts {
 
 export default function ProjectsBoardPage() {
   const router = useRouter();
+  const t = useT();
+  const pt = t.projects;
+  const fmt = useFormat();
   const params = useSearchParams();
   const selectedId = params.get("project");
   const filters = readFilters(params);
@@ -39,8 +43,8 @@ export default function ProjectsBoardPage() {
 
   const error = projects.error ?? all.error ?? notes.error;
   const header = (
-    <PageHeader meta="보드" title="프로젝트별 보드">
-      프로젝트는 저장소 묶음입니다. 진행률은 그 프로젝트의 모든 이슈 기준입니다.
+    <PageHeader meta={t.board.meta} title={pt.title}>
+      {pt.lead}
     </PageHeader>
   );
   if (error)
@@ -67,10 +71,10 @@ export default function ProjectsBoardPage() {
     const qs = next.toString();
     router.push(qs ? `/projects?${qs}` : "/projects", { scroll: false });
   };
-  const sprintName = (id: string) => all.data!.find((i) => i.sprint?.id === id)?.sprint?.name ?? "주기";
+  const sprintName = (id: string) => all.data!.find((i) => i.sprint?.id === id)?.sprint?.name;
   const memberName = (login: string) => {
     const m = members.data?.find((x) => x.githubLogin === login);
-    return m ? personName(m) : login;
+    return m ? fmt.person(m) : login;
   };
 
   const stats = projects.data.map((p) => {
@@ -86,12 +90,12 @@ export default function ProjectsBoardPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <PageHeader meta="보드" title="프로젝트별 보드">
+      <PageHeader meta={t.board.meta} title={pt.title}>
         {stats.length === 0
-          ? "프로젝트(저장소 묶음)가 없습니다. 설정에서 만드세요."
+          ? pt.none
           : leading
-            ? `프로젝트 ${stats.length}개 중 ${leading.project.name}이(가) ${leading.pct}%로 가장 앞서 있습니다.`
-            : `프로젝트 ${stats.length}개에 아직 이슈가 없습니다.`}
+            ? pt.leading(stats.length, leading.project.name, leading.pct)
+            : pt.noIssues(stats.length)}
       </PageHeader>
 
       {stats.length > 0 && (
@@ -112,19 +116,19 @@ export default function ProjectsBoardPage() {
                 <div className="mb-2 flex min-w-0 items-center gap-2">
                   <span aria-hidden className="h-2 w-2 shrink-0 rounded-mark" style={{ background: p.color ?? "var(--wb-muted)" }} />
                   <h2 className="shrink-0 text-heading font-semibold">{p.name}</h2>
-                  <span className="truncate font-mono text-[11.5px] text-muted">{p.repositories.map((r) => r.name).join(" · ") || "저장소 없음"}</span>
+                  <span className="truncate font-mono text-[11.5px] text-muted">{p.repositories.map((r) => r.name).join(" · ") || t.common.noRepos}</span>
                   <span className="ml-auto shrink-0 font-mono text-ui font-medium">{pct}%</span>
                 </div>
                 <ProgressBar counts={counts} />
                 <p className="mt-1.5 text-meta text-muted">
-                  {total > 0 ? progressLine(counts) : ""}
-                  {total > 0 && ` · 진행 중 ${counts.inProgress} · 리뷰 중 ${counts.inReview} · 할 일 ${counts.todo}`}
+                  {total > 0 ? progressLine(counts, t) : ""}
+                  {total > 0 && pt.breakdown(counts.inProgress, counts.inReview, counts.todo)}
                 </p>
                 {recentNotes.length > 0 && (
                   <ul className="mt-2 border-t border-rule pt-1.5 text-meta text-muted">
                     {recentNotes.map((n) => (
                       <li key={n.id} className="truncate">
-                        회의 · {n.title} · {formatDate(n.heldAt)}
+                        {pt.meeting(n.title, fmt.date(n.heldAt))}
                       </li>
                     ))}
                   </ul>
@@ -138,12 +142,12 @@ export default function ProjectsBoardPage() {
       {showBoard && (
         <section className="mt-2 flex flex-col gap-3">
           <SectionHead
-            hint={selected ? "프로젝트" : "필터"}
-            title={selected ? selected.name : "조건에 맞는 일"}
+            hint={selected ? pt.project : pt.filter}
+            title={selected ? selected.name : t.board.matching}
             action={
               selected && (
                 <Link href={`/notes?project=${selected.id}`} className="link text-ink-soft">
-                  이 프로젝트의 회의 노트 →
+                  {pt.notesLink}
                 </Link>
               )
             }
@@ -154,7 +158,7 @@ export default function ProjectsBoardPage() {
           ) : !boardIssues ? (
             <Loading />
           ) : boardIssues.length === 0 ? (
-            <Empty>이 조건에 맞는 일이 없습니다.</Empty>
+            <Empty>{t.board.noMatch}</Empty>
           ) : (
             <StatusColumns issues={boardIssues} statuses={filters.statuses.length ? filters.statuses : STATUS_ORDER} />
           )}

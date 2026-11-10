@@ -2,12 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { type DevIdentity, getDevIdentity, setDevIdentity, useApi } from "@/lib/api";
+import { useT } from "@/lib/i18n";
 import type { DevUser } from "@/lib/types";
 
 const optionValue = (u: DevUser) => `${u.tenantId}/${u.githubLogin}`;
 
 /** Stand-in for GitHub login while everything runs locally. */
 export function UserPicker({ large = false }: { large?: boolean }) {
+  const t = useT();
   const { data, error } = useApi<DevUser[]>("/api/dev/users");
   const [current, setCurrent] = useState<DevIdentity | null>(null);
 
@@ -22,7 +24,7 @@ export function UserPicker({ large = false }: { large?: boolean }) {
 
   return (
     <label className={large ? "flex flex-col gap-2" : "flex items-center gap-2 text-ui"}>
-      <span className={large ? "font-mono text-meta text-muted" : "hidden text-meta text-muted sm:inline"}>개발용 사용자</span>
+      <span className={large ? "font-mono text-meta text-muted" : "hidden text-meta text-muted sm:inline"}>{t.userPicker.label}</span>
       <select
         className={
           large
@@ -35,7 +37,7 @@ export function UserPicker({ large = false }: { large?: boolean }) {
           setDevIdentity(user ? { login: user.githubLogin, tenantId: user.tenantId } : null);
         }}
       >
-        <option value="">{error ? "사용자 목록을 불러오지 못했습니다" : "선택하세요"}</option>
+        <option value="">{error ? t.userPicker.loadFailed : t.userPicker.placeholder}</option>
         {data?.map((u) => (
           <option key={optionValue(u)} value={optionValue(u)}>
             {u.displayName ?? u.githubLogin} ({u.tenantLogin})

@@ -2,18 +2,21 @@
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { type BoardFilters, type FilterKey, FILTER_KEYS } from "@/lib/filters";
-import { STATUS_DOT, STATUS_LABEL, STALE_DAYS } from "@/lib/labels";
+import { useT } from "@/lib/i18n";
+import { STATUS_DOT, STALE_DAYS } from "@/lib/labels";
 import type { Status } from "@/lib/types";
 import { Dot } from "./ui";
 
 type Props = {
   filters: BoardFilters;
   personName?: (login: string) => string;
-  sprintName?: (id: string) => string;
+  sprintName?: (id: string) => string | undefined;
 };
 
 /** Active board filters as removable chips; nothing renders when no filter is on. */
-export function FilterChips({ filters, personName = (l) => l, sprintName = () => "주기" }: Props) {
+export function FilterChips({ filters, personName = (l) => l, sprintName }: Props) {
+  const t = useT();
+  const f = t.filters;
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
@@ -38,31 +41,31 @@ export function FilterChips({ filters, personName = (l) => l, sprintName = () =>
       label: (
         <>
           <Dot className={STATUS_DOT[s]} />
-          {STATUS_LABEL[s]}
+          {t.status[s]}
         </>
       ),
-      title: `${STATUS_LABEL[s]} 필터 빼기`,
+      title: f.remove(t.status[s]),
       onRemove: () => removeStatus(s),
     })),
   ];
   if (filters.stale)
-    chips.push({ key: "stale", label: `${STALE_DAYS}일 넘게 멈춤`, title: "멈춤 필터 빼기", onRemove: () => removeKey("stale") });
+    chips.push({ key: "stale", label: f.stale(STALE_DAYS), title: f.removeStale, onRemove: () => removeKey("stale") });
   if (filters.doneThisWeek)
-    chips.push({ key: "doneSince", label: "이번 주 완료", title: "이번 주 완료 필터 빼기", onRemove: () => removeKey("doneSince") });
+    chips.push({ key: "doneSince", label: f.doneThisWeek, title: f.remove(f.doneThisWeek), onRemove: () => removeKey("doneSince") });
   if (filters.person) {
     const name = personName(filters.person);
-    chips.push({ key: "person", label: `담당 ${name}`, title: `${name} 필터 빼기`, onRemove: () => removeKey("person") });
+    chips.push({ key: "person", label: f.person(name), title: f.remove(name), onRemove: () => removeKey("person") });
   }
   if (filters.sprint) {
-    const name = sprintName(filters.sprint);
-    chips.push({ key: "sprint", label: `주기 ${name}`, title: `${name} 필터 빼기`, onRemove: () => removeKey("sprint") });
+    const name = sprintName?.(filters.sprint) ?? f.sprintFallback;
+    chips.push({ key: "sprint", label: f.sprint(name), title: f.remove(name), onRemove: () => removeKey("sprint") });
   }
 
   if (chips.length === 0) return null;
 
   return (
-    <div className="flex flex-wrap items-center gap-2" aria-label="적용된 필터">
-      <span className="font-mono text-meta text-muted">필터</span>
+    <div className="flex flex-wrap items-center gap-2" aria-label={f.aria}>
+      <span className="font-mono text-meta text-muted">{f.label}</span>
       {chips.map((c) => (
         <button
           key={c.key}
@@ -84,7 +87,7 @@ export function FilterChips({ filters, personName = (l) => l, sprintName = () =>
           onClick={() => replace((n) => FILTER_KEYS.forEach((k) => n.delete(k)))}
           className="link cursor-pointer text-meta text-ink-soft"
         >
-          모두 지우기
+          {f.clearAll}
         </button>
       )}
     </div>

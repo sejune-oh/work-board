@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useT } from "@/lib/i18n";
 import { THEME_KEY } from "@/lib/theme";
 
 type Theme = "light" | "dark";
@@ -13,6 +14,7 @@ function currentTheme(): Theme {
 
 /** Two-way switch that pins a theme and remembers it; until one is picked, the OS setting wins. */
 export function ThemeToggle() {
+  const t = useT();
   const [theme, setTheme] = useState<Theme | null>(null);
 
   useEffect(() => {
@@ -34,12 +36,12 @@ export function ThemeToggle() {
   };
 
   const options: { value: Theme; icon: string; label: string }[] = [
-    { value: "light", icon: "☼", label: "밝게" },
-    { value: "dark", icon: "☾", label: "어둡게" },
+    { value: "light", icon: "☼", label: t.theme.light },
+    { value: "dark", icon: "☾", label: t.theme.dark },
   ];
 
   return (
-    <div role="group" aria-label="밝기" className="inline-flex shrink-0 overflow-hidden rounded-control border border-rule">
+    <div role="group" aria-label={t.theme.group} className="inline-flex shrink-0 overflow-hidden rounded-control border border-rule">
       {options.map((o) => (
         <button
           key={o.value}

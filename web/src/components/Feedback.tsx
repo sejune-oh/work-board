@@ -1,17 +1,22 @@
-import { ApiError } from "@/lib/api";
+"use client";
 
-export function Loading({ label = "불러오는 중" }: { label?: string }) {
-  return <p className="px-3.5 py-4 text-ui text-muted">{label}…</p>;
+import { ApiError } from "@/lib/api";
+import { useT } from "@/lib/i18n";
+
+export function Loading({ label }: { label?: string }) {
+  const t = useT();
+  return <p className="px-3.5 py-4 text-ui text-muted">{label ?? t.common.loading}…</p>;
 }
 
 /** Errors are about the app, not the work, so they stay in ink: no vermilion here. */
 export function ErrorBox({ error }: { error: Error }) {
+  const t = useT();
   const message =
     error instanceof ApiError && error.status === 401
-      ? "오른쪽 위에서 개발용 사용자를 선택하세요."
+      ? t.errors.pickUser
       : error instanceof ApiError && error.status === 404
-        ? "찾을 수 없거나 볼 권한이 없습니다."
-        : "API 서버에 연결할 수 없습니다. server 폴더에서 API를 실행했는지 확인하세요.";
+        ? t.errors.notFound
+        : t.errors.noServer;
   return (
     <div role="alert" className="rounded-control border border-rule border-l-2 border-l-ink-soft bg-surface px-4 py-3 text-ui text-ink">
       {message}

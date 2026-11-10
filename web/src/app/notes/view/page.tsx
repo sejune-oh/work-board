@@ -6,15 +6,18 @@ import { ErrorBox, Loading } from "@/components/Feedback";
 import { useIssuePanel } from "@/components/useIssuePanel";
 import { Avatar, Card, Flag, PageHeader, StatusBadge } from "@/components/ui";
 import { useApi } from "@/lib/api";
-import { formatDate, personName } from "@/lib/labels";
+import { useFormat, useT } from "@/lib/i18n";
 import type { MeetingNote } from "@/lib/types";
 
 export default function MeetingNoteViewPage() {
   const id = useSearchParams().get("id");
   const { open } = useIssuePanel();
+  const t = useT();
+  const nt = t.notes;
+  const fmt = useFormat();
   const note = useApi<MeetingNote>(id ? `/api/meeting-notes/${id}` : null);
 
-  if (!id) return <p className="text-ui text-muted">회의 노트를 선택하세요.</p>;
+  if (!id) return <p className="text-ui text-muted">{nt.pick}</p>;
   if (note.error) return <ErrorBox error={note.error} />;
   if (!note.data) return <Loading />;
   const n = note.data;
@@ -23,21 +26,21 @@ export default function MeetingNoteViewPage() {
   return (
     <article className="flex max-w-[820px] flex-col gap-4">
       <Link href="/notes" className="link self-start text-meta text-ink-soft">
-        ← 회의 노트 목록
+        {nt.back}
       </Link>
-      <PageHeader meta={`${formatDate(n.heldAt)}${n.project ? ` · ${n.project.name}` : ""}`} title={n.title}>
-        참석 {n.attendees.length ? n.attendees.map(personName).join(", ") : "기록 없음"}
+      <PageHeader meta={`${fmt.date(n.heldAt)}${n.project ? ` · ${n.project.name}` : ""}`} title={n.title}>
+        {nt.attendees(n.attendees.length ? n.attendees.map(fmt.person).join(", ") : nt.noAttendees)}
       </PageHeader>
 
       <Card
-        title="할 일"
+        title={nt.actionItems}
         count={n.actionItems.length}
-        hint="회의에서 정한 것"
-        action={missing > 0 ? <span>이슈 없음 {missing}건</span> : null}
+        hint={nt.actionHint}
+        action={missing > 0 ? <span>{nt.missingCount(missing)}</span> : null}
         className="reveal mt-2 [animation-delay:30ms]"
       >
         {n.actionItems.length === 0 ? (
-          <p className="px-3.5 py-2.5 text-meta text-muted">이 회의에서 정한 할 일이 없습니다.</p>
+          <p className="px-3.5 py-2.5 text-meta text-muted">{nt.noActionItems}</p>
         ) : (
           <ul>
             {n.actionItems.map((a) => (
@@ -47,10 +50,10 @@ export default function MeetingNoteViewPage() {
                   {a.assignee ? (
                     <span className="inline-flex items-center gap-1.5">
                       <Avatar person={a.assignee} size="sm" />
-                      {personName(a.assignee)}
+                      {fmt.person(a.assignee)}
                     </span>
                   ) : (
-                    <span className="text-accent">담당자 없음</span>
+                    <span className="text-accent">{t.common.unassigned}</span>
                   )}
                   {a.issue ? (
                     <button
@@ -65,9 +68,9 @@ export default function MeetingNoteViewPage() {
                     </button>
                   ) : (
                     <>
-                      <Flag>이슈 없음</Flag>
-                      <span className="text-muted" title="쓰기 기능이 들어오면 여기서 이슈를 만듭니다">
-                        이슈로 만들기 (예정)
+                      <Flag>{t.common.noIssue}</Flag>
+                      <span className="text-muted" title={nt.createIssueTitle}>
+                        {nt.createIssue}
                       </span>
                     </>
                   )}
@@ -78,7 +81,7 @@ export default function MeetingNoteViewPage() {
         )}
       </Card>
 
-      <Card title="노트" hint="기록" className="reveal [animation-delay:60ms]">
+      <Card title={nt.body} hint={nt.bodyHint} className="reveal [animation-delay:60ms]">
         <pre className="whitespace-pre-wrap break-keep p-4 font-sans text-body text-ink-soft">{n.bodyMd}</pre>
       </Card>
     </article>

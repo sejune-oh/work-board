@@ -7,7 +7,16 @@ namespace WorkBoard.Api.Infrastructure.Identity;
 // Reads members across all tenants on the sync (RLS-bypassing) connection. Identity only, never tenant data.
 public sealed class NpgsqlMemberLookup([FromKeyedServices(DataKeys.Sync)] NpgsqlDataSource syncSource) : IMemberLookup
 {
-    public async Task<IReadOnlyList<DevIdentity>> FindByLoginAsync(string githubLogin, CancellationToken ct)
+    public async Task<long?> FindUserIdByLoginAsync(string githubLogin, CancellationToken ct)
+    {
+        await using var conn = await syncSource.OpenConnectionAsync(ct);
+        var ids = (await conn.QueryAsync<long>(new CommandDefinition(
+            "select distinct github_user_id from members where github_login = @githubLogin limit 2",
+            new { githubLogin }, cancellationToken: ct))).ToList();
+        return ids.Count == 1 ? ids[0] : null;
+    }
+
+    public async Task<IReadOnlyList<DevIdentity>> FindByUserIdAsync(long githubUserId, CancellationToken ct)
     {
         await using var conn = await syncSource.OpenConnectionAsync(ct);
         var rows = await conn.QueryAsync<IdentityRow>(new CommandDefinition("""
@@ -15,9 +24,9 @@ public sealed class NpgsqlMemberLookup([FromKeyedServices(DataKeys.Sync)] Npgsql
                    m.tenant_id, t.name as tenant_name
               from members m
               join tenants t on t.id = m.tenant_id
-             where m.github_login = @githubLogin
+             where m.github_user_id = @githubUserId
              order by t.name
-            """, new { githubLogin }, cancellationToken: ct));
+            """, new { githubUserId }, cancellationToken: ct));
 
         return rows
             .Select(row => new DevIdentity(

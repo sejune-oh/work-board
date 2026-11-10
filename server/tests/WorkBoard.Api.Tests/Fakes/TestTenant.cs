@@ -56,9 +56,9 @@ public sealed class TestTenant : IAsyncDisposable
         return (await conn.QuerySingleAsync<T>(sql, param));
     }
 
-    public async Task<(string Login, long UserId)> AddMemberAsync(string name)
+    public async Task<(string Login, long UserId)> AddMemberAsync(string name, long? existingUserId = null)
     {
-        var userId = Interlocked.Increment(ref _seq);
+        var userId = existingUserId ?? Interlocked.Increment(ref _seq);
         var login = $"{name}-{Suffix}";
         await ExecAsync(
             "insert into members (tenant_id, github_user_id, github_login, display_name) values (@tid, @userId, @login, @name)",

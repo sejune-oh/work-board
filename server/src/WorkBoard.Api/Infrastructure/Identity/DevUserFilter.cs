@@ -13,7 +13,11 @@ public sealed class DevUserFilter(IWebHostEnvironment env, IMemberLookup members
         if (!env.IsDevelopment() || login.Length == 0)
             return Unauthenticated();
 
-        var memberships = await members.FindByLoginAsync(login, http.RequestAborted);
+        var userId = await members.FindUserIdByLoginAsync(login, http.RequestAborted);
+        if (userId is null)
+            return Unauthenticated();
+
+        var memberships = await members.FindByUserIdAsync(userId.Value, http.RequestAborted);
         if (memberships.Count == 0)
             return Unauthenticated();
 

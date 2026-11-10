@@ -7,8 +7,10 @@ Base URL: `http://localhost:5080`. All JSON is camelCase. Times are ISO 8601 UTC
 Until GitHub login exists, the caller identifies itself with the `X-Dev-User: <githubLogin>` header
 and, optionally, `X-Dev-Tenant: <tenantId>`.
 
-- The API looks the login up across all tenants (sync role, bypasses RLS), then serves the request
-  as that member's tenant. A login can have one membership per tenant.
+- The API resolves the login to a `github_user_id` once (sync role, bypasses RLS), then finds the
+  memberships by that id across all tenants and serves the request as that member's tenant. A user
+  can have one membership per tenant. A login that matches members with different user ids is
+  treated as unknown.
 - One membership: `X-Dev-Tenant` is optional and ignored.
 - Several memberships: `X-Dev-Tenant` must equal one of the login's `tenantId` values, otherwise
   `401 {"error": "tenant_required"}`.

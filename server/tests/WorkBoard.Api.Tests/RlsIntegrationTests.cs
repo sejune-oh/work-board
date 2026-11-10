@@ -114,6 +114,32 @@ public class RlsIntegrationTests : IClassFixture<WebApplicationFactory<Program>>
     }
 
     [DbFact]
+    public async Task Renamed_login_still_resolves_the_same_user_in_both_tenants()
+    {
+        await using var first = await Fakes.TestTenant.CreateAsync(_factory);
+        await using var second = await Fakes.TestTenant.CreateAsync(_factory);
+        var (oldLogin, userId) = await first.AddMemberAsync("dual");
+        await second.AddMemberAsync("dual", userId);
+        var newLogin = "renamed-" + first.Suffix;
+        await first.ExecAsync("update members set github_login = @newLogin where github_user_id = @userId", new { newLogin, userId });
+        await second.ExecAsync("update members set github_login = @newLogin where github_user_id = @userId", new { newLogin, userId });
+
+        using var noTenant = ClientFor(newLogin);
+        using var inFirst = ClientFor(newLogin, first.Id.ToString());
+        using var inSecond = ClientFor(newLogin, second.Id.ToString());
+        using var stale = ClientFor(oldLogin, first.Id.ToString());
+
+        Assert.Equal(HttpStatusCode.Unauthorized, (await noTenant.GetAsync("/api/me")).StatusCode);
+        var meFirst = await inFirst.GetFromJsonAsync<JsonElement>("/api/me");
+        var meSecond = await inSecond.GetFromJsonAsync<JsonElement>("/api/me");
+        Assert.Equal(first.Id.ToString(), meFirst.GetProperty("tenant").GetProperty("id").GetString());
+        Assert.Equal(second.Id.ToString(), meSecond.GetProperty("tenant").GetProperty("id").GetString());
+        Assert.Equal(userId, meFirst.GetProperty("member").GetProperty("githubUserId").GetInt64());
+        Assert.Equal(newLogin, meSecond.GetProperty("member").GetProperty("githubLogin").GetString());
+        Assert.Equal(HttpStatusCode.Unauthorized, (await stale.GetAsync("/api/me")).StatusCode);
+    }
+
+    [DbFact]
     public async Task Dev_users_lists_one_entry_per_membership()
     {
         using var client = _factory.CreateClient();

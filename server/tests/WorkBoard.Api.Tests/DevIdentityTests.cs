@@ -21,16 +21,30 @@ public class DevIdentityTests
     {
         public List<string> Lookups { get; } = [];
 
-        public Task<IReadOnlyList<DevIdentity>> FindByLoginAsync(string githubLogin, CancellationToken ct)
+        public List<long> IdLookups { get; } = [];
+
+        public Task<long?> FindUserIdByLoginAsync(string githubLogin, CancellationToken ct)
         {
             Lookups.Add(githubLogin);
-            IReadOnlyList<DevIdentity> identities = githubLogin switch
+            long? id = githubLogin switch
             {
-                "haneul-dev" => [new DevIdentity(new Member(Guid.NewGuid(), 5001, "haneul-dev", "김하늘", null, "admin"), TenantId, "acme-health")],
-                "shared-dev" =>
+                "haneul-dev" => 5001,
+                "shared-dev" or "shared-dev-renamed" => 5100,
+                _ => null,
+            };
+            return Task.FromResult(id);
+        }
+
+        public Task<IReadOnlyList<DevIdentity>> FindByUserIdAsync(long githubUserId, CancellationToken ct)
+        {
+            IdLookups.Add(githubUserId);
+            IReadOnlyList<DevIdentity> identities = githubUserId switch
+            {
+                5001 => [new DevIdentity(new Member(Guid.NewGuid(), 5001, "haneul-dev", "김하늘", null, "admin"), TenantId, "acme-health")],
+                5100 =>
                 [
-                    new DevIdentity(new Member(Guid.NewGuid(), 5100, "shared-dev", null, null, "member"), TenantId, "acme-health"),
-                    new DevIdentity(new Member(Guid.NewGuid(), 5100, "shared-dev", null, null, "member"), GlobexId, "globex-labs"),
+                    new DevIdentity(new Member(Guid.NewGuid(), 5100, "shared-dev-renamed", null, null, "member"), TenantId, "acme-health"),
+                    new DevIdentity(new Member(Guid.NewGuid(), 5100, "shared-dev-renamed", null, null, "member"), GlobexId, "globex-labs"),
                 ],
                 _ => [],
             };
@@ -94,7 +108,21 @@ public class DevIdentityTests
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
         Assert.Equal(["nobody"], lookup.Lookups);
+        Assert.Empty(lookup.IdLookups);
         Assert.Empty(db.Events);
+    }
+
+    [Fact]
+    public async Task Login_is_resolved_to_a_user_id_once_and_the_rest_continues_by_id()
+    {
+        var (factory, lookup, _) = Create();
+        using var client = factory.CreateClient();
+
+        var response = await client.SendAsync(Get("/api/members", "haneul-dev"));
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(["haneul-dev"], lookup.Lookups);
+        Assert.Equal([5001L], lookup.IdLookups);
     }
 
     [Fact]

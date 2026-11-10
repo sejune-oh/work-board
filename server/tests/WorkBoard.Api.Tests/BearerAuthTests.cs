@@ -103,12 +103,13 @@ public class BearerAuthTests
         var factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
         {
             builder.UseEnvironment(environment);
-            if (configured)
-                builder.ConfigureAppConfiguration((_, cfg) => cfg.AddInMemoryCollection(new Dictionary<string, string?>
-                {
-                    ["Auth:Supabase:Url"] = SupabaseUrl,
-                    ["Auth:Supabase:ServiceRoleKey"] = "test-service-role-key",
-                }));
+            // Always set every key so a developer's appsettings.Local.json cannot leak into the test.
+            builder.ConfigureAppConfiguration((_, cfg) => cfg.AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Auth:Supabase:Url"] = configured ? SupabaseUrl : "",
+                ["Auth:Supabase:ServiceRoleKey"] = configured ? "test-service-role-key" : "",
+                ["Auth:Supabase:JwtSecret"] = "",
+            }));
             builder.ConfigureServices(services =>
             {
                 services.RemoveAll<IMemberLookup>();

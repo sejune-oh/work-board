@@ -60,14 +60,14 @@ public class BearerAuthTests
     {
         public List<Guid> Calls { get; } = [];
 
-        public Task<long?> FindGithubUserIdAsync(Guid authUserId, CancellationToken ct)
+        public Task<GithubProfile?> FindGithubProfileAsync(Guid authUserId, CancellationToken ct)
         {
             Calls.Add(authUserId);
             long? id = authUserId == SingleUser ? 5001
                 : authUserId == SharedUser ? 5100
                 : authUserId == LonelyUser ? 5999
                 : null;
-            return Task.FromResult(id);
+            return Task.FromResult(id is { } v ? new GithubProfile(v, "login" + v, null, null) : null);
         }
     }
 
@@ -460,6 +460,29 @@ public class AdminIdentityParsingTests
     {
         Assert.Equal(42, Parse("""{"identities":[{"provider":"github","identity_data":{"sub":"42"}}]}"""));
         Assert.Equal(43, Parse("""{"identities":[{"provider":"github","id":"43"}]}"""));
+    }
+
+    [Fact]
+    public void Reads_login_name_and_avatar_from_identity_data_only()
+    {
+        var profile = SupabaseAdminIdentitySource.ParseGithubProfile(System.Text.Json.JsonDocument.Parse("""
+            {"identities":[{"provider":"github","identity_data":{"provider_id":"7","user_name":"octo","full_name":"Octo Cat","avatar_url":"https://a.example/1.png"}}],
+             "user_metadata":{"user_name":"evil","full_name":"Evil"}}
+            """).RootElement);
+
+        Assert.Equal(new GithubProfile(7, "octo", "Octo Cat", "https://a.example/1.png"), profile);
+    }
+
+    [Fact]
+    public void Login_falls_back_to_preferred_username_and_is_null_when_absent()
+    {
+        var withPreferred = SupabaseAdminIdentitySource.ParseGithubProfile(System.Text.Json.JsonDocument.Parse(
+            """{"identities":[{"provider":"github","identity_data":{"sub":"8","preferred_username":"pref"}}]}""").RootElement);
+        var bare = SupabaseAdminIdentitySource.ParseGithubProfile(System.Text.Json.JsonDocument.Parse(
+            """{"identities":[{"provider":"github","id":"9"}]}""").RootElement);
+
+        Assert.Equal("pref", withPreferred?.Login);
+        Assert.Null(bare?.Login);
     }
 
     [Fact]

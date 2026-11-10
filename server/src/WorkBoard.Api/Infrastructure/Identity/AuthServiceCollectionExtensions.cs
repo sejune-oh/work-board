@@ -19,6 +19,7 @@ public static class AuthServiceCollectionExtensions
         services.AddHttpClient<IAuthIdentitySource, SupabaseAdminIdentitySource>(c => c.Timeout = TimeSpan.FromSeconds(10));
         services.AddSingleton<IAuthLinkStore, NpgsqlAuthLinkStore>();
         services.AddSingleton<IAuthLinkResolver, AuthLinkResolver>();
+        services.AddScoped<ICallerResolver, CallerResolver>();
         services.AddScoped<CurrentMemberFilter>();
         return services;
     }

@@ -24,6 +24,15 @@ export type Me = {
   settings: { sprintsEnabled: boolean; sizeEnabled: boolean; priorityEnabled: boolean };
 };
 
+/** POST /api/tenants body. */
+export type CreateTenantRequest = { name: string };
+
+/** POST /api/tenants 201 response. Errors: 401 unauthenticated, 400 invalid_name, 409 tenant_limit. */
+export type CreateTenantResult = {
+  tenant: { id: string; name: string };
+  member: Member;
+};
+
 export type GithubConnection = {
   id: string;
   accountId: number;

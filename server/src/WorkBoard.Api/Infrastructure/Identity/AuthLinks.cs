@@ -48,7 +48,7 @@ public sealed class AuthLinkResolver(IAuthLinkStore store, IAuthIdentitySource s
         var githubUserId = await store.FindAsync(authUserId, ct);
         if (githubUserId is null)
         {
-            githubUserId = await source.FindGithubUserIdAsync(authUserId, ct);
+            githubUserId = (await source.FindGithubProfileAsync(authUserId, ct))?.Id;
             if (githubUserId is null)
                 return null;
             await store.SaveAsync(authUserId, githubUserId.Value, ct);

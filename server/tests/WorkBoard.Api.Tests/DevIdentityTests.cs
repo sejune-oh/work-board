@@ -68,6 +68,7 @@ public class DevIdentityTests
             {
                 ["Auth:Supabase:Url"] = "https://test-project.supabase.example",
                 ["Auth:Supabase:ServiceRoleKey"] = "test-service-role-key",
+                ["Auth:Supabase:JwtSecret"] = "",
             }));
             builder.ConfigureServices(services =>
             {

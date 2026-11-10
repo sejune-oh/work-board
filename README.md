@@ -36,7 +36,7 @@ DB 포트는 다른 프로젝트와 겹치지 않도록 5434를 씁니다.
 
 ## 로그인 설정 (API)
 
-로컬에서는 `server/src/WorkBoard.Api/appsettings.Local.json`에 넣습니다. 이 파일은 `.gitignore`에 있어 커밋되지 않고, Development 환경에서만 읽습니다. 양식은 `appsettings.Local.example.json`을 복사해 씁니다. 배포 환경에서는 같은 이름의 환경 변수(`Auth__Supabase__Url` 등)로 넣습니다.
+로컬에서는 `server/src/WorkBoard.Api/appsettings.Local.json`에 넣습니다. 이 파일은 `.gitignore`에 있어 커밋되지 않고, Development 환경에서만 읽습니다. 양식은 `appsettings.Local.example.json`을 복사해 씁니다. 배포 환경에서는 같은 이름의 환경 변수(`Auth__Supabase__Url` 등)로 넣습니다. 개발 환경에서는 이 파일 값이 환경 변수보다 우선하고, 빌드·배포 결과물에는 복사되지 않습니다.
 
 | 이름 | 내용 |
 | --- | --- |

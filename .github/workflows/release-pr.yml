@@ -37,11 +37,13 @@ jobs:
           {
             echo "dev에 병합된 변경을 main으로 릴리스합니다. dev에 병합될 때마다 이 PR이 자동으로 열리거나 갱신됩니다."
             echo
+            echo "반드시 merge commit으로 병합합니다. squash나 rebase로 병합하면 dev와 main의 기록이 갈라집니다."
+            echo
             echo "### 포함된 변경"
             for sha in $(git rev-list --first-parent --reverse origin/main..origin/dev); do
               subject="$(git log -1 --format=%s "$sha")"
               if [[ "$subject" =~ ^Merge\ pull\ request\ \#([0-9]+) ]]; then
-                title="$(git log -1 --format=%b "$sha" | head -n1)"
+                title="$(git log -1 --format=%b "$sha" | sed -n 1p)"
                 echo "- #${BASH_REMATCH[1]} ${title}"
               else
                 echo "- ${subject} (${sha:0:7})"
@@ -55,7 +57,7 @@ jobs:
             echo "Updated release PR #$existing"
           else
             gh pr create --base main --head dev \
-              --title "release: dev to main ($(date -u +%F))" \
+              --title "release: dev to main" \
               --label release \
               --body-file release-body.md
           fi

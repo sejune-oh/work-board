@@ -5,6 +5,7 @@
 - 상시 브랜치는 `main`, `dev` 두 개. 둘 다 직접 push하지 않습니다.
 - 작업은 `feat/`, `fix/`, `hotfix/`, `chore/` 브랜치에서 하고 `dev`로 PR을 보냅니다.
 - `dev` → `main` 릴리스 PR은 `release-pr` 워크플로가 만듭니다. 손으로 만들지 않습니다.
+- 모든 PR은 merge commit으로 병합합니다(squash·rebase는 저장소 설정과 ruleset으로 막혀 있음).
 
 추가로 지킬 것:
 

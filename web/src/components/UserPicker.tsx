@@ -40,7 +40,7 @@ export function UserPicker({ large = false }: { large?: boolean }) {
         <option value="">{error ? t.userPicker.loadFailed : t.userPicker.placeholder}</option>
         {data?.map((u) => (
           <option key={optionValue(u)} value={optionValue(u)}>
-            {u.displayName ?? u.githubLogin} ({u.tenantLogin})
+            {u.displayName ?? u.githubLogin} ({u.tenantName})
           </option>
         ))}
       </select>

@@ -1,4 +1,5 @@
 using Dapper;
+using WorkBoard.Api.Features.Connections;
 using WorkBoard.Api.Features.Dev;
 using WorkBoard.Api.Features.Health;
 using WorkBoard.Api.Features.Issues;
@@ -33,6 +34,7 @@ if (app.Environment.IsDevelopment())
 var authed = app.MapGroup("/api").AddEndpointFilter<DevUserFilter>();
 authed.MapMe();
 authed.MapMembers();
+authed.MapConnections();
 authed.MapProjects();
 authed.MapIssues();
 authed.MapOverview();

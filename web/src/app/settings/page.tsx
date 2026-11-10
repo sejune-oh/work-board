@@ -25,7 +25,7 @@ export default function SettingsPage() {
 
   return (
     <div className="flex max-w-[720px] flex-col gap-4">
-      <PageHeader meta={me.data.tenant.githubOrgLogin} title={st.title}>
+      <PageHeader meta={me.data.tenant.name} title={st.title}>
         {st.lead}
       </PageHeader>
 

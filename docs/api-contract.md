@@ -7,8 +7,10 @@ Base URL: `http://localhost:5080`. All JSON is camelCase. Times are ISO 8601 UTC
 Until GitHub login exists, the caller identifies itself with the `X-Dev-User: <githubLogin>` header
 and, optionally, `X-Dev-Tenant: <tenantId>`.
 
-- The API looks the login up across all tenants (sync role, bypasses RLS), then serves the request
-  as that member's tenant. A login can have one membership per tenant.
+- The API resolves the login to a `github_user_id` once (sync role, bypasses RLS), then finds the
+  memberships by that id across all tenants and serves the request as that member's tenant. A user
+  can have one membership per tenant. A login that matches members with different user ids is
+  treated as unknown.
 - One membership: `X-Dev-Tenant` is optional and ignored.
 - Several memberships: `X-Dev-Tenant` must equal one of the login's `tenantId` values, otherwise
   `401 {"error": "tenant_required"}`.
@@ -31,6 +33,7 @@ first calls `select set_config('app.tenant_id', @tenantId, true)`. RLS policies 
 | GET | `/api/me` | dev user | `Me` |
 | GET | `/api/members` | dev user | `Member[]` |
 | GET | `/api/projects` | dev user | `Project[]` |
+| GET | `/api/connections` | dev user | `GithubConnection[]`, active first |
 | GET | `/api/overview` | dev user | `Overview` |
 | GET | `/api/issues` | dev user | `BoardIssue[]` |
 | GET | `/api/issues/{id}` | dev user | `IssueDetail` or 404 |
@@ -149,7 +152,7 @@ type Overview = {
 ```ts
 type DevUser = {
   githubLogin: string; githubUserId: number; displayName: string | null;
-  tenantId: string; tenantLogin: string;
+  tenantId: string; tenantName: string;
 };
 
 type Member = {
@@ -159,8 +162,13 @@ type Member = {
 
 type Me = {
   member: Member;
-  tenant: { id: string; githubOrgLogin: string };
+  tenant: { id: string; name: string };
   settings: { sprintsEnabled: boolean; sizeEnabled: boolean; priorityEnabled: boolean };
+};
+
+type GithubConnection = {
+  id: string; accountId: number; accountLogin: string; accountType: "organization" | "user";
+  repositorySelection: "all" | "selected" | null; createdAt: string; disconnectedAt: string | null;
 };
 
 type Project = { id: string; name: string; color: string | null; repositories: { id: string; name: string }[] };

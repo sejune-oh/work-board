@@ -6,7 +6,7 @@ export type DevUser = {
   githubUserId: number;
   displayName: string | null;
   tenantId: string;
-  tenantLogin: string;
+  tenantName: string;
 };
 
 export type Member = {
@@ -20,8 +20,18 @@ export type Member = {
 
 export type Me = {
   member: Member;
-  tenant: { id: string; githubOrgLogin: string };
+  tenant: { id: string; name: string };
   settings: { sprintsEnabled: boolean; sizeEnabled: boolean; priorityEnabled: boolean };
+};
+
+export type GithubConnection = {
+  id: string;
+  accountId: number;
+  accountLogin: string;
+  accountType: "organization" | "user";
+  repositorySelection: "all" | "selected" | null;
+  createdAt: string;
+  disconnectedAt: string | null;
 };
 
 export type Project = {

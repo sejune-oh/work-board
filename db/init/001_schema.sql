@@ -22,12 +22,30 @@ as $$ select nullif(current_setting('app.tenant_id', true), '')::uuid $$;
 
 -- Tenants and people ----------------------------------------------------------
 create table tenants (
-  id               uuid primary key default gen_random_uuid(),
-  github_org_id    bigint not null unique,
-  github_org_login text   not null,
-  installation_id  bigint,
-  created_at       timestamptz not null default now()
+  id         uuid primary key default gen_random_uuid(),
+  name       text not null,
+  created_at timestamptz not null default now()
 );
+
+-- A tenant connects GitHub through one or more accounts (organization or personal). installation_id
+-- stays null until the GitHub App is installed; before that, sync uses a token.
+create table github_connections (
+  id                   uuid primary key default gen_random_uuid(),
+  tenant_id            uuid not null references tenants(id) on delete cascade,
+  account_id           bigint not null,
+  account_login        text   not null,
+  account_type         text   not null check (account_type in ('organization', 'user')),
+  installation_id      bigint,
+  repository_selection text   check (repository_selection in ('all', 'selected')),
+  created_at           timestamptz not null default now(),
+  disconnected_at      timestamptz,
+  unique (tenant_id, id)
+);
+
+create unique index github_connections_active_account
+  on github_connections (account_id) where disconnected_at is null;
+create unique index github_connections_active_installation
+  on github_connections (installation_id) where installation_id is not null and disconnected_at is null;
 
 create table members (
   id             uuid primary key default gen_random_uuid(),
@@ -54,12 +72,14 @@ create table tenant_settings (
 create table repositories (
   id             uuid primary key default gen_random_uuid(),
   tenant_id      uuid not null references tenants(id) on delete cascade,
+  connection_id  uuid not null,
   github_repo_id bigint not null,
   name           text   not null,
   archived       boolean not null default false,
   unique (tenant_id, id),
   unique (tenant_id, github_repo_id),
-  unique (tenant_id, name)
+  unique (connection_id, name),
+  foreign key (tenant_id, connection_id) references github_connections (tenant_id, id)
 );
 
 create table issues (
@@ -270,7 +290,7 @@ do $$
 declare t text;
 begin
   foreach t in array array[
-    'members', 'tenant_settings', 'repositories', 'issues', 'issue_assignees', 'pull_requests',
+    'members', 'tenant_settings', 'github_connections', 'repositories', 'issues', 'issue_assignees', 'pull_requests',
     'issue_pull_requests', 'comments', 'projects', 'project_repositories', 'sprints', 'board_fields',
     'meeting_notes', 'meeting_attendees', 'meeting_action_items', 'ai_usage'
   ] loop
@@ -288,7 +308,7 @@ grant usage on schema public to workboard_app, workboard_sync;
 grant select, insert, update, delete on all tables in schema public to workboard_sync;
 grant usage, select on all sequences in schema public to workboard_app, workboard_sync;
 
-grant select on tenants, members, repositories, issues, issue_assignees, pull_requests,
+grant select on tenants, members, github_connections, repositories, issues, issue_assignees, pull_requests,
   issue_pull_requests, comments, issue_status to workboard_app;
 grant select, insert, update, delete on tenant_settings, projects, project_repositories, sprints,
   board_fields, meeting_notes, meeting_attendees, meeting_action_items to workboard_app;

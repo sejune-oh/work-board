@@ -4,7 +4,7 @@ using WorkBoard.Api.Infrastructure.Identity;
 
 namespace WorkBoard.Api.Features.Me;
 
-public sealed record TenantInfo(Guid Id, string GithubOrgLogin);
+public sealed record TenantInfo(Guid Id, string Name);
 
 public sealed record TenantSettingsDto(bool SprintsEnabled, bool SizeEnabled, bool PriorityEnabled);
 
@@ -23,7 +23,7 @@ public static class MeEndpoints
 
             return new MeResponse(
                 identity.Member,
-                new TenantInfo(identity.TenantId, identity.TenantLogin),
+                new TenantInfo(identity.TenantId, identity.TenantName),
                 new TenantSettingsDto(
                     settings?.SprintsEnabled ?? false,
                     settings?.SizeEnabled ?? false,

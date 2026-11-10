@@ -20,7 +20,7 @@ export const STATUS_DOT: Record<Status, string> = {
 export const TYPE_LABEL: Record<string, string> = {
   Epic: "큰 목표",
   Feature: "기능",
-  Task: "할 일",
+  Task: "작업",
   Bug: "버그",
 };
 

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { AppShell } from "@/components/AppShell";
+import { MeProvider } from "@/lib/me";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -13,7 +14,9 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     <html lang="ko">
       <body className="antialiased">
         <Suspense fallback={null}>
-          <AppShell>{children}</AppShell>
+          <MeProvider>
+            <AppShell>{children}</AppShell>
+          </MeProvider>
         </Suspense>
       </body>
     </html>

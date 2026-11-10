@@ -3,7 +3,11 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
+import { ApiError } from "@/lib/api";
+import { useMe } from "@/lib/me";
+import { ErrorBox, Loading } from "./Feedback";
 import { IssuePanel } from "./IssuePanel";
+import { StartScreen } from "./StartScreen";
 import { UserPicker } from "./UserPicker";
 
 const NAV = [
@@ -18,6 +22,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const [q, setQ] = useState("");
+  const me = useMe();
+  const authError = me.error instanceof ApiError && me.error.status === 401 ? me.error : null;
+  const needsUser = authError !== null;
+
+  let content: React.ReactNode;
+  if (authError) content = <StartScreen tenantRequired={authError.code === "tenant_required"} />;
+  else if (me.error) content = <ErrorBox error={me.error} />;
+  else if (!me.data) content = <Loading />;
+  else content = children;
 
   return (
     <div className="flex min-h-screen">
@@ -56,7 +69,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               className="w-full max-w-md rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm dark:border-slate-700 dark:bg-slate-900"
             />
           </form>
-          <UserPicker />
+          {!needsUser && <UserPicker />}
         </header>
         <nav className="flex gap-1 overflow-x-auto border-b border-slate-200 px-4 py-2 md:hidden dark:border-slate-800">
           {NAV.map((item) => (
@@ -65,10 +78,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </Link>
           ))}
         </nav>
-        <main className="flex-1 px-4 py-6 md:px-6">{children}</main>
+        <main className="flex-1 px-4 py-6 md:px-6">{content}</main>
       </div>
 
-      <IssuePanel />
+      {me.data && !me.error && <IssuePanel />}
     </div>
   );
 }

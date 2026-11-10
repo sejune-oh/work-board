@@ -132,7 +132,7 @@ export const ko = {
 
   overview: {
     open: "열린 일",
-    daysLeft: "일 남음",
+    daysLeft: (() => "일 남음") as (n: number) => string,
     emptyTeam: "아직 이슈가 없습니다. 저장소를 연결하면 여기에 모입니다.",
     headline: {
       urgent: (urgent: number, notStarted: number): Clause => ({
@@ -226,7 +226,7 @@ export const ko = {
       milestonesHint: "GitHub 마일스톤을 가져오면 마감일과 진행률이 여기에 보입니다.",
     },
     sprint: {
-      daysLeft: "일 남음",
+      daysLeft: (() => "일 남음") as (n: number) => string,
       dayOf: (day: number, total: number) => `${total}일 중 ${day}일째`,
       length: (total: number) => `${total}일 주기`,
       reviewAndProgress: (inReview: number, inProgress: number) => `리뷰 중 ${inReview} · 진행 중 ${inProgress}`,

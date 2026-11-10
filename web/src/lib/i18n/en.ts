@@ -130,7 +130,7 @@ export const en: Dict = {
 
   overview: {
     open: "Open",
-    daysLeft: " days left",
+    daysLeft: (n: number) => (n === 1 ? " day left" : " days left"),
     emptyTeam: "No issues yet. Connect a repository and they will show up here.",
     headline: {
       urgent: (urgent, notStarted) => ({
@@ -228,7 +228,7 @@ export const en: Dict = {
       milestonesHint: "Import GitHub milestones to see due dates and progress here.",
     },
     sprint: {
-      daysLeft: " days left",
+      daysLeft: (n: number) => (n === 1 ? " day left" : " days left"),
       dayOf: (day, total) => `Day ${day} of ${total}`,
       length: (total) => `${total}-day cycle`,
       reviewAndProgress: (inReview, inProgress) => `In review ${inReview} · In progress ${inProgress}`,

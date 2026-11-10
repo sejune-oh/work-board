@@ -88,7 +88,7 @@ function MetaLine({ o }: { o: O }) {
       {settings.sprintsEnabled && o?.sprint && (
         <span>
           {o.sprint.name} · <b className="font-medium text-ink-soft">{o.sprint.daysLeft}</b>
-          {t.overview.daysLeft}
+          {t.overview.daysLeft(o.sprint.daysLeft)}
         </span>
       )}
     </p>
@@ -633,7 +633,7 @@ function Sprint({ sprint }: { sprint: NonNullable<Overview["sprint"]> }) {
         </div>
         <div className="whitespace-nowrap font-mono text-[13px] font-medium">
           {sprint.daysLeft}
-          <small className="ml-0.5 font-sans text-meta font-normal text-muted">{sp.daysLeft}</small>
+          <small className="ml-0.5 font-sans text-meta font-normal text-muted">{sp.daysLeft(sprint.daysLeft)}</small>
         </div>
       </div>
       {days.length > 0 && (

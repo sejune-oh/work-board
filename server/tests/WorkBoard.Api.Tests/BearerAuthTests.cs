@@ -275,7 +275,24 @@ public class BearerAuthTests
 
         var response = await client.SendAsync(Get("/api/members", Token(SharedUser)));
 
-        await AssertError(response, HttpStatusCode.Unauthorized, "tenant_required");
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Equal(
+            $$"""{"error":"tenant_required","tenants":[{"id":"{{Acme}}","name":"acme-health"},{"id":"{{Globex}}","name":"globex-labs"}]}""",
+            await response.Content.ReadAsStringAsync());
+    }
+
+    [Fact]
+    public async Task Tenant_required_lists_only_the_callers_own_tenants()
+    {
+        var host = Create();
+        using var client = host.Factory.CreateClient();
+
+        var response = await client.SendAsync(Get("/api/members", Token(SharedUser), Guid.NewGuid().ToString()));
+        var body = await response.Content.ReadAsStringAsync();
+
+        Assert.Contains("acme-health", body);
+        Assert.Contains("globex-labs", body);
+        Assert.DoesNotContain("initech", body);
     }
 
     [Fact]
@@ -286,7 +303,8 @@ public class BearerAuthTests
 
         var response = await client.SendAsync(Get("/api/members", Token(SharedUser), Guid.NewGuid().ToString()));
 
-        await AssertError(response, HttpStatusCode.Unauthorized, "tenant_required");
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Contains(""""error":"tenant_required"""", await response.Content.ReadAsStringAsync());
     }
 
     [Theory]

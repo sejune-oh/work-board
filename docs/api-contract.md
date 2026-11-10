@@ -22,7 +22,7 @@ Errors, JSON `{"error": "<code>"}`:
 | Status | Code | When |
 | --- | --- | --- |
 | 401 | `unauthenticated` | no token, bad signature, wrong issuer or audience, expired, no GitHub identity |
-| 401 | `tenant_required` | several memberships and `X-Tenant` missing or not one of them |
+| 401 | `tenant_required` | several memberships and `X-Tenant` missing or not one of them. Body also has `tenants`: `[{"id", "name"}]`, only the caller's own memberships |
 | 403 | `no_membership` | valid login with a GitHub identity, but no membership in any tenant |
 
 Development only, when there is no `Authorization` header: `X-Dev-User: <githubLogin>` and optional

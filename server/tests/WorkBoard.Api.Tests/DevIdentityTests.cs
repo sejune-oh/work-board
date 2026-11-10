@@ -199,7 +199,9 @@ public class DevIdentityTests
         var response = await client.SendAsync(Get("/api/members", "shared-dev"));
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
-        Assert.Equal("""{"error":"tenant_required"}""", await response.Content.ReadAsStringAsync());
+        Assert.Equal(
+            $$"""{"error":"tenant_required","tenants":[{"id":"{{TenantId}}","name":"acme-health"},{"id":"{{GlobexId}}","name":"globex-labs"}]}""",
+            await response.Content.ReadAsStringAsync());
         Assert.Empty(db.Events);
     }
 
@@ -212,7 +214,7 @@ public class DevIdentityTests
         var response = await client.SendAsync(Get("/api/members", "shared-dev", Guid.NewGuid().ToString()));
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
-        Assert.Equal("""{"error":"tenant_required"}""", await response.Content.ReadAsStringAsync());
+        Assert.Contains(""""error":"tenant_required"""", await response.Content.ReadAsStringAsync());
     }
 
     [Theory]

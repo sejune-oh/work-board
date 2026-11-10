@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using WorkBoard.Api.Features.Me;
 
 namespace WorkBoard.Api.Infrastructure.Identity;
 
@@ -50,7 +51,9 @@ public sealed class CurrentMemberFilter(
             var match = memberships.FirstOrDefault(m =>
                 string.Equals(m.TenantId.ToString(), tenantHeader, StringComparison.OrdinalIgnoreCase));
             if (match is null)
-                return Fail(StatusCodes.Status401Unauthorized, "tenant_required");
+                return Results.Json(
+                    new TenantRequiredBody("tenant_required", memberships.Select(m => new TenantInfo(m.TenantId, m.TenantName)).ToList()),
+                    statusCode: StatusCodes.Status401Unauthorized);
             identity = match;
         }
 

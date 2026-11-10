@@ -303,6 +303,24 @@ public class CreateTenantTests
     }
 
     [DbFact]
+    public async Task Administering_a_tenant_created_by_someone_else_does_not_use_up_the_limit()
+    {
+        await using var host = Create();
+        var (authUser, githubId, _) = host.NewPerson();
+        await using var other = await TestTenant.CreateAsync(host.Factory);
+        await other.ExecAsync(
+            "insert into members (tenant_id, github_user_id, github_login, role) values (@tid, @githubId, @login, 'admin')",
+            new { tid = other.Id, githubId, login = "joined-" + githubId });
+        using var client = Client(host);
+
+        for (var i = 0; i < TenantsEndpoints.MaxTenantsPerPerson; i++)
+            Assert.Equal(HttpStatusCode.Created, (await client.SendAsync(Post(Token(authUser), Name("t" + i)))).StatusCode);
+        var response = await client.SendAsync(Post(Token(authUser), Name("one too many")));
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+    }
+
+    [DbFact]
     public async Task Concurrent_creations_cannot_exceed_the_limit()
     {
         await using var host = Create();

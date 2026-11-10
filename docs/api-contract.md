@@ -64,8 +64,8 @@ login in Development) and makes them its `admin`. Body `{"name": "<string>"}`; t
 its `tenant_settings` row (all flags off) and the member (GitHub id, login, display name and avatar from the
 GitHub identity). Response `201 {"tenant": {"id", "name"}, "member": Member}`; send `X-Tenant: <tenant.id>`
 afterwards. Errors: `401 unauthenticated` (no valid sign-in, or the GitHub identity has no login),
-`400 invalid_name` (also for a body that is not JSON), `409 tenant_limit` (the person already is `admin` of 5
-tenants).
+`400 invalid_name` (also for a body that is not JSON), `409 tenant_limit` (the person already created 5
+tenants; tenants they only joined do not count).
 
 `GET /api/issues` query parameters, all optional:
 

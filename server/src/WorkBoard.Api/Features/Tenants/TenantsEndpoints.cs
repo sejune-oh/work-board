@@ -71,7 +71,7 @@ public static class TenantsEndpoints
         return string.IsNullOrEmpty(name) || name.Length > NameMaxLength || name.Any(char.IsControl) ? null : name;
     }
 
-    // Null when the person already administers MaxTenantsPerPerson tenants.
+    // Null when the person already created MaxTenantsPerPerson tenants.
     private static async Task<CreateTenantResponse?> CreateAsync(
         NpgsqlDataSource sync, string name, GithubProfile profile, CancellationToken ct)
     {
@@ -83,12 +83,12 @@ public static class TenantsEndpoints
             "select pg_advisory_xact_lock(@key)", new { key = profile.Id }, tx, cancellationToken: ct));
 
         var owned = await conn.ExecuteScalarAsync<int>(new CommandDefinition(
-            "select count(*) from members where github_user_id = @id and role = 'admin'", new { id = profile.Id }, tx, cancellationToken: ct));
+            "select count(*) from tenants where created_by_github_user_id = @id", new { id = profile.Id }, tx, cancellationToken: ct));
         if (owned >= MaxTenantsPerPerson)
             return null;
 
         var tenantId = await conn.ExecuteScalarAsync<Guid>(new CommandDefinition(
-            "insert into tenants (name) values (@name) returning id", new { name }, tx, cancellationToken: ct));
+            "insert into tenants (name, created_by_github_user_id) values (@name, @id) returning id", new { name, id = profile.Id }, tx, cancellationToken: ct));
         await conn.ExecuteAsync(new CommandDefinition(
             "insert into tenant_settings (tenant_id) values (@tenantId)", new { tenantId }, tx, cancellationToken: ct));
         var row = await conn.QuerySingleAsync<MemberRow>(new CommandDefinition("""

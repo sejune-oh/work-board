@@ -24,8 +24,11 @@ as $$ select nullif(current_setting('app.tenant_id', true), '')::uuid $$;
 create table tenants (
   id         uuid primary key default gen_random_uuid(),
   name       text not null,
+  -- Set by POST /api/tenants to enforce the per-person creation limit; null for seeded rows.
+  created_by_github_user_id bigint,
   created_at timestamptz not null default now()
 );
+create index tenants_created_by on tenants (created_by_github_user_id);
 
 -- A tenant connects GitHub through one or more accounts (organization or personal). installation_id
 -- stays null until the GitHub App is installed; before that, sync uses a token.

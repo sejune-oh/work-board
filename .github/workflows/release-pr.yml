@@ -1,0 +1,61 @@
+name: release-pr
+
+# Every merge into dev opens (or refreshes) the single dev -> main release PR.
+on:
+  push:
+    branches: [dev]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: release-pr
+  cancel-in-progress: false
+
+jobs:
+  release-pr:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Open or update the release PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          git fetch --quiet origin main dev
+
+          if [ "$(git rev-list --count origin/main..origin/dev)" = "0" ]; then
+            echo "dev has nothing that main lacks; no release PR needed."
+            exit 0
+          fi
+
+          {
+            echo "dev에 병합된 변경을 main으로 릴리스합니다. dev에 병합될 때마다 이 PR이 자동으로 열리거나 갱신됩니다."
+            echo
+            echo "### 포함된 변경"
+            for sha in $(git rev-list --first-parent --reverse origin/main..origin/dev); do
+              subject="$(git log -1 --format=%s "$sha")"
+              if [[ "$subject" =~ ^Merge\ pull\ request\ \#([0-9]+) ]]; then
+                title="$(git log -1 --format=%b "$sha" | head -n1)"
+                echo "- #${BASH_REMATCH[1]} ${title}"
+              else
+                echo "- ${subject} (${sha:0:7})"
+              fi
+            done
+          } > release-body.md
+
+          existing="$(gh pr list --base main --head dev --state open --json number --jq '.[0].number // empty')"
+          if [ -n "$existing" ]; then
+            gh pr edit "$existing" --body-file release-body.md
+            echo "Updated release PR #$existing"
+          else
+            gh pr create --base main --head dev \
+              --title "release: dev to main ($(date -u +%F))" \
+              --label release \
+              --body-file release-body.md
+          fi

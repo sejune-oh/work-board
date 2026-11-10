@@ -1,9 +1,10 @@
 import { ApiError } from "@/lib/api";
 
 export function Loading({ label = "불러오는 중" }: { label?: string }) {
-  return <p className="py-8 text-center text-sm text-slate-500">{label}…</p>;
+  return <p className="py-6 text-ui text-muted">{label}…</p>;
 }
 
+/** Errors are about the app, not the work, so they stay in ink: no vermilion here. */
 export function ErrorBox({ error }: { error: Error }) {
   const message =
     error instanceof ApiError && error.status === 401
@@ -12,12 +13,12 @@ export function ErrorBox({ error }: { error: Error }) {
         ? "찾을 수 없거나 볼 권한이 없습니다."
         : "API 서버에 연결할 수 없습니다. server 폴더에서 API를 실행했는지 확인하세요.";
   return (
-    <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
+    <div role="alert" className="border-l-2 border-rule-strong bg-surface px-4 py-3 text-ui text-ink">
       {message}
     </div>
   );
 }
 
 export function Empty({ children }: { children: React.ReactNode }) {
-  return <p className="py-6 text-center text-sm text-slate-400">{children}</p>;
+  return <p className="rounded-card border border-dashed border-rule px-3 py-2.5 text-meta text-muted">{children}</p>;
 }

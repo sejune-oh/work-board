@@ -19,6 +19,7 @@ export function useIssuePanel() {
     },
     [params, pathname, router],
   );
+  const close = useCallback(() => setIssue(null), [setIssue]);
 
-  return { issueId: params.get("issue"), open: setIssue, close: () => setIssue(null) };
+  return { issueId: params.get("issue"), open: setIssue, close };
 }

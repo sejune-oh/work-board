@@ -31,6 +31,7 @@ first calls `select set_config('app.tenant_id', @tenantId, true)`. RLS policies 
 | GET | `/api/me` | dev user | `Me` |
 | GET | `/api/members` | dev user | `Member[]` |
 | GET | `/api/projects` | dev user | `Project[]` |
+| GET | `/api/overview` | dev user | `Overview` |
 | GET | `/api/issues` | dev user | `BoardIssue[]` |
 | GET | `/api/issues/{id}` | dev user | `IssueDetail` or 404 |
 | GET | `/api/meeting-notes` | dev user | `MeetingNoteSummary[]` |
@@ -42,17 +43,108 @@ first calls `select set_config('app.tenant_id', @tenantId, true)`. RLS policies 
 | Name | Meaning |
 | --- | --- |
 | `projectId` | only issues in repositories of this project |
-| `assignee` | only issues assigned to this GitHub login |
-| `doneWithinDays` | closed issues are included only if closed within N days, integer 0..365 (default 7). Out of range → `400 {"error": "invalid_doneWithinDays"}` |
+| `person` | only issues assigned to this GitHub login |
+| `assignee` | alias of `person`; if both are given, `person` wins |
+| `status` | comma list of `todo`, `in_progress`, `in_review`, `done` (derived status). Any other value, or an empty list → `400 {"error": "invalid_status"}` |
+| `stale` | `true` keeps only open issues whose `updatedAt` is 7 or more days old. `false` or absent: no filter |
+| `sprint` | only issues in this sprint (uuid) |
+| `doneSince` | `week` keeps only issues closed since Monday 00:00 in Asia/Seoul (same boundary as the overview's `doneThisWeek`); open issues are dropped and `doneWithinDays` is ignored. Any other value → `400 {"error": "invalid_doneSince"}` |
+| `scope` | `all` includes every closed issue regardless of `doneWithinDays` (use it for progress over all issues). Any other value → `400 {"error": "invalid_scope"}` |
+| `doneWithinDays` | closed issues are included only if closed within N days, integer 0..365 (default 7). Ignored when `scope=all`. Out of range → `400 {"error": "invalid_doneWithinDays"}` |
 
-Open issues are always included. Sort: `updatedAt` descending.
+Filters combine with AND. Without `scope=all`, `status=done` therefore returns only issues closed within
+`doneWithinDays`. Open issues are always included unless a filter excludes them. Sort: `updatedAt` descending.
 
 `GET /api/meeting-notes` accepts optional `projectId`. Sort: `heldAt` descending.
 
 `GET /api/search` matches `q` (case-insensitive substring, min 2 chars) against issue titles,
 comment bodies and meeting note titles/bodies. Up to 20 results per group.
 
+`GET /api/overview` returns the whole overview screen in one response, computed per request inside the
+tenant transaction (no cache). Rules:
+
+- Open = `state = 'open'`. Stale = open and `updatedAt` 7 or more days ago. Urgent = `board_fields.priority = 'urgent'`
+  and status not `done`; always empty when the tenant has priorities disabled.
+- `counts.doneThisWeek` and `people[].doneThisWeek` count issues closed since Monday 00:00 in Asia/Seoul
+  (not a rolling 7 days).
+- `attention` groups are ordered urgent, reviewWaiting, stale, unassigned. An issue shows only in the first group
+  it belongs to; each group is capped at 5, oldest first; `totals` are counted after de-duplication and before the cap.
+  `totals.urgentNotStarted` is the number of listed-urgent issues whose status is `todo`.
+  `counts.stale` is every stale open issue; `attention.totals.stale` only counts stale issues not already shown
+  in an earlier group (urgent, reviewWaiting), so it can be smaller.
+  Epics are excluded from `unassigned`.
+- `reviewWaiting` lists open PRs with review requested that are linked to an open issue (one entry per issue, the
+  longest waiting PR). `waitingSince` is the PR's `github_updated_at`, so it is **approximate**: it moves whenever the PR
+  changes, not only when review was requested.
+- `people[].overloaded` is true only when the person has 4 or more `in_progress` + `in_review` issues and at least
+  2 times the median of that number over all members of the tenant (members with 0 included; even counts average
+  the two middle values). People are ordered by open issue count, then login.
+- `projects[].byStatus` counts all issues of the project's repositories, closed ones included, with no time window.
+  An issue in two projects counts in both.
+- `sprint` is the active sprint with the latest start date, or `null` when sprints are disabled or none is active.
+  `startDate`/`endDate` are `yyyy-MM-dd`; `daysLeft` counts from today in Asia/Seoul and is never negative.
+- `milestones` is always `null` until sync provides milestones.
+- `attention.actionItemsWithoutIssue` covers every meeting action item without an issue (no date window);
+  `actionItems` covers notes held in the last 14 days whose item has no issue or an unfinished one.
+- `activity`: last 3 days, newest first, max 12. A PR event kind is inferred from its current state (merged,
+  open with review requested, other open); closed-unmerged PRs are skipped. `actor` is null when the author is not a member.
+
 ## Shapes
+
+```ts
+type OverviewIssueRef = {
+  id: string; repositoryName: string; number: number; title: string;
+  status: Status; updatedAt: string;
+  assignees: { githubUserId: number; githubLogin: string; displayName: string | null }[];
+};
+
+type StatusCounts = { todo: number; inProgress: number; inReview: number; done: number };
+
+type Overview = {
+  generatedAt: string;
+  counts: { open: number; inProgress: number; inReview: number; stale: number; doneThisWeek: number };
+  attention: {
+    urgent: { issue: OverviewIssueRef; notStarted: boolean }[];
+    reviewWaiting: { issue: OverviewIssueRef; pullRequest: { number: number; title: string;
+                     authorGithubLogin: string | null; waitingSince: string } }[];
+    stale: { issue: OverviewIssueRef; idleDays: number }[];
+    unassigned: OverviewIssueRef[];
+    actionItemsWithoutIssue: { id: string; text: string; assignee: Member | null;
+                               note: { id: string; title: string; heldAt: string } }[];
+    totals: { urgent: number; urgentNotStarted: number; reviewWaiting: number; stale: number; unassigned: number;
+              actionItemsWithoutIssue: number };
+  };
+  people: {
+    member: Member; todo: number; inProgress: number; inReview: number; doneThisWeek: number;
+    overloaded: boolean;
+    current: OverviewIssueRef | null;   // most recently updated in_progress/in_review issue
+    lastActivityAt: string | null;      // latest of assigned issue updates and own comments
+  }[];
+  projects: {
+    project: { id: string; name: string; color: string | null; repositories: string[] };
+    byStatus: StatusCounts;             // all issues, all time
+    openPullRequests: number;
+    latestNote: { id: string; title: string; heldAt: string } | null;
+  }[];
+  sprint: { id: string; name: string; startDate: string; endDate: string; daysLeft: number;
+            byStatus: StatusCounts } | null;
+  milestones: null;
+  actionItems: {
+    id: string; text: string; assignee: Member | null;
+    issue: { id: string; repositoryName: string; number: number; status: Status } | null;
+    note: { id: string; title: string; heldAt: string };
+  }[];
+  activity: {
+    kind: "comment" | "pr_opened" | "pr_review_requested" | "pr_merged" | "issue_closed" | "meeting_note";
+    at: string;
+    actor: { githubLogin: string | null; displayName: string | null } | null;
+    issue: { id: string; repositoryName: string; number: number; title: string } | null;
+    pullRequest: { repositoryName: string; number: number; title: string } | null;
+    note: { id: string; title: string } | null;
+    snippet: string | null;             // first 80 chars of a comment
+  }[];
+};
+```
 
 ```ts
 type DevUser = {

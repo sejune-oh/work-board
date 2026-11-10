@@ -21,13 +21,13 @@ export function UserPicker({ large = false }: { large?: boolean }) {
   const selected = data?.find((u) => u.githubLogin === current?.login && u.tenantId === current?.tenantId);
 
   return (
-    <label className={large ? "flex flex-col gap-2" : "flex items-center gap-2 text-sm"}>
-      <span className={large ? "text-sm font-semibold" : "text-slate-500"}>개발용 사용자</span>
+    <label className={large ? "flex flex-col gap-2" : "flex items-center gap-2 text-ui"}>
+      <span className={large ? "eyebrow text-muted" : "hidden text-meta text-muted sm:inline"}>개발용 사용자</span>
       <select
         className={
           large
-            ? "rounded-lg border-2 border-blue-500 bg-white px-3 py-2.5 text-base dark:bg-slate-900"
-            : "rounded-md border border-slate-300 bg-white px-2 py-1 dark:border-slate-700 dark:bg-slate-900"
+            ? "h-11 cursor-pointer rounded-card border border-ink bg-surface px-3 text-body text-ink"
+            : "h-8 max-w-[11rem] cursor-pointer rounded-card border border-rule bg-surface px-2 text-ui font-medium text-ink hover:border-ink-soft"
         }
         value={selected ? optionValue(selected) : ""}
         onChange={(e) => {

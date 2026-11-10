@@ -12,18 +12,18 @@ public sealed class NpgsqlMemberLookup([FromKeyedServices(DataKeys.Sync)] Npgsql
         await using var conn = await syncSource.OpenConnectionAsync(ct);
         var rows = await conn.QueryAsync<IdentityRow>(new CommandDefinition("""
             select m.id, m.github_user_id, m.github_login, m.display_name, m.avatar_url, m.role,
-                   m.tenant_id, t.github_org_login as tenant_login
+                   m.tenant_id, t.name as tenant_name
               from members m
               join tenants t on t.id = m.tenant_id
              where m.github_login = @githubLogin
-             order by t.github_org_login
+             order by t.name
             """, new { githubLogin }, cancellationToken: ct));
 
         return rows
             .Select(row => new DevIdentity(
                 new Member(row.Id, row.GithubUserId, row.GithubLogin, row.DisplayName, row.AvatarUrl, row.Role),
                 row.TenantId,
-                row.TenantLogin))
+                row.TenantName))
             .ToList();
     }
 
@@ -31,12 +31,12 @@ public sealed class NpgsqlMemberLookup([FromKeyedServices(DataKeys.Sync)] Npgsql
     {
         await using var conn = await syncSource.OpenConnectionAsync(ct);
         var rows = await conn.QueryAsync<DevUserRow>(new CommandDefinition("""
-            select m.github_login, m.github_user_id, m.display_name, m.tenant_id, t.github_org_login as tenant_login
+            select m.github_login, m.github_user_id, m.display_name, m.tenant_id, t.name as tenant_name
               from members m
               join tenants t on t.id = m.tenant_id
-             order by t.github_org_login, m.github_login
+             order by t.name, m.github_login
             """, cancellationToken: ct));
-        return rows.Select(r => new DevUser(r.GithubLogin, r.GithubUserId, r.DisplayName, r.TenantId, r.TenantLogin)).ToList();
+        return rows.Select(r => new DevUser(r.GithubLogin, r.GithubUserId, r.DisplayName, r.TenantId, r.TenantName)).ToList();
     }
 
     private sealed class IdentityRow
@@ -48,7 +48,7 @@ public sealed class NpgsqlMemberLookup([FromKeyedServices(DataKeys.Sync)] Npgsql
         public string? AvatarUrl { get; set; }
         public string Role { get; set; } = "member";
         public Guid TenantId { get; set; }
-        public string TenantLogin { get; set; } = "";
+        public string TenantName { get; set; } = "";
     }
 
     private sealed class DevUserRow
@@ -57,6 +57,6 @@ public sealed class NpgsqlMemberLookup([FromKeyedServices(DataKeys.Sync)] Npgsql
         public long GithubUserId { get; set; }
         public Guid TenantId { get; set; }
         public string? DisplayName { get; set; }
-        public string TenantLogin { get; set; } = "";
+        public string TenantName { get; set; } = "";
     }
 }

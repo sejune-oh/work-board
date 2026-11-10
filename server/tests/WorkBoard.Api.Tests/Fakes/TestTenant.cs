@@ -20,6 +20,7 @@ public sealed class TestTenant : IAsyncDisposable
 
     public Guid Id { get; } = Guid.NewGuid();
     public string Suffix { get; } = Guid.NewGuid().ToString("N")[..8];
+    public Guid ConnectionId { get; } = Guid.NewGuid();
     public string ViewerLogin { get; private set; } = "";
 
     private TestTenant(WebApplicationFactory<Program> factory)
@@ -32,8 +33,10 @@ public sealed class TestTenant : IAsyncDisposable
         WebApplicationFactory<Program> factory, bool priority = true, bool sprints = true)
     {
         var t = new TestTenant(factory);
-        await t.ExecAsync("insert into tenants (id, github_org_id, github_org_login) values (@tid, @org, @login)",
-            new { tid = t.Id, org = Interlocked.Increment(ref _seq), login = "org-" + t.Suffix });
+        await t.ExecAsync("insert into tenants (id, name) values (@tid, @name)", new { tid = t.Id, name = "org-" + t.Suffix });
+        await t.ExecAsync(
+            "insert into github_connections (id, tenant_id, account_id, account_login, account_type) values (@id, @tid, @account, @login, 'organization')",
+            new { id = t.ConnectionId, tid = t.Id, account = Interlocked.Increment(ref _seq), login = "org-" + t.Suffix });
         await t.ExecAsync(
             "insert into tenant_settings (tenant_id, sprints_enabled, priority_enabled) values (@tid, @sprints, @priority)",
             new { tid = t.Id, sprints, priority });
@@ -66,8 +69,9 @@ public sealed class TestTenant : IAsyncDisposable
     public async Task<Guid> AddRepoAsync(string name)
     {
         var id = Guid.NewGuid();
-        await ExecAsync("insert into repositories (id, tenant_id, github_repo_id, name) values (@id, @tid, @gid, @name)",
-            new { id, tid = Id, gid = Interlocked.Increment(ref _seq), name });
+        await ExecAsync(
+            "insert into repositories (id, tenant_id, connection_id, github_repo_id, name) values (@id, @tid, @conn, @gid, @name)",
+            new { id, tid = Id, conn = ConnectionId, gid = Interlocked.Increment(ref _seq), name });
         return id;
     }
 

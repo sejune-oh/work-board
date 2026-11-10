@@ -121,7 +121,7 @@ public class RlsIntegrationTests : IClassFixture<WebApplicationFactory<Program>>
         var users = await client.GetFromJsonAsync<JsonElement>("/api/dev/users");
 
         var shared = users.EnumerateArray().Where(u => u.GetProperty("githubLogin").GetString() == "shared-dev").ToList();
-        Assert.Equal(["acme-health", "globex-labs"], shared.Select(u => u.GetProperty("tenantLogin").GetString()));
+        Assert.Equal(["Acme Health", "Globex Labs"], shared.Select(u => u.GetProperty("tenantName").GetString()));
         Assert.All(shared, u => Assert.Equal(5100, u.GetProperty("githubUserId").GetInt64()));
         Assert.All(shared, u => Assert.True(Guid.TryParse(u.GetProperty("tenantId").GetString(), out _)));
     }

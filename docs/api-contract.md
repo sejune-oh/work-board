@@ -31,6 +31,7 @@ first calls `select set_config('app.tenant_id', @tenantId, true)`. RLS policies 
 | GET | `/api/me` | dev user | `Me` |
 | GET | `/api/members` | dev user | `Member[]` |
 | GET | `/api/projects` | dev user | `Project[]` |
+| GET | `/api/connections` | dev user | `GithubConnection[]`, active first |
 | GET | `/api/overview` | dev user | `Overview` |
 | GET | `/api/issues` | dev user | `BoardIssue[]` |
 | GET | `/api/issues/{id}` | dev user | `IssueDetail` or 404 |
@@ -149,7 +150,7 @@ type Overview = {
 ```ts
 type DevUser = {
   githubLogin: string; githubUserId: number; displayName: string | null;
-  tenantId: string; tenantLogin: string;
+  tenantId: string; tenantName: string;
 };
 
 type Member = {
@@ -159,8 +160,13 @@ type Member = {
 
 type Me = {
   member: Member;
-  tenant: { id: string; githubOrgLogin: string };
+  tenant: { id: string; name: string };
   settings: { sprintsEnabled: boolean; sizeEnabled: boolean; priorityEnabled: boolean };
+};
+
+type GithubConnection = {
+  id: string; accountId: number; accountLogin: string; accountType: "organization" | "user";
+  repositorySelection: "all" | "selected" | null; createdAt: string; disconnectedAt: string | null;
 };
 
 type Project = { id: string; name: string; color: string | null; repositories: { id: string; name: string }[] };

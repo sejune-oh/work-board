@@ -16,7 +16,8 @@ public class GrantTests : IClassFixture<WebApplicationFactory<Program>>
 
     public static TheoryData<string, string> Denied => new()
     {
-        { "tenants", "update tenants set installation_id = 1" },
+        { "tenants", "update tenants set name = 'x'" },
+        { "github_connections", "update github_connections set account_login = 'x'" },
         { "members", "update members set display_name = 'x'" },
         { "members", "delete from members" },
         { "repositories", "update repositories set archived = true" },
@@ -81,7 +82,7 @@ public class GrantTests : IClassFixture<WebApplicationFactory<Program>>
         await using var _ = conn;
 
         foreach (var table in new[] { "tenants", "members", "repositories", "issues", "issue_assignees",
-                     "pull_requests", "issue_pull_requests", "comments", "issue_status", "board_fields" })
+                     "pull_requests", "issue_pull_requests", "comments", "github_connections", "issue_status", "board_fields" })
             await conn.ExecuteScalarAsync<long>($"select count(*) from {table}", transaction: tx);
     }
 }

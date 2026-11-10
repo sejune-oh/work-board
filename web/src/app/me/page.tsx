@@ -23,7 +23,7 @@ export default function MyWorkPage() {
   const review = list.filter((i) => i.status === "in_review").length;
   const progress = list.filter((i) => i.status === "in_progress").length;
   const stale = list.filter(isStale).length;
-  const meta = `${fmt.person(me.data.member)} · ${me.data.tenant.githubOrgLogin}`;
+  const meta = `${fmt.person(me.data.member)} · ${me.data.tenant.name}`;
   const fact = !issues.data ? meta : list.length === 0 ? t.me.none : stale > 0 ? t.me.stale(stale) : t.me.summary(progress, review);
 
   return (

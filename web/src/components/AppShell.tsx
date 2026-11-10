@@ -43,7 +43,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const t = useT();
   const authError = me.error instanceof ApiError && me.error.status === 401 ? me.error : null;
   const needsUser = authError !== null;
-  const org = me.data?.tenant.githubOrgLogin ?? null;
+  const org = me.data?.tenant.name ?? null;
 
   useShortcuts(searchRef);
 

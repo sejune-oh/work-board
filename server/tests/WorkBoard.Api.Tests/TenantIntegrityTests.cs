@@ -33,6 +33,7 @@ public class TenantIntegrityTests : IClassFixture<WebApplicationFactory<Program>
         { "project_repositories", $"insert into project_repositories (tenant_id, project_id, repository_id) values ('{Globex}', '{AcmeProject}', '30000000-0000-0000-0000-000000000003')", false },
         { "meeting_notes.project", $"insert into meeting_notes (tenant_id, project_id, title, held_at) values ('{Globex}', '{AcmeProject}', 't', now())", false },
         { "meeting_notes.created_by", $"insert into meeting_notes (tenant_id, created_by, title, held_at) values ('{Globex}', '{AcmeMember}', 't', now())", false },
+        { "repositories.connection", $"insert into repositories (tenant_id, connection_id, github_repo_id, name) values ('{Globex}', 'a0000000-0000-0000-0000-000000000001', 1, 't')", true },
         { "issues.repository", $"insert into issues (tenant_id, repository_id, github_issue_id, number, title, state, github_created_at, github_updated_at) values ('{Globex}', '{AcmeRepo}', 1, 1, 't', 'open', now(), now())", true },
         { "issues.parent", $"insert into issues (tenant_id, repository_id, github_issue_id, number, title, state, parent_issue_id, github_created_at, github_updated_at) values ('{Globex}', '{GlobexRepo}', 2, 2, 't', 'open', '{AcmeIssue}', now(), now())", true },
         { "pull_requests.repository", $"insert into pull_requests (tenant_id, repository_id, github_pr_id, number, title, state, github_updated_at) values ('{Globex}', '{AcmeRepo}', 1, 1, 't', 'open', now())", true },

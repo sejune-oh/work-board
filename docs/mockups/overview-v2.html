@@ -1,0 +1,732 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>개요 · 업무 보드 (v2 시안)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+/* v2 proposal tokens: see docs/design-v2-proposal.md */
+:root {
+  --wb-canvas: #f6f7f9; --wb-surface: #ffffff; --wb-sunken: #edeff2;
+  --wb-ink: #15181c; --wb-ink-soft: #3a4048; --wb-muted: #5b636d;
+  --wb-rule: #e1e4e8; --wb-rule-strong: #c8cdd4; --wb-focus: #2f5bd3;
+  --wb-accent: #c2381c; --wb-accent-wash: #fceae5;
+  --wb-status-todo: #8a929c; --wb-status-progress: #2f6fcf; --wb-status-review: #b07a12;
+  --wb-status-done: #2f8556; --wb-status-cancel: #b5bbc3;
+  --wb-hover: rgb(21 24 28 / 0.04);
+  --wb-shadow-panel: 0 0 0 1px rgb(21 24 28 / 0.08), 0 16px 40px -12px rgb(21 24 28 / 0.24);
+  --wb-scrim: rgb(14 16 19 / 0.32);
+  --font-sans: "IBM Plex Sans KR", sans-serif;
+  --font-mono: "IBM Plex Mono", "IBM Plex Sans KR", monospace;
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --wb-canvas: #0e1013; --wb-surface: #16191d; --wb-sunken: #0a0b0d;
+    --wb-ink: #e7eaee; --wb-ink-soft: #b8bfc8; --wb-muted: #8c949e;
+    --wb-rule: #262a30; --wb-rule-strong: #363b43; --wb-focus: #7fa3ff;
+    --wb-accent: #ff6d4f; --wb-accent-wash: #3b1a12;
+    --wb-status-todo: #7d858f; --wb-status-progress: #5c9bff; --wb-status-review: #e0aa3e;
+    --wb-status-done: #4fbf7f; --wb-status-cancel: #4a5058;
+    --wb-hover: rgb(231 234 238 / 0.05);
+    --wb-shadow-panel: 0 0 0 1px rgb(231 234 238 / 0.08), 0 16px 40px -12px rgb(0 0 0 / 0.7);
+    --wb-scrim: rgb(0 0 0 / 0.55);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --wb-canvas: #0e1013; --wb-surface: #16191d; --wb-sunken: #0a0b0d;
+  --wb-ink: #e7eaee; --wb-ink-soft: #b8bfc8; --wb-muted: #8c949e;
+  --wb-rule: #262a30; --wb-rule-strong: #363b43; --wb-focus: #7fa3ff;
+  --wb-accent: #ff6d4f; --wb-accent-wash: #3b1a12;
+  --wb-status-todo: #7d858f; --wb-status-progress: #5c9bff; --wb-status-review: #e0aa3e;
+  --wb-status-done: #4fbf7f; --wb-status-cancel: #4a5058;
+  --wb-hover: rgb(231 234 238 / 0.05);
+  --wb-shadow-panel: 0 0 0 1px rgb(231 234 238 / 0.08), 0 16px 40px -12px rgb(0 0 0 / 0.7);
+  --wb-scrim: rgb(0 0 0 / 0.55);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--wb-canvas); color: var(--wb-ink);
+  font-family: var(--font-sans); font-size: 14px; line-height: 1.55;
+  word-break: keep-all; font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: inherit; }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--wb-focus); outline-offset: 1px; border-radius: 4px; }
+.mono { font-family: var(--font-mono); font-size: 12px; }
+.muted { color: var(--wb-muted); }
+kbd {
+  font-family: var(--font-mono); font-size: 10.5px; line-height: 1; color: var(--wb-muted);
+  border: 1px solid var(--wb-rule-strong); border-bottom-width: 2px; border-radius: 3px; padding: 2px 4px 1px;
+  background: var(--wb-surface);
+}
+
+/* Shell ----------------------------------------------------------------- */
+.shell { display: flex; min-height: 100vh; }
+.side {
+  width: 224px; flex-shrink: 0; padding: 12px 10px;
+  border-right: 1px solid var(--wb-rule); background: var(--wb-surface);
+  display: flex; flex-direction: column; gap: 16px;
+  position: sticky; top: 0; height: 100vh;
+}
+.org {
+  display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 4px;
+  border: 0; background: none; cursor: pointer; text-align: left; width: 100%;
+}
+.org:hover { background: var(--wb-hover); }
+.org-mark {
+  width: 22px; height: 22px; display: grid; place-items: center; border-radius: 4px;
+  background: var(--wb-ink); color: var(--wb-surface); font-family: var(--font-mono); font-size: 11px; font-weight: 600;
+}
+.org-name { font-weight: 600; font-size: 13.5px; line-height: 1.2; }
+.org-sub { display: block; font-family: var(--font-mono); font-size: 11px; color: var(--wb-muted); font-weight: 400; }
+.org .chev { margin-left: auto; color: var(--wb-muted); font-size: 11px; }
+.nav-label { font-family: var(--font-mono); font-size: 11px; color: var(--wb-muted); padding: 0 8px 4px; }
+.nav { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 1px; }
+.nav a {
+  display: flex; align-items: center; gap: 8px; height: 30px; padding: 0 8px; border-radius: 4px;
+  text-decoration: none; font-size: 13.5px; font-weight: 500; color: var(--wb-ink-soft);
+  transition: background 120ms var(--ease);
+}
+.nav a:hover { background: var(--wb-hover); color: var(--wb-ink); }
+.nav a[aria-current="page"] { background: var(--wb-sunken); color: var(--wb-ink); font-weight: 600; }
+.nav .count { font-family: var(--font-mono); font-size: 11px; color: var(--wb-muted); }
+.nav kbd { margin-left: auto; opacity: 0; transition: opacity 120ms var(--ease); }
+.nav a:hover kbd, .nav a:focus-visible kbd { opacity: 1; }
+.side-foot {
+  margin-top: auto; padding: 8px; border-top: 1px solid var(--wb-rule);
+  font-family: var(--font-mono); font-size: 11px; color: var(--wb-muted); line-height: 1.6;
+}
+
+.main-col { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.top {
+  height: 48px; display: flex; align-items: center; gap: 12px;
+  padding: 0 24px; border-bottom: 1px solid var(--wb-rule); background: var(--wb-surface);
+  position: sticky; top: 0; z-index: 10;
+}
+.crumb { font-family: var(--font-mono); font-size: 12px; color: var(--wb-muted); white-space: nowrap; }
+.crumb b { color: var(--wb-ink); font-weight: 500; }
+.search {
+  margin-left: 16px; flex: 1; max-width: 400px; height: 30px; display: flex; align-items: center; gap: 8px;
+  background: var(--wb-canvas); border: 1px solid var(--wb-rule); border-radius: 4px;
+  padding: 0 8px; color: var(--wb-muted); font-size: 13px;
+}
+.search:focus-within { border-color: var(--wb-focus); }
+.search input { border: 0; background: transparent; outline: 0; font: inherit; color: var(--wb-ink); width: 100%; min-width: 0; }
+.top-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+.seg { display: inline-flex; border: 1px solid var(--wb-rule); border-radius: 4px; overflow: hidden; }
+.seg button { border: 0; background: none; height: 26px; padding: 0 9px; font-size: 12px; color: var(--wb-muted); cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--wb-sunken); color: var(--wb-ink); font-weight: 600; }
+.me { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 500; }
+
+.avatar {
+  width: 22px; height: 22px; border-radius: 999px; flex-shrink: 0; display: grid; place-items: center;
+  font-size: 11px; font-weight: 600; color: #fff; background: #59616b;
+}
+.avatar.sm { width: 18px; height: 18px; font-size: 10px; }
+.avatar.ghost { background: transparent; color: var(--wb-muted); border: 1px dashed var(--wb-muted); }
+
+.mobile-nav { display: none; }
+main { padding: 24px 24px 64px; max-width: 1280px; width: 100%; }
+
+/* Summary --------------------------------------------------------------- */
+.meta-line { display: flex; flex-wrap: wrap; gap: 4px 14px; font-family: var(--font-mono); font-size: 12px; color: var(--wb-muted); }
+.meta-line b { color: var(--wb-ink-soft); font-weight: 500; }
+.headline { font-size: 22px; line-height: 1.4; font-weight: 600; letter-spacing: -0.015em; margin: 8px 0 2px; max-width: 40em; }
+.headline em { font-style: normal; color: var(--wb-accent); font-family: var(--font-mono); font-weight: 600; }
+.headline-sub { margin: 0; color: var(--wb-ink-soft); font-size: 14px; }
+
+.stats {
+  margin-top: 20px; display: grid; grid-template-columns: repeat(4, 1fr);
+  background: var(--wb-surface); border: 1px solid var(--wb-rule); border-radius: 6px; overflow: hidden;
+}
+.stat {
+  text-align: left; background: none; border: 0; border-left: 1px solid var(--wb-rule); cursor: pointer;
+  padding: 12px 16px 14px; display: grid; grid-template-columns: 1fr auto; align-items: end; gap: 2px 8px;
+  transition: background 120ms var(--ease);
+}
+.stat:first-child { border-left: 0; }
+.stat:hover { background: var(--wb-hover); }
+.stat-label { grid-column: 1 / -1; font-size: 12.5px; color: var(--wb-ink-soft); display: inline-flex; align-items: center; gap: 6px; }
+.stat-num { font-family: var(--font-mono); font-weight: 500; font-size: 28px; line-height: 1.15; letter-spacing: -0.02em; }
+.stat-num small { font-family: var(--font-sans); font-size: 12px; color: var(--wb-muted); margin-left: 2px; letter-spacing: 0; }
+.stat-note { font-size: 12px; color: var(--wb-muted); text-align: right; padding-bottom: 4px; }
+.stat.warn { box-shadow: inset 0 2px 0 var(--wb-accent); }
+.stat.warn .stat-num { color: var(--wb-accent); }
+
+.dot { width: 7px; height: 7px; border-radius: 999px; display: inline-block; flex-shrink: 0; }
+.s-todo { background: var(--wb-status-todo); }
+.s-progress { background: var(--wb-status-progress); }
+.s-review { background: var(--wb-status-review); }
+.s-done { background: var(--wb-status-done); }
+
+.teambar { margin-top: 12px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.teambar .bar { flex: 1 1 280px; }
+.bar { display: flex; height: 6px; border-radius: 2px; overflow: hidden; background: var(--wb-sunken); gap: 2px; }
+.bar > span { display: block; height: 100%; transform-origin: left; animation: fill 600ms var(--ease) both; animation-delay: 200ms; }
+.bar .s-todo { opacity: 0.5; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--wb-ink-soft); }
+.legend span { display: inline-flex; align-items: center; gap: 5px; }
+.legend b { font-family: var(--font-mono); font-weight: 500; color: var(--wb-ink); }
+
+/* Layout + panels ------------------------------------------------------- */
+.columns { margin-top: 24px; display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.stack { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.card { background: var(--wb-surface); border: 1px solid var(--wb-rule); border-radius: 6px; min-width: 0; }
+.card-head {
+  height: 40px; display: flex; align-items: center; gap: 8px; padding: 0 14px;
+  border-bottom: 1px solid var(--wb-rule);
+}
+.card-head h2 { margin: 0; font-size: 13.5px; font-weight: 600; }
+.card-head .n { font-family: var(--font-mono); font-size: 11px; color: var(--wb-muted); border: 1px solid var(--wb-rule); border-radius: 3px; padding: 0 5px; }
+.card-head .hint { font-size: 12px; color: var(--wb-muted); }
+.card-head .go { margin-left: auto; font-size: 12px; color: var(--wb-muted); text-decoration: none; display: inline-flex; gap: 6px; align-items: center; white-space: nowrap; }
+.card-head .go:hover { color: var(--wb-ink); }
+
+/* Attention flag --------------------------------------------------------- */
+.flag {
+  display: inline-flex; align-items: center; white-space: nowrap;
+  font-size: 11.5px; font-weight: 600; line-height: 1; color: var(--wb-accent);
+  border: 1px solid color-mix(in srgb, var(--wb-accent) 45%, transparent); border-radius: 3px; padding: 3px 5px;
+}
+.flag.fill { background: var(--wb-accent-wash); border-color: transparent; }
+
+/* Issue table ------------------------------------------------------------ */
+.tbl { width: 100%; }
+.tr {
+  display: grid; grid-template-columns: 9rem minmax(0, 1fr) 6.5rem 6.5rem 4.5rem; align-items: center; gap: 12px;
+  padding: 0 14px; min-height: 36px; position: relative;
+}
+.thead { min-height: 30px; font-family: var(--font-mono); font-size: 11px; color: var(--wb-muted); border-bottom: 1px solid var(--wb-rule); background: var(--wb-canvas); }
+.thead span:last-child, .td-age { text-align: right; }
+.group {
+  display: flex; align-items: center; gap: 8px; padding: 10px 14px 6px; font-size: 12px; color: var(--wb-muted);
+}
+.group .c { font-family: var(--font-mono); }
+button.tr, a.tr {
+  width: 100%; border: 0; border-top: 1px solid var(--wb-rule); background: none; text-align: left; cursor: pointer; text-decoration: none; color: inherit;
+  transition: background 120ms var(--ease);
+}
+.group + button.tr, .group + a.tr { border-top-color: transparent; }
+button.tr:hover, a.tr:hover, button.tr:focus-visible, a.tr:focus-visible { background: var(--wb-hover); }
+button.tr:focus-visible, a.tr:focus-visible { outline-offset: -2px; border-radius: 0; }
+.tr.gutter::before { content: ""; position: absolute; left: 0; top: 6px; bottom: 6px; width: 2px; background: var(--wb-accent); border-radius: 0 2px 2px 0; }
+.td-ref { font-family: var(--font-mono); font-size: 12px; color: var(--wb-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.td-title { font-size: 13.5px; font-weight: 500; min-width: 0; padding: 7px 0; }
+.td-title .t { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.td-title .sub { display: block; font-size: 12px; font-weight: 400; color: var(--wb-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.td-status { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--wb-ink-soft); white-space: nowrap; }
+.td-who { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--wb-ink-soft); white-space: nowrap; min-width: 0; }
+.td-age { font-family: var(--font-mono); font-size: 12px; color: var(--wb-muted); white-space: nowrap; }
+.tr.stale .td-ref, .tr.stale .td-title, .tr.stale .td-who, .tr.stale .td-status { opacity: 0.55; }
+.att-clear { border-top: 1px solid var(--wb-rule); padding: 9px 14px; font-size: 12px; color: var(--wb-muted); display: flex; gap: 6px; align-items: center; }
+.att-clear::before { content: ""; width: 7px; height: 7px; border-radius: 999px; background: var(--wb-status-done); }
+
+/* People ---------------------------------------------------------------- */
+.person {
+  display: grid; grid-template-columns: 8.5rem minmax(100px, 1fr) 5.5rem minmax(0, 1.4fr); gap: 14px; align-items: center;
+  padding: 8px 14px; border-top: 1px solid var(--wb-rule);
+}
+.people .person:first-child { border-top: 0; }
+.person-id { display: flex; align-items: center; gap: 8px; min-width: 0; text-decoration: none; }
+.person-id:hover .pname { text-decoration: underline; text-underline-offset: 3px; }
+.pname { font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 5px; white-space: nowrap; }
+.pname .me-tag { font-family: var(--font-mono); font-size: 10px; font-weight: 500; color: var(--wb-muted); border: 1px solid var(--wb-rule); border-radius: 3px; padding: 0 3px; }
+.plast { font-family: var(--font-mono); font-size: 11px; color: var(--wb-muted); display: block; }
+.load .track { display: flex; gap: 2px; height: 100%; }
+.load-n { font-family: var(--font-mono); font-size: 12px; color: var(--wb-muted); white-space: nowrap; }
+.load-n b { color: var(--wb-ink); font-weight: 500; }
+.seg-review { background: var(--wb-status-review); }
+.seg-progress { background: var(--wb-status-progress); }
+.seg-todo { background: var(--wb-status-todo); opacity: 0.5; }
+.current { background: none; border: 0; padding: 0; text-align: left; cursor: pointer; min-width: 0; display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.current .ref { font-family: var(--font-mono); font-size: 12px; color: var(--wb-muted); white-space: nowrap; }
+.current .t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+.current:hover .t { text-decoration: underline; text-underline-offset: 3px; }
+.idle { font-size: 12.5px; color: var(--wb-muted); }
+
+/* Log ------------------------------------------------------------------- */
+.log { list-style: none; margin: 0; padding: 4px 0 8px; }
+.day { font-family: var(--font-mono); font-size: 11px; color: var(--wb-muted); padding: 10px 14px 4px; }
+.ev { display: grid; grid-template-columns: 4.5rem 18px minmax(0, 1fr); gap: 10px; padding: 5px 14px; align-items: start; font-size: 13px; }
+.ev time { font-family: var(--font-mono); font-size: 11.5px; color: var(--wb-muted); white-space: nowrap; padding-top: 1px; }
+.ev .avatar { margin-top: 1px; }
+.ev .what { color: var(--wb-muted); }
+.ev .kind { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--wb-ink-soft); margin-right: 6px; }
+.ev button, .ev a.ref { background: none; border: 0; padding: 0; cursor: pointer; font-family: var(--font-mono); font-size: 12px; text-decoration: underline; text-decoration-color: var(--wb-rule-strong); text-underline-offset: 3px; }
+.ev button:hover, .ev a.ref:hover { text-decoration-color: currentColor; }
+.quote { margin: 3px 0 0; padding-left: 8px; border-left: 2px solid var(--wb-rule-strong); font-size: 12.5px; color: var(--wb-ink-soft); }
+
+/* Projects -------------------------------------------------------------- */
+.project { display: block; padding: 10px 14px 12px; text-decoration: none; border-top: 1px solid var(--wb-rule); transition: background 120ms var(--ease); }
+.project:first-child { border-top: 0; }
+.project:hover { background: var(--wb-hover); }
+.project-top { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; }
+.swatch { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+.project-name { font-weight: 600; font-size: 13.5px; }
+.project-repos { font-family: var(--font-mono); font-size: 11.5px; color: var(--wb-muted); }
+.project-pct { margin-left: auto; font-family: var(--font-mono); font-weight: 500; font-size: 13px; }
+.project-foot { margin-top: 6px; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2px 10px; font-size: 12px; color: var(--wb-muted); }
+.project-foot b { font-family: var(--font-mono); font-weight: 500; color: var(--wb-ink-soft); }
+
+.sprint { padding: 12px 14px 14px; border-top: 1px solid var(--wb-rule); background: var(--wb-canvas); }
+.sprint-top { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+.sprint-name { font-weight: 600; font-size: 13px; }
+.days { font-family: var(--font-mono); font-weight: 500; font-size: 13px; }
+.days small { font-family: var(--font-sans); color: var(--wb-muted); margin-left: 2px; font-size: 12px; }
+.calendar { display: grid; grid-template-columns: repeat(14, 1fr); gap: 2px; margin: 0 0 10px; }
+.calendar i { height: 10px; border-radius: 1px; background: var(--wb-rule); }
+.calendar i.past { background: var(--wb-muted); opacity: 0.6; }
+.calendar i.today { background: var(--wb-ink); }
+.calendar i.weekend { opacity: 0.4; }
+.placeholder { margin: 0 14px 14px; padding: 9px 11px; border: 1px dashed var(--wb-rule-strong); border-radius: 4px; font-size: 12px; color: var(--wb-muted); }
+.placeholder b { color: var(--wb-ink-soft); font-weight: 600; margin-right: 6px; }
+
+.action { padding: 10px 14px; border-top: 1px solid var(--wb-rule); display: flex; flex-direction: column; gap: 5px; }
+.actions .action:first-child { border-top: 0; }
+.action-text { font-size: 13.5px; font-weight: 500; }
+.action-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font-size: 12px; color: var(--wb-ink-soft); }
+.action-meta .who { display: inline-flex; align-items: center; gap: 5px; }
+.action-meta a { color: var(--wb-muted); text-underline-offset: 3px; }
+.linkbtn { background: none; border: 0; padding: 0; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; font-size: 12px; }
+.linkbtn:hover .mono { text-decoration: underline; text-underline-offset: 3px; }
+
+/* Issue panel ----------------------------------------------------------- */
+.scrim { position: fixed; inset: 0; background: var(--wb-scrim); z-index: 30; opacity: 0; pointer-events: none; transition: opacity 200ms var(--ease); }
+.panel {
+  position: fixed; inset: 0 0 0 auto; width: min(560px, 100%); z-index: 40;
+  background: var(--wb-surface); box-shadow: var(--wb-shadow-panel);
+  transform: translateX(104%); transition: transform 200ms var(--ease); display: flex; flex-direction: column;
+}
+body.panel-open .scrim { opacity: 1; pointer-events: auto; }
+body.panel-open .panel { transform: none; }
+.panel-head { height: 48px; display: flex; align-items: center; gap: 10px; padding: 0 16px; border-bottom: 1px solid var(--wb-rule); }
+.panel-head .close { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--wb-rule); background: none; border-radius: 4px; height: 28px; padding: 0 8px; font-size: 12px; cursor: pointer; color: var(--wb-ink-soft); }
+.panel-body { padding: 18px 16px; display: flex; flex-direction: column; gap: 16px; overflow-y: auto; }
+.panel-body h2 { margin: 0; font-size: 18px; line-height: 1.4; font-weight: 600; letter-spacing: -0.01em; }
+.panel dl { display: grid; grid-template-columns: 6.5rem 1fr; margin: 0; font-size: 13px; border: 1px solid var(--wb-rule); border-radius: 6px; }
+.panel dt, .panel dd { padding: 8px 12px; border-top: 1px solid var(--wb-rule); margin: 0; }
+.panel dt:first-of-type, .panel dd:first-of-type { border-top: 0; }
+.panel dt { color: var(--wb-muted); font-size: 12px; }
+.panel dd { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.panel .hint { font-size: 12px; color: var(--wb-muted); }
+
+/* Motion ---------------------------------------------------------------- */
+@keyframes rise { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+@keyframes fill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+.reveal { animation: rise 280ms var(--ease) both; }
+.d1 { animation-delay: 30ms; } .d2 { animation-delay: 60ms; } .d3 { animation-delay: 90ms; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+
+/* Responsive ------------------------------------------------------------ */
+@media (max-width: 1100px) { .columns { grid-template-columns: 1fr; } }
+@media (max-width: 900px) {
+  .side { display: none; }
+  .top { padding: 0 12px; }
+  .crumb { display: none; }
+  .search { margin-left: 0; }
+  .mobile-nav {
+    display: flex; gap: 2px; overflow-x: auto; padding: 6px 12px; background: var(--wb-surface);
+    border-bottom: 1px solid var(--wb-rule); scrollbar-width: none;
+  }
+  .mobile-nav a { flex-shrink: 0; height: 28px; display: inline-flex; align-items: center; padding: 0 9px; border-radius: 4px; font-size: 13px; text-decoration: none; color: var(--wb-ink-soft); }
+  .mobile-nav a[aria-current="page"] { background: var(--wb-sunken); color: var(--wb-ink); font-weight: 600; }
+  main { padding: 16px 16px 48px; }
+  .tr { grid-template-columns: 8rem minmax(0, 1fr) 6rem 4rem; }
+  .td-who-col { display: none !important; }
+  .person { grid-template-columns: 8.5rem minmax(0, 1fr) auto; }
+  .person .current, .person > .idle { grid-column: 1 / -1; }
+}
+@media (max-width: 640px) {
+  .me-name, .search kbd, .seg .lbl { display: none; }
+  .headline { font-size: 19px; }
+  .stats { grid-template-columns: 1fr 1fr; }
+  .stat:nth-child(3) { border-left: 0; }
+  .stat:nth-child(n+3) { border-top: 1px solid var(--wb-rule); }
+  .stat { padding: 10px 12px 12px; }
+  .stat-num { font-size: 24px; }
+  .stat-note { grid-column: 1 / -1; text-align: left; padding: 0; }
+  .thead { display: none; }
+  .tr { grid-template-columns: minmax(0, 1fr) auto; gap: 2px 10px; padding: 8px 14px; }
+  .td-ref { grid-column: 1; grid-row: 1; }
+  .td-age { grid-column: 2; grid-row: 1; }
+  .td-title { grid-column: 1 / -1; padding: 0; }
+  .td-status { grid-column: 1 / -1; }
+  .person { grid-template-columns: minmax(0, 1fr) auto; }
+  .person .load { grid-column: 1 / -1; grid-row: 2; }
+  .ev { grid-template-columns: 18px minmax(0, 1fr) auto; }
+  .ev time { grid-column: 3; grid-row: 1; }
+  .ev .avatar { grid-column: 1; grid-row: 1; }
+  .ev .body { grid-column: 2; grid-row: 1; }
+}
+</style>
+</head>
+<body>
+<div class="shell">
+  <aside class="side">
+    <button class="org" type="button" aria-label="조직 바꾸기">
+      <span class="org-mark">ah</span>
+      <span class="org-name">acme-health<span class="org-sub">업무 보드</span></span>
+      <span class="chev" aria-hidden="true">⌄</span>
+    </button>
+    <div>
+      <div class="nav-label">화면</div>
+      <ul class="nav">
+        <li><a href="#" aria-current="page">개요<kbd>g o</kbd></a></li>
+        <li><a href="#">내 작업 <span class="count">3</span><kbd>g m</kbd></a></li>
+        <li><a href="#">사람별 보드<kbd>g p</kbd></a></li>
+        <li><a href="#">프로젝트별 보드<kbd>g b</kbd></a></li>
+        <li><a href="#">회의 노트<kbd>g n</kbd></a></li>
+        <li><a href="#">설정<kbd>g s</kbd></a></li>
+      </ul>
+    </div>
+    <div class="side-foot">저장소 5 · 팀원 6<br />j/k 이동 · Enter 열기</div>
+  </aside>
+
+  <div class="main-col">
+    <header class="top">
+      <span class="crumb">acme-health / <b>개요</b></span>
+      <label class="search">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.6"/><path d="M11 11l3.5 3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        <input id="q" type="search" placeholder="이슈, 댓글, 회의 노트 검색" aria-label="검색" />
+        <kbd>/</kbd>
+      </label>
+      <div class="top-right">
+        <div class="seg" role="group" aria-label="밝기">
+          <button type="button" data-theme-set="light" aria-pressed="false"><span aria-hidden="true">☼</span><span class="lbl"> 밝게</span></button>
+          <button type="button" data-theme-set="dark" aria-pressed="false"><span aria-hidden="true">☾</span><span class="lbl"> 어둡게</span></button>
+        </div>
+        <span class="me"><span class="avatar">하</span><span class="me-name">김하늘</span></span>
+      </div>
+    </header>
+    <nav class="mobile-nav" aria-label="화면">
+      <a href="#" aria-current="page">개요</a><a href="#">내 작업</a><a href="#">사람별 보드</a><a href="#">프로젝트별 보드</a><a href="#">회의 노트</a><a href="#">설정</a>
+    </nav>
+
+    <main>
+      <section class="reveal" aria-labelledby="headline">
+        <div class="meta-line"><span>11월 10일 화요일</span><span>열린 일 <b>12</b></span><span>11월 1주기 <b>4/14</b>일째</span></div>
+        <h1 class="headline" id="headline">긴급 2건 중 <em>1건</em>은 아직 시작 전이고, 리뷰를 기다리는 PR이 <em>3건</em> 있습니다.</h1>
+        <p class="headline-sub">그 밖에 2건이 7일 넘게 멈춰 있습니다. 담당자 없는 일은 없습니다.</p>
+
+        <div class="stats">
+          <button class="stat" type="button" title="사람별 보드에서 진행 중만 보기">
+            <span class="stat-label"><span class="dot s-progress"></span>진행 중</span>
+            <span class="stat-num">3<small>건</small></span><span class="stat-note">3명이 움직이는 중</span>
+          </button>
+          <button class="stat" type="button" title="사람별 보드에서 리뷰 중만 보기">
+            <span class="stat-label"><span class="dot s-review"></span>리뷰 대기</span>
+            <span class="stat-num">3<small>건</small></span><span class="stat-note">가장 오래된 것 1일</span>
+          </button>
+          <button class="stat warn" type="button" title="7일 넘게 멈춘 일 보기">
+            <span class="stat-label"><span class="dot s-todo"></span>7일 넘게 멈춤</span>
+            <span class="stat-num">2<small>건</small></span><span class="stat-note">최장 12일째</span>
+          </button>
+          <button class="stat" type="button" title="이번 주 완료한 일 보기">
+            <span class="stat-label"><span class="dot s-done"></span>이번 주 완료</span>
+            <span class="stat-num">2<small>건</small></span><span class="stat-note">이민준 1 · 최지호 1</span>
+          </button>
+        </div>
+
+        <div class="teambar" aria-label="팀 전체 상태">
+          <div class="bar" role="img" aria-label="완료 2, 리뷰 중 3, 진행 중 3, 할 일 6">
+            <span class="s-done" style="width:14.3%"></span><span class="s-review" style="width:21.4%"></span><span class="s-progress" style="width:21.4%"></span><span class="s-todo" style="width:42.9%"></span>
+          </div>
+          <div class="legend">
+            <span><i class="dot s-done"></i>완료 <b>2</b></span><span><i class="dot s-review"></i>리뷰 중 <b>3</b></span>
+            <span><i class="dot s-progress"></i>진행 중 <b>3</b></span><span><i class="dot s-todo"></i>할 일 <b>6</b></span>
+            <span class="muted">완료는 최근 7일</span>
+          </div>
+        </div>
+      </section>
+
+      <div class="columns">
+        <div class="stack">
+          <section class="card reveal d1" aria-labelledby="att">
+            <div class="card-head"><h2 id="att">손봐야 할 일</h2><span class="n">8</span><span class="hint">지금 봐야 할 것</span></div>
+            <div class="tbl" role="list">
+              <div class="tr thead" aria-hidden="true"><span>저장소 #번호</span><span>제목</span><span>상태</span><span class="td-who-col">담당</span><span>경과</span></div>
+
+              <div class="group"><span class="flag fill">긴급</span><span class="c">2</span><span>우선순위 긴급, 아직 끝나지 않음</span></div>
+              <button class="tr gutter" type="button" role="listitem" data-issue='{"ref":"cms-api #303","title":"다국어 슬러그 중복 오류","status":"todo","who":"최지호","type":"버그","urgent":true,"last":"오늘"}'>
+                <span class="td-ref">cms-api #303</span>
+                <span class="td-title"><span class="t">다국어 슬러그 중복 오류</span><span class="sub">버그</span></span>
+                <span class="td-status"><span class="flag">시작 전</span></span>
+                <span class="td-who td-who-col"><span class="avatar sm" style="background:#6b5d45">지</span>최지호</span>
+                <span class="td-age">오늘</span>
+              </button>
+              <button class="tr" type="button" role="listitem" data-issue='{"ref":"inbox-web #401","title":"받은편지함 읽음 표시 동기화","status":"in_progress","who":"정유나","type":"버그","urgent":true,"last":"1일 전"}'>
+                <span class="td-ref">inbox-web #401</span>
+                <span class="td-title"><span class="t">받은편지함 읽음 표시 동기화</span><span class="sub">버그 · 11월 1주기 · 직접 진행 중으로 표시</span></span>
+                <span class="td-status"><span class="dot s-progress"></span>진행 중</span>
+                <span class="td-who td-who-col"><span class="avatar sm" style="background:#4d5a6b">유</span>정유나</span>
+                <span class="td-age">1일</span>
+              </button>
+
+              <div class="group"><span class="flag">리뷰 대기</span><span class="c">3</span><span>리뷰 요청된 PR, 오래된 순</span></div>
+              <button class="tr" type="button" role="listitem" data-issue='{"ref":"booking-api #102","title":"예약 조회 API 페이지네이션","status":"in_review","who":"이민준","type":"작업","pr":"#110 예약 조회 페이지네이션 추가","last":"오늘"}'>
+                <span class="td-ref">booking-api #102</span>
+                <span class="td-title"><span class="t">예약 조회 API 페이지네이션</span><span class="sub">PR #110 예약 조회 페이지네이션 추가 · 댓글 2</span></span>
+                <span class="td-status"><span class="dot s-review"></span>리뷰 중</span>
+                <span class="td-who td-who-col"><span class="avatar sm" style="background:#3f5c4f">민</span>이민준</span>
+                <span class="td-age">1일</span>
+              </button>
+              <button class="tr" type="button" role="listitem" data-issue='{"ref":"booking-web #201","title":"예약 화면 달력 컴포넌트","status":"in_review","who":"박서연","type":"기능","pr":"#210 달력 컴포넌트","last":"1일 전"}'>
+                <span class="td-ref">booking-web #201</span>
+                <span class="td-title"><span class="t">예약 화면 달력 컴포넌트</span><span class="sub">PR #210 달력 컴포넌트</span></span>
+                <span class="td-status"><span class="dot s-review"></span>리뷰 중</span>
+                <span class="td-who td-who-col"><span class="avatar sm" style="background:#7a4e45">서</span>박서연</span>
+                <span class="td-age">1일</span>
+              </button>
+              <button class="tr" type="button" role="listitem" data-issue='{"ref":"search-api #502","title":"검색 결과 출처 표시","status":"in_review","who":"김하늘","type":"기능","pr":"#510 검색 결과 출처 링크","last":"오늘"}'>
+                <span class="td-ref">search-api #502</span>
+                <span class="td-title"><span class="t">검색 결과 출처 표시</span><span class="sub">PR #510 검색 결과 출처 링크 · 내 PR</span></span>
+                <span class="td-status"><span class="dot s-review"></span>리뷰 중</span>
+                <span class="td-who td-who-col"><span class="avatar sm">하</span>김하늘</span>
+                <span class="td-age">1일</span>
+              </button>
+
+              <div class="group"><span class="flag">멈춤</span><span class="c">2</span><span>7일 넘게 아무 움직임 없음</span></div>
+              <button class="tr stale" type="button" role="listitem" data-issue='{"ref":"inbox-web #402","title":"메시지 검색 속도 개선","status":"todo","who":"정유나","type":"작업","stale":12,"last":"12일 전"}'>
+                <span class="td-ref">inbox-web #402</span>
+                <span class="td-title"><span class="t">메시지 검색 속도 개선</span><span class="sub">작업</span></span>
+                <span class="td-status"><span class="dot s-todo"></span>할 일</span>
+                <span class="td-who td-who-col"><span class="avatar sm" style="background:#4d5a6b">유</span>정유나</span>
+                <span class="td-age"><span class="flag">12일째</span></span>
+              </button>
+              <button class="tr stale" type="button" role="listitem" data-issue='{"ref":"booking-web #202","title":"모바일에서 진료 기록 스크롤 깨짐","status":"todo","who":"박서연","type":"버그","stale":9,"last":"9일 전"}'>
+                <span class="td-ref">booking-web #202</span>
+                <span class="td-title"><span class="t">모바일에서 진료 기록 스크롤 깨짐</span><span class="sub">버그 · 마지막 댓글 "iOS Safari에서만 재현됩니다."</span></span>
+                <span class="td-status"><span class="dot s-todo"></span>할 일</span>
+                <span class="td-who td-who-col"><span class="avatar sm" style="background:#7a4e45">서</span>박서연</span>
+                <span class="td-age"><span class="flag">9일째</span></span>
+              </button>
+
+              <div class="group"><span class="flag">이슈 없음</span><span class="c">1</span><span>회의에서 정했지만 이슈로 만들지 않은 할 일</span></div>
+              <a class="tr" href="#notes" role="listitem">
+                <span class="td-ref">11월 8일 회의</span>
+                <span class="td-title"><span class="t">달력 컴포넌트 접근성 점검</span><span class="sub">Booking 주간 회의에서 나옴</span></span>
+                <span class="td-status muted">이슈 없음</span>
+                <span class="td-who td-who-col"><span class="avatar sm" style="background:#7a4e45">서</span>박서연</span>
+                <span class="td-age">2일</span>
+              </a>
+            </div>
+            <div class="att-clear">담당자 없는 일 없음</div>
+          </section>
+
+          <section class="card reveal d2" aria-labelledby="people">
+            <div class="card-head"><h2 id="people">사람</h2><span class="n">6</span><span class="hint">누가 무엇을</span><a class="go" href="#">사람별 보드 <kbd>g p</kbd></a></div>
+            <div class="people">
+              <div class="person">
+                <a class="person-id" href="#"><span class="avatar" style="background:#3f5c4f">민</span><span><span class="pname">이민준</span><span class="plast">3시간 전</span></span></a>
+                <div class="load bar"><div class="track" style="width:100%"><span class="seg-progress" style="flex:1"></span><span class="seg-review" style="flex:1"></span><span class="seg-todo" style="flex:1"></span></div></div>
+                <span class="load-n">열린 <b>3</b> · 완료 1</span>
+                <button class="current" type="button" data-issue='{"ref":"booking-api #102","title":"예약 조회 API 페이지네이션","status":"in_review","who":"이민준","type":"작업","pr":"#110 예약 조회 페이지네이션 추가","last":"오늘"}'><span class="dot s-review"></span><span class="ref">booking-api #102</span><span class="t">예약 조회 API 페이지네이션</span></button>
+              </div>
+              <div class="person">
+                <a class="person-id" href="#"><span class="avatar">하</span><span><span class="pname">김하늘 <span class="me-tag">나</span></span><span class="plast">오늘</span></span></a>
+                <div class="load bar"><div class="track" style="width:100%"><span class="seg-review" style="flex:1"></span><span class="seg-todo" style="flex:2"></span></div></div>
+                <span class="load-n">열린 <b>3</b></span>
+                <button class="current" type="button" data-issue='{"ref":"search-api #502","title":"검색 결과 출처 표시","status":"in_review","who":"김하늘","type":"기능","pr":"#510 검색 결과 출처 링크","last":"오늘"}'><span class="dot s-review"></span><span class="ref">search-api #502</span><span class="t">검색 결과 출처 표시</span></button>
+              </div>
+              <div class="person">
+                <a class="person-id" href="#"><span class="avatar" style="background:#6b5d45">지</span><span><span class="pname">최지호</span><span class="plast">오늘</span></span></a>
+                <div class="load bar"><div class="track" style="width:66.7%"><span class="seg-progress" style="flex:1"></span><span class="seg-todo" style="flex:1"></span></div></div>
+                <span class="load-n">열린 <b>2</b> · 완료 1</span>
+                <button class="current" type="button" data-issue='{"ref":"cms-api #301","title":"게시글 예약 발행","status":"in_progress","who":"최지호","type":"기능","pr":"#310 예약 발행 스케줄러","last":"오늘"}'><span class="dot s-progress"></span><span class="ref">cms-api #301</span><span class="t">게시글 예약 발행</span></button>
+              </div>
+              <div class="person">
+                <a class="person-id" href="#"><span class="avatar" style="background:#7a4e45">서</span><span><span class="pname">박서연</span><span class="plast">1일 전</span></span></a>
+                <div class="load bar"><div class="track" style="width:66.7%"><span class="seg-review" style="flex:1"></span><span class="seg-todo" style="flex:1"></span></div></div>
+                <span class="load-n">열린 <b>2</b></span>
+                <button class="current" type="button" data-issue='{"ref":"booking-web #201","title":"예약 화면 달력 컴포넌트","status":"in_review","who":"박서연","type":"기능","pr":"#210 달력 컴포넌트","last":"1일 전"}'><span class="dot s-review"></span><span class="ref">booking-web #201</span><span class="t">예약 화면 달력 컴포넌트</span></button>
+              </div>
+              <div class="person">
+                <a class="person-id" href="#"><span class="avatar" style="background:#4d5a6b">유</span><span><span class="pname">정유나</span><span class="plast">1일 전</span></span></a>
+                <div class="load bar"><div class="track" style="width:66.7%"><span class="seg-progress" style="flex:1"></span><span class="seg-todo" style="flex:1"></span></div></div>
+                <span class="load-n">열린 <b>2</b></span>
+                <button class="current" type="button" data-issue='{"ref":"inbox-web #401","title":"받은편지함 읽음 표시 동기화","status":"in_progress","who":"정유나","type":"버그","urgent":true,"last":"1일 전"}'><span class="dot s-progress"></span><span class="ref">inbox-web #401</span><span class="t">받은편지함 읽음 표시 동기화</span><span class="flag fill">긴급</span></button>
+              </div>
+              <div class="person">
+                <a class="person-id" href="#"><span class="avatar ghost">한</span><span><span class="pname">한결 (겸직)</span><span class="plast">활동 없음</span></span></a>
+                <span class="idle">맡은 일 없음</span>
+                <span class="load-n">열린 <b>0</b></span>
+                <span class="idle"></span>
+              </div>
+            </div>
+          </section>
+
+          <section class="card reveal d3" aria-labelledby="feed">
+            <div class="card-head"><h2 id="feed">최근 흐름</h2><span class="hint">지난 3일</span></div>
+            <ul class="log">
+              <li><div class="day">오늘 · 11-10</div>
+                <div class="ev"><time>3시간 전</time><span class="avatar sm" style="background:#3f5c4f">민</span>
+                  <div class="body"><b>이민준</b> <span class="what">님이</span> <button type="button" data-issue='{"ref":"booking-api #102","title":"예약 조회 API 페이지네이션","status":"in_review","who":"이민준","type":"작업","pr":"#110 예약 조회 페이지네이션 추가","last":"오늘"}'>booking-api #102</button><span class="what">에 댓글</span><p class="quote">반영했습니다. 리뷰 부탁드려요.</p></div></div>
+              </li>
+              <li><div class="day">어제 · 11-09</div>
+                <div class="ev"><time>20시간 전</time><span class="avatar sm">하</span>
+                  <div class="body"><b>김하늘</b> <span class="what">님이</span> <button type="button" data-issue='{"ref":"booking-api #102","title":"예약 조회 API 페이지네이션","status":"in_review","who":"이민준","type":"작업","pr":"#110 예약 조회 페이지네이션 추가","last":"오늘"}'>booking-api #102</button><span class="what">에 댓글</span><p class="quote">페이지 크기는 기본 20, 최대 100으로 갑시다.</p></div></div>
+                <div class="ev"><time>1일 전</time><span class="avatar sm" style="background:#7a4e45">서</span>
+                  <div class="body"><span class="kind"><i class="dot s-review"></i>리뷰 요청</span><b>박서연</b> <span class="what">· <span class="mono">booking-web PR #210</span></span> 달력 컴포넌트</div></div>
+                <div class="ev"><time>1일 전</time><span class="avatar sm" style="background:#3f5c4f">민</span>
+                  <div class="body"><span class="kind"><i class="dot s-review"></i>리뷰 요청</span><b>이민준</b> <span class="what">· <span class="mono">booking-api PR #110</span></span> 예약 조회 페이지네이션 추가</div></div>
+                <div class="ev"><time>1일 전</time><span class="avatar sm" style="background:#6b5d45">지</span>
+                  <div class="body"><span class="kind"><i class="dot s-done"></i>병합</span><b>최지호</b> <span class="what">· <span class="mono">cms-api PR #311</span></span> 용량 제한 안내 문구</div></div>
+              </li>
+              <li><div class="day">11-08</div>
+                <div class="ev"><time>2일 전</time><span class="avatar sm">하</span>
+                  <div class="body"><span class="kind">회의 노트</span><a class="ref" href="#notes" style="font-family:var(--font-sans);font-size:13px">Booking 주간 회의</a> <span class="what">· 참석 3명 · 할 일 2건 중 이슈 연결 1건</span></div></div>
+              </li>
+              <li><div class="day">11-07</div>
+                <div class="ev"><time>3일 전</time><span class="avatar sm" style="background:#6b5d45">지</span>
+                  <div class="body"><span class="kind"><i class="dot s-done"></i>완료</span><b>최지호</b> <span class="what">·</span> <button type="button" data-issue='{"ref":"cms-api #302","title":"이미지 업로드 용량 제한 안내","status":"done","who":"최지호","type":"작업","pr":"#311 용량 제한 안내 문구","last":"3일 전"}'>cms-api #302</button> <span class="what">이미지 업로드 용량 제한 안내</span></div></div>
+              </li>
+            </ul>
+          </section>
+        </div>
+
+        <div class="stack">
+          <section class="card reveal d2" aria-labelledby="proj">
+            <div class="card-head"><h2 id="proj">프로젝트와 목표</h2><span class="hint">어디까지 왔나</span><a class="go" href="#">보드 <kbd>g b</kbd></a></div>
+            <div>
+              <a class="project" href="#">
+                <div class="project-top"><span class="swatch" style="background:#2563eb"></span><span class="project-name">Booking</span><span class="project-repos">booking-api · booking-web</span><span class="project-pct">17%</span></div>
+                <div class="bar" role="img" aria-label="완료 1, 리뷰 중 2, 진행 중 1, 할 일 2"><span class="s-done" style="width:16.7%"></span><span class="s-review" style="width:33.3%"></span><span class="s-progress" style="width:16.7%"></span><span class="s-todo" style="width:33.3%"></span></div>
+                <div class="project-foot"><span>완료 <b>1/6</b> · 열린 PR <b>3</b></span><span>주간 회의 2일 전</span></div>
+              </a>
+              <a class="project" href="#">
+                <div class="project-top"><span class="swatch" style="background:#16a34a"></span><span class="project-name">Content</span><span class="project-repos">cms-api · inbox-web</span><span class="project-pct">20%</span></div>
+                <div class="bar" role="img" aria-label="완료 1, 진행 중 2, 할 일 2"><span class="s-done" style="width:20%"></span><span class="s-progress" style="width:40%"></span><span class="s-todo" style="width:40%"></span></div>
+                <div class="project-foot"><span>완료 <b>1/5</b> · 열린 PR <b>1</b></span><span>회의 없음</span></div>
+              </a>
+              <a class="project" href="#">
+                <div class="project-top"><span class="swatch" style="background:#9333ea"></span><span class="project-name">Search</span><span class="project-repos">search-api</span><span class="project-pct">0%</span></div>
+                <div class="bar" role="img" aria-label="리뷰 중 1, 할 일 2"><span class="s-review" style="width:33.3%"></span><span class="s-todo" style="width:66.7%"></span></div>
+                <div class="project-foot"><span>완료 <b>0/3</b> · 열린 PR <b>1</b></span><span>회의 없음</span></div>
+              </a>
+            </div>
+            <div class="sprint">
+              <div class="sprint-top"><div><span class="sprint-name">11월 1주기</span> <span class="mono muted">11.07–11.21</span></div><div class="days">11<small>일 남음</small></div></div>
+              <div class="calendar" aria-label="14일 중 4일째"><i class="past weekend"></i><i class="past weekend"></i><i class="past"></i><i class="today"></i><i></i><i></i><i></i><i class="weekend"></i><i class="weekend"></i><i></i><i></i><i></i><i></i><i></i></div>
+              <div class="bar" role="img" aria-label="리뷰 중 1, 진행 중 2"><span class="s-review" style="width:33.3%"></span><span class="s-progress" style="width:66.7%"></span></div>
+              <div class="project-foot"><span>완료 <b>0/3</b></span><span>리뷰 중 1 · 진행 중 2</span></div>
+            </div>
+            <div class="placeholder" style="margin-top:14px"><b>마일스톤</b>GitHub 마일스톤을 가져오면(M1 동기화) 마감일과 진행률이 여기에 보입니다.</div>
+          </section>
+
+          <section class="card reveal d3" aria-labelledby="notes" id="notes">
+            <div class="card-head"><h2>회의에서 나온 할 일</h2><span class="hint">최근 14일</span><a class="go" href="#">회의 노트 <kbd>g n</kbd></a></div>
+            <div class="actions">
+              <div class="action">
+                <span class="action-text">예약 변경 알림 발송 설계</span>
+                <span class="action-meta">
+                  <span class="who"><span class="avatar sm" style="background:#3f5c4f">민</span>이민준</span>
+                  <button class="linkbtn" type="button" data-issue='{"ref":"booking-api #103","title":"예약 변경 시 알림 발송","status":"in_progress","who":"이민준","type":"기능","pr":"#111 예약 변경 알림 초안","last":"2일 전"}'><span class="dot s-progress"></span><span class="mono">booking-api #103</span> 진행 중</button>
+                  <a href="#">Booking 주간 회의 · 11-08</a>
+                </span>
+              </div>
+              <div class="action">
+                <span class="action-text">달력 컴포넌트 접근성 점검</span>
+                <span class="action-meta">
+                  <span class="who"><span class="avatar sm" style="background:#7a4e45">서</span>박서연</span>
+                  <span class="flag">이슈 없음</span>
+                  <a href="#">Booking 주간 회의 · 11-08</a>
+                </span>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<div class="scrim" id="scrim"></div>
+<aside class="panel" id="panel" aria-label="이슈 상세" aria-hidden="true">
+  <div class="panel-head">
+    <span class="mono muted" id="pRef"></span>
+    <button class="close" type="button" id="pClose">닫기 <kbd>Esc</kbd></button>
+  </div>
+  <div class="panel-body">
+    <h2 id="pTitle"></h2>
+    <dl>
+      <dt>상태</dt><dd id="pStatus"></dd>
+      <dt>담당자</dt><dd id="pWho"></dd>
+      <dt>종류</dt><dd id="pType"></dd>
+      <dt>연결된 PR</dt><dd id="pPr" class="mono"></dd>
+      <dt>마지막 활동</dt><dd id="pLast"></dd>
+    </dl>
+    <p class="hint">시안입니다. 실제 화면에서는 이 자리에 기존 이슈 패널(<span class="mono">?issue=</span>)이 열려 하위 일, 이 일이 나온 회의, 대화를 함께 보여 줍니다.</p>
+  </div>
+</aside>
+
+<script>
+(() => {
+  const STATUS = { todo: ["s-todo", "할 일"], in_progress: ["s-progress", "진행 중"], in_review: ["s-review", "리뷰 중"], done: ["s-done", "완료"] };
+  const body = document.body, root = document.documentElement;
+  const $ = (id) => document.getElementById(id);
+  let lastFocus = null;
+
+  function openPanel(d, from) {
+    lastFocus = from;
+    $("pRef").textContent = d.ref;
+    $("pTitle").textContent = d.title;
+    const [cls, label] = STATUS[d.status];
+    $("pStatus").innerHTML = `<span class="dot ${cls}"></span>${label}` +
+      (d.urgent ? ' <span class="flag fill">긴급</span>' : "") +
+      (d.stale ? ` <span class="flag">${d.stale}일째 멈춤</span>` : "");
+    $("pWho").textContent = d.who;
+    $("pType").textContent = d.type;
+    $("pPr").textContent = d.pr ? `PR ${d.pr}` : "없음";
+    $("pLast").textContent = d.last;
+    body.classList.add("panel-open");
+    $("panel").setAttribute("aria-hidden", "false");
+    $("pClose").focus();
+  }
+  function closePanel() {
+    if (!body.classList.contains("panel-open")) return;
+    body.classList.remove("panel-open");
+    $("panel").setAttribute("aria-hidden", "true");
+    if (lastFocus) lastFocus.focus();
+  }
+  document.addEventListener("click", (e) => {
+    const el = e.target.closest("[data-issue]");
+    if (el) { e.preventDefault(); openPanel(JSON.parse(el.dataset.issue), el); }
+  });
+  $("pClose").addEventListener("click", closePanel);
+  $("scrim").addEventListener("click", closePanel);
+
+  const rows = () => [...document.querySelectorAll(".tbl .tr[role=listitem]")];
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") return closePanel();
+    const typing = /INPUT|TEXTAREA/.test(document.activeElement?.tagName);
+    if (typing || body.classList.contains("panel-open") || e.metaKey || e.ctrlKey || e.altKey) return;
+    if (e.key === "/") { e.preventDefault(); $("q").focus(); return; }
+    if (e.key === "j" || e.key === "k") {
+      const list = rows(), i = list.indexOf(document.activeElement);
+      const next = e.key === "j" ? Math.min(i + 1, list.length - 1) : Math.max(i - 1, 0);
+      list[i < 0 ? 0 : next].focus();
+    }
+  });
+
+  function syncSeg() {
+    const dark = root.dataset.theme ? root.dataset.theme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+    document.querySelectorAll("[data-theme-set]").forEach((b) => b.setAttribute("aria-pressed", String((b.dataset.themeSet === "dark") === dark)));
+  }
+  document.querySelectorAll("[data-theme-set]").forEach((b) => b.addEventListener("click", () => { root.dataset.theme = b.dataset.themeSet; syncSeg(); }));
+  syncSeg();
+})();
+</script>
+</body>
+</html>

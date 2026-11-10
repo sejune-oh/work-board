@@ -15,3 +15,5 @@
 - 코드 주석에는 읽는 사람이 알아야 할 것만 씁니다. 변경 이유는 커밋 메시지에 씁니다.
 - API를 바꾸면 `docs/api-contract.md`와 `web/src/lib/types.ts`를 함께 고칩니다.
 - API는 `server/src/WorkBoard.Api` 폴더에서 `dotnet run`으로 실행해야 개발 설정을 읽습니다. 로컬 DB 포트는 5434입니다.
+- 화면이나 디자인 작업은 [docs/design.md](docs/design.md)와 `frontend-design` 스킬을 따릅니다. 작업 전에 스킬을 불러오고, PR에서 design.md 7장 체크리스트를 확인합니다.
+- 디자인 기준(색, 글꼴, 컴포넌트 규칙)을 바꾸려면 이슈를 먼저 만들고, `docs/design.md`와 `web/src/app/globals.css`를 같은 PR에서 고칩니다.

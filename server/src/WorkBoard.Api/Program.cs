@@ -4,6 +4,7 @@ using WorkBoard.Api.Features.Health;
 using WorkBoard.Api.Features.Issues;
 using WorkBoard.Api.Features.Me;
 using WorkBoard.Api.Features.MeetingNotes;
+using WorkBoard.Api.Features.Overview;
 using WorkBoard.Api.Features.Members;
 using WorkBoard.Api.Features.Projects;
 using WorkBoard.Api.Features.Search;
@@ -34,6 +35,7 @@ authed.MapMe();
 authed.MapMembers();
 authed.MapProjects();
 authed.MapIssues();
+authed.MapOverview();
 authed.MapMeetingNotes();
 authed.MapSearch();
 

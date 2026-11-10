@@ -1,11 +1,13 @@
 "use client";
 
 import { PRIORITY_LABEL, PRIORITY_STYLE, STALE_DAYS, TYPE_LABEL, daysSince, personName, relativeDays } from "@/lib/labels";
+import { useSettings } from "@/lib/me";
 import type { BoardIssue } from "@/lib/types";
 import { useIssuePanel } from "./useIssuePanel";
 
 export function IssueCard({ issue, showAssignee = true }: { issue: BoardIssue; showAssignee?: boolean }) {
   const { open } = useIssuePanel();
+  const settings = useSettings();
   const stale = issue.state === "open" && daysSince(issue.updatedAt) >= STALE_DAYS;
 
   return (
@@ -23,7 +25,7 @@ export function IssueCard({ issue, showAssignee = true }: { issue: BoardIssue; s
             {TYPE_LABEL[issue.issueType] ?? issue.issueType}
           </span>
         )}
-        {issue.priority && (issue.priority === "urgent" || issue.priority === "high") && (
+        {settings.priorityEnabled && (issue.priority === "urgent" || issue.priority === "high") && (
           <span className={`shrink-0 rounded px-1.5 py-0.5 ${PRIORITY_STYLE[issue.priority]}`}>
             {PRIORITY_LABEL[issue.priority]}
           </span>

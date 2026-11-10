@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect } from "react";
 import { useApi } from "@/lib/api";
 import { PRIORITY_LABEL, SIZE_LABEL, TYPE_LABEL, formatDate, personName, relativeDays } from "@/lib/labels";
+import { useSettings } from "@/lib/me";
 import type { IssueDetail } from "@/lib/types";
 import { ErrorBox, Loading } from "./Feedback";
 import { StatusBadge } from "./StatusBadge";
@@ -19,6 +20,7 @@ const PR_STATE: Record<IssueDetail["pullRequests"][number]["state"], string> = {
 export function IssuePanel() {
   const { issueId, open, close } = useIssuePanel();
   const { data, error, loading } = useApi<IssueDetail>(issueId ? `/api/issues/${issueId}` : null);
+  const settings = useSettings();
 
   useEffect(() => {
     if (!issueId) return;
@@ -63,9 +65,9 @@ export function IssuePanel() {
                   <dt className="text-slate-500">담당자</dt>
                   <dd>{data.assignees.length ? data.assignees.map(personName).join(", ") : "없음"}</dd>
                   {data.issueType && (<><dt className="text-slate-500">종류</dt><dd>{TYPE_LABEL[data.issueType] ?? data.issueType}</dd></>)}
-                  {data.sprint && (<><dt className="text-slate-500">주기</dt><dd>{data.sprint.name}</dd></>)}
-                  {data.priority && (<><dt className="text-slate-500">우선순위</dt><dd>{PRIORITY_LABEL[data.priority]}</dd></>)}
-                  {data.size && (<><dt className="text-slate-500">크기</dt><dd>{SIZE_LABEL[data.size]}</dd></>)}
+                  {settings.sprintsEnabled && data.sprint && (<><dt className="text-slate-500">주기</dt><dd>{data.sprint.name}</dd></>)}
+                  {settings.priorityEnabled && data.priority && (<><dt className="text-slate-500">우선순위</dt><dd>{PRIORITY_LABEL[data.priority]}</dd></>)}
+                  {settings.sizeEnabled && data.size && (<><dt className="text-slate-500">크기</dt><dd>{SIZE_LABEL[data.size]}</dd></>)}
                   <dt className="text-slate-500">마지막 활동</dt>
                   <dd>{relativeDays(data.updatedAt)}</dd>
                 </dl>

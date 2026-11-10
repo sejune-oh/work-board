@@ -4,10 +4,11 @@ import { ErrorBox, Loading } from "@/components/Feedback";
 import { StatusColumns } from "@/components/StatusColumns";
 import { useApi } from "@/lib/api";
 import { personName } from "@/lib/labels";
-import type { BoardIssue, Me } from "@/lib/types";
+import { useMe } from "@/lib/me";
+import type { BoardIssue } from "@/lib/types";
 
 export default function MyWorkPage() {
-  const me = useApi<Me>("/api/me");
+  const me = useMe();
   const login = me.data?.member.githubLogin;
   const issues = useApi<BoardIssue[]>(login ? `/api/issues?assignee=${encodeURIComponent(login)}` : null);
 

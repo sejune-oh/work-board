@@ -2,10 +2,11 @@
 
 import { ErrorBox, Loading } from "@/components/Feedback";
 import { useApi } from "@/lib/api";
-import type { Me, Project } from "@/lib/types";
+import { useMe } from "@/lib/me";
+import type { Project } from "@/lib/types";
 
 export default function SettingsPage() {
-  const me = useApi<Me>("/api/me");
+  const me = useMe();
   const projects = useApi<Project[]>("/api/projects");
 
   const error = me.error ?? projects.error;

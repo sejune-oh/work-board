@@ -36,7 +36,7 @@ DB 포트는 다른 프로젝트와 겹치지 않도록 5434를 씁니다.
 
 ## 로그인 설정 (API)
 
-환경 변수 또는 user-secrets로 넣습니다. 커밋하지 않습니다.
+로컬에서는 `server/src/WorkBoard.Api/appsettings.Local.json`에 넣습니다. 이 파일은 `.gitignore`에 있어 커밋되지 않고, Development 환경에서만 읽습니다. 양식은 `appsettings.Local.example.json`을 복사해 씁니다. 배포 환경에서는 같은 이름의 환경 변수(`Auth__Supabase__Url` 등)로 넣습니다.
 
 | 이름 | 내용 |
 | --- | --- |
@@ -48,8 +48,7 @@ Development가 아닌 환경에서 `Url`이나 `ServiceRoleKey`가 없으면 API
 
 ```bash
 cd server/src/WorkBoard.Api
-dotnet user-secrets set "Auth:Supabase:Url" "https://<project-ref>.supabase.co"
-dotnet user-secrets set "Auth:Supabase:ServiceRoleKey" "<service role key>"
+cp appsettings.Local.example.json appsettings.Local.json   # 값을 채운 뒤 API 재시작
 ```
 
 웹은 빌드 시점 공개 값 `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`를 씁니다.

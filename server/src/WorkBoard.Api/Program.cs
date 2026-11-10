@@ -16,6 +16,10 @@ DefaultTypeMap.MatchNamesWithUnderscores = true;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Local-only values such as the Supabase service role key. The file is git-ignored.
+if (builder.Environment.IsDevelopment())
+    builder.Configuration.AddJsonFile("appsettings.Local.json", optional: true, reloadOnChange: true);
+
 builder.Services.AddWorkBoardData(builder.Configuration);
 builder.Services.AddWorkBoardAuth(builder.Configuration);
 builder.Services.AddCors(options => options.AddDefaultPolicy(policy => policy

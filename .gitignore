@@ -1,1 +1,4 @@
 .claude/
+
+# Local API settings with secrets (copy appsettings.Local.example.json)
+appsettings.Local.json

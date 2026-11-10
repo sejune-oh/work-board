@@ -282,7 +282,13 @@ begin
 end $$;
 
 -- Grants ----------------------------------------------------------------------
+-- The API role reads everything it needs and writes only board-only tables. GitHub mirror data,
+-- tenants and members are written by sync (workboard_sync) alone.
 grant usage on schema public to workboard_app, workboard_sync;
-grant select, insert, update, delete on all tables in schema public to workboard_app, workboard_sync;
+grant select, insert, update, delete on all tables in schema public to workboard_sync;
 grant usage, select on all sequences in schema public to workboard_app, workboard_sync;
-revoke all on webhook_deliveries from workboard_app;
+
+grant select on tenants, members, repositories, issues, issue_assignees, pull_requests,
+  issue_pull_requests, comments, issue_status to workboard_app;
+grant select, insert, update, delete on tenant_settings, projects, project_repositories, sprints,
+  board_fields, meeting_notes, meeting_attendees, meeting_action_items to workboard_app;

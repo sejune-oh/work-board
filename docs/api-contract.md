@@ -13,7 +13,8 @@ several tenants they also send `X-Tenant: <tenantId>`.
 - Token `sub` is the Supabase auth user id. On first sight the API calls the Supabase Admin API
   (`GET /auth/v1/admin/users/{sub}`, service role key), takes the `github` identity's provider id and
   stores `auth_user_id -> github_user_id` in `auth_links` (global table, `workboard_sync` only).
-  `user_metadata` is never used. Members are found by `github_user_id` across all tenants.
+  Login, display name and avatar (`user_name`/`preferred_username`, `full_name`/`name`, `avatar_url`) are read
+  from the same identity's `identity_data`, only when a tenant is created. `user_metadata` is never used. Members are found by `github_user_id` across all tenants.
 - One membership: `X-Tenant` is optional and ignored.
 - Several memberships: `X-Tenant` must equal one of them.
 
@@ -45,6 +46,7 @@ first calls `select set_config('app.tenant_id', @tenantId, true)`. RLS policies 
 | --- | --- | --- | --- |
 | GET | `/api/health` | none | `{"status":"ok"}` |
 | GET | `/api/dev/users` | none (Development only) | `DevUser[]`, one entry per membership |
+| POST | `/api/tenants` | sign-in only, no membership needed | `201 CreateTenantResult`, see below |
 | GET | `/api/me` | dev user | `Me` |
 | GET | `/api/members` | dev user | `Member[]` |
 | GET | `/api/projects` | dev user | `Project[]` |
@@ -55,6 +57,15 @@ first calls `select set_config('app.tenant_id', @tenantId, true)`. RLS policies 
 | GET | `/api/meeting-notes` | dev user | `MeetingNoteSummary[]` |
 | GET | `/api/meeting-notes/{id}` | dev user | `MeetingNote` or 404 |
 | GET | `/api/search?q=` | dev user | `SearchResult` |
+
+`POST /api/tenants` creates a company for a signed-in person (bearer token, or `X-Dev-User` with a known
+login in Development) and makes them its `admin`. Body `{"name": "<string>"}`; the name is trimmed and must be
+1..80 characters without control or invisible format characters (zero-width, bidi overrides); the request must be `application/json`. One transaction on the `workboard_sync` role inserts the tenant,
+its `tenant_settings` row (all flags off) and the member (GitHub id, login, display name and avatar from the
+GitHub identity). Response `201 {"tenant": {"id", "name"}, "member": Member}`; send `X-Tenant: <tenant.id>`
+afterwards. Errors: `401 unauthenticated` (no valid sign-in, or the GitHub identity has no login),
+`400 invalid_name` (also for a body that is not JSON), `409 tenant_limit` (the person already created 5
+tenants; tenants they only joined do not count).
 
 `GET /api/issues` query parameters, all optional:
 

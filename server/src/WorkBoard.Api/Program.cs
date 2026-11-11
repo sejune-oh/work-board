@@ -9,6 +9,7 @@ using WorkBoard.Api.Features.Overview;
 using WorkBoard.Api.Features.Members;
 using WorkBoard.Api.Features.Projects;
 using WorkBoard.Api.Features.Search;
+using WorkBoard.Api.Features.Tenants;
 using WorkBoard.Api.Infrastructure.Data;
 using WorkBoard.Api.Infrastructure.Identity;
 
@@ -35,6 +36,7 @@ var open = app.MapGroup("/api");
 open.MapHealth();
 if (app.Environment.IsDevelopment())
     open.MapDevUsers();
+open.MapTenants();
 
 var authed = app.MapGroup("/api").AddEndpointFilter<CurrentMemberFilter>();
 authed.MapMe();

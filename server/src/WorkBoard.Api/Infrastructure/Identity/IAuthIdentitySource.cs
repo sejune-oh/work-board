@@ -4,16 +4,18 @@ using Microsoft.Extensions.Options;
 
 namespace WorkBoard.Api.Infrastructure.Identity;
 
+public sealed record GithubProfile(long Id, string? Login, string? DisplayName, string? AvatarUrl);
+
 public interface IAuthIdentitySource
 {
     // Null when the auth user has no GitHub identity or does not exist.
-    Task<long?> FindGithubUserIdAsync(Guid authUserId, CancellationToken ct);
+    Task<GithubProfile?> FindGithubProfileAsync(Guid authUserId, CancellationToken ct);
 }
 
 // Asks the Supabase Admin API for the user's identities. user_metadata is never read: the user can edit it.
 public sealed class SupabaseAdminIdentitySource(HttpClient http, IOptions<SupabaseAuthOptions> options) : IAuthIdentitySource
 {
-    public async Task<long?> FindGithubUserIdAsync(Guid authUserId, CancellationToken ct)
+    public async Task<GithubProfile?> FindGithubProfileAsync(Guid authUserId, CancellationToken ct)
     {
         var supabase = options.Value;
         if (!supabase.Configured || string.IsNullOrWhiteSpace(supabase.ServiceRoleKey))
@@ -29,10 +31,13 @@ public sealed class SupabaseAdminIdentitySource(HttpClient http, IOptions<Supaba
         response.EnsureSuccessStatusCode();
 
         using var doc = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync(ct), cancellationToken: ct);
-        return ParseGithubUserId(doc.RootElement);
+        return ParseGithubProfile(doc.RootElement);
     }
 
-    public static long? ParseGithubUserId(JsonElement user)
+    public static long? ParseGithubUserId(JsonElement user) => ParseGithubProfile(user)?.Id;
+
+    // Login, name and avatar come from the provider's identity_data, never from user_metadata.
+    public static GithubProfile? ParseGithubProfile(JsonElement user)
     {
         if (!user.TryGetProperty("identities", out var identities) || identities.ValueKind != JsonValueKind.Array)
             return null;
@@ -47,10 +52,19 @@ public sealed class SupabaseAdminIdentitySource(HttpClient http, IOptions<Supaba
                 ?? (data is { } x ? Parse(x, "provider_id") ?? Parse(x, "sub") : null)
                 ?? Parse(identity, "id");
             if (id is > 0)
-                return id;
+                return new GithubProfile(
+                    id.Value,
+                    Text(data, "user_name") ?? Text(data, "preferred_username"),
+                    Text(data, "full_name") ?? Text(data, "name"),
+                    Text(data, "avatar_url"));
         }
         return null;
     }
+
+    private static string? Text(JsonElement? obj, string property) =>
+        obj is { } o && o.TryGetProperty(property, out var v) && v.ValueKind == JsonValueKind.String && !string.IsNullOrWhiteSpace(v.GetString())
+            ? v.GetString()!.Trim()
+            : null;
 
     private static long? Parse(JsonElement obj, string property)
     {

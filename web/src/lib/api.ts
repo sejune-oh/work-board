@@ -72,9 +72,14 @@ async function authHeaders(): Promise<Record<string, string>> {
   return headers;
 }
 
-export async function apiGet<T>(path: string): Promise<T> {
+async function request<T>(path: string, init: { method?: string; body?: unknown } = {}): Promise<T> {
   const headers: Record<string, string> = { Accept: "application/json", ...(await authHeaders()) };
-  const res = await fetch(`${API_URL}${path}`, { headers });
+  if (init.body !== undefined) headers["Content-Type"] = "application/json";
+  const res = await fetch(`${API_URL}${path}`, {
+    method: init.method ?? "GET",
+    headers,
+    body: init.body === undefined ? undefined : JSON.stringify(init.body),
+  });
   if (!res.ok) {
     const { code, body } = await readBody(res);
     if (res.status === 401 && code === "unauthenticated" && headers.Authorization) {
@@ -88,6 +93,14 @@ export async function apiGet<T>(path: string): Promise<T> {
     throw new ApiError(res.status, `${res.status} ${res.statusText}`, code, body);
   }
   return (await res.json()) as T;
+}
+
+export function apiGet<T>(path: string): Promise<T> {
+  return request<T>(path);
+}
+
+export function apiPost<T>(path: string, body: unknown): Promise<T> {
+  return request<T>(path, { method: "POST", body });
 }
 
 export type Loadable<T> = { data: T | null; error: ApiError | Error | null; loading: boolean; reload: () => void };

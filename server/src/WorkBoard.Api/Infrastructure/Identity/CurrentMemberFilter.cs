@@ -1,13 +1,11 @@
-using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
 using WorkBoard.Api.Features.Me;
 
 namespace WorkBoard.Api.Infrastructure.Identity;
 
 public sealed class CurrentMemberFilter(
-    IWebHostEnvironment env, IMemberLookup members, IAuthLinkResolver links, CurrentUser currentUser) : IEndpointFilter
+    ICallerResolver callers, IMemberLookup members, CurrentUser currentUser) : IEndpointFilter
 {
-    public const string DevUserHeader = "X-Dev-User";
+    public const string DevUserHeader = CallerResolver.DevUserHeader;
     public const string DevTenantHeader = "X-Dev-Tenant";
     public const string TenantHeader = "X-Tenant";
 
@@ -17,24 +15,9 @@ public sealed class CurrentMemberFilter(
         var ct = http.RequestAborted;
         var bearer = http.Request.Headers.ContainsKey("Authorization");
 
-        long? githubUserId;
-        string tenantHeader;
-        if (bearer)
-        {
-            githubUserId = await ResolveBearerAsync(http, ct);
-            tenantHeader = http.Request.Headers[TenantHeader].ToString().Trim();
-        }
-        else if (env.IsDevelopment())
-        {
-            var login = http.Request.Headers[DevUserHeader].ToString().Trim();
-            githubUserId = login.Length == 0 ? null : await members.FindUserIdByLoginAsync(login, ct);
-            tenantHeader = http.Request.Headers[DevTenantHeader].ToString().Trim();
-        }
-        else
-        {
-            githubUserId = null;
-            tenantHeader = "";
-        }
+        var caller = await callers.ResolveAsync(http, ct);
+        var tenantHeader = http.Request.Headers[bearer ? TenantHeader : DevTenantHeader].ToString().Trim();
+        var githubUserId = caller?.GithubUserId;
 
         if (githubUserId is null)
             return Fail(StatusCodes.Status401Unauthorized, "unauthenticated");
@@ -59,15 +42,6 @@ public sealed class CurrentMemberFilter(
 
         currentUser.Set(identity);
         return await next(context);
-    }
-
-    private async Task<long?> ResolveBearerAsync(HttpContext http, CancellationToken ct)
-    {
-        var result = await http.AuthenticateAsync(JwtBearerDefaults.AuthenticationScheme);
-        var sub = result.Succeeded ? result.Principal?.FindFirst("sub")?.Value : null;
-        return Guid.TryParse(sub, out var authUserId)
-            ? await links.ResolveGithubUserIdAsync(authUserId, ct)
-            : null;
     }
 
     private static IResult Fail(int status, string code) => Results.Json(new ErrorBody(code), statusCode: status);

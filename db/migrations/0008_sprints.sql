@@ -34,8 +34,8 @@ create table sprint_carry_over_issues (
   carry_over_id uuid not null,
   issue_id      uuid not null,
   primary key (carry_over_id, issue_id),
-  foreign key (tenant_id, carry_over_id) references sprint_carry_overs (tenant_id, id) on delete cascade,
-  foreign key (tenant_id, issue_id) references issues (tenant_id, id) on delete cascade
+  -- No foreign key on issue_id: an issue deleted after the carry-over must make the undo refuse, not shrink it.
+  foreign key (tenant_id, carry_over_id) references sprint_carry_overs (tenant_id, id) on delete cascade
 );
 
 do $$

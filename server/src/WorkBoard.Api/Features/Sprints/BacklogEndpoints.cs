@@ -8,6 +8,7 @@ public static class BacklogEndpoints
 {
     public const int DefaultPageSize = 50;
     public const int MaxPageSize = 200;
+    public const int MaxPage = 10000;
     private static readonly HashSet<string> ValidStatuses = ["todo", "in_progress", "in_review"];
 
     public static void MapBacklog(this RouteGroupBuilder api) =>
@@ -23,8 +24,8 @@ public static class BacklogEndpoints
                 if (statuses.Length == 0 || statuses.Any(x => !ValidStatuses.Contains(x)))
                     return ApiErrors.BadRequest("invalid_status");
             }
-            if (page is < 1 || pageSize is < 1 or > MaxPageSize)
-                return ApiErrors.BadRequest("invalid_paging");
+            if (page is < 1 or > MaxPage || pageSize is < 1 or > MaxPageSize)
+                return ApiErrors.BadRequest();
 
             var login = string.IsNullOrWhiteSpace(person) ? assignee : person;
             var filter = new BacklogFilter(

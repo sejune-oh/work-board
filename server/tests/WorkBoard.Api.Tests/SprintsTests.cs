@@ -260,4 +260,114 @@ public class SprintsTests(WebApplicationFactory<Program> factory) : IClassFixtur
         Assert.Equal("sprints_disabled", create.Body.GetProperty("error").GetString());
         Assert.Equal(HttpStatusCode.Conflict, (await SendAsync(t, HttpMethod.Post, $"/api/sprints/{sprint}/issues", new { issueIds = new[] { issue } })).Status);
     }
+
+    [DbFact]
+    public async Task Undo_is_blocked_after_a_round_trip_or_a_close_but_clean_undo_works()
+    {
+        await using var t = await TestTenant.CreateAsync(factory);
+        await using var other = await TestTenant.CreateAsync(factory);
+        var repo = await t.AddRepoAsync("r");
+        var a = await t.AddIssueAsync(repo);
+        var b = await t.AddIssueAsync(repo);
+        var s1 = await t.AddSprintAsync("One");
+        var s2 = await t.AddSprintAsync("Two");
+        var s3 = await t.AddSprintAsync("Three");
+        await t.BoardAsync(a, sprint: s1);
+        await t.BoardAsync(b, sprint: s1);
+
+        var (_, carried) = await SendAsync(t, HttpMethod.Post, $"/api/sprints/{s1}/carry-over", new { toSprintId = s2 });
+        var carryId = Id(carried, "carryOverId");
+        await SendAsync(t, HttpMethod.Post, $"/api/sprints/{s3}/issues", new { issueIds = new[] { b } });
+        await SendAsync(t, HttpMethod.Post, $"/api/sprints/{s2}/issues", new { issueIds = new[] { b } });
+        Assert.Equal(s2, await t.ScalarAsync<Guid>("select sprint_id from board_fields where issue_id = @b", new { b }));
+
+        var aba = await SendAsync(t, HttpMethod.Post, $"/api/sprints/{s1}/carry-over/{carryId}/undo");
+        Assert.Equal(HttpStatusCode.Conflict, aba.Status);
+        Assert.Equal([b], aba.Body.GetProperty("issueIds").EnumerateArray().Select(x => Guid.Parse(x.GetString()!)));
+
+        Assert.Equal(HttpStatusCode.NotFound, (await SendAsync(other, HttpMethod.Post, $"/api/sprints/{s1}/carry-over/{carryId}/undo")).Status);
+
+        var c = await t.AddIssueAsync(repo);
+        var d = await t.AddIssueAsync(repo);
+        var s4 = await t.AddSprintAsync("Four");
+        var s5 = await t.AddSprintAsync("Five");
+        await t.BoardAsync(c, sprint: s4);
+        await t.BoardAsync(d, sprint: s4);
+        var (_, second) = await SendAsync(t, HttpMethod.Post, $"/api/sprints/{s4}/carry-over", new { toSprintId = s5 });
+        await t.ExecAsync("update issues set state = 'closed', closed_at = now() where id = @c", new { c });
+        var closed = await SendAsync(t, HttpMethod.Post, $"/api/sprints/{s4}/carry-over/{Id(second, "carryOverId")}/undo");
+        Assert.Equal(HttpStatusCode.Conflict, closed.Status);
+        Assert.Equal(s5, await t.ScalarAsync<Guid>("select sprint_id from board_fields where issue_id = @d", new { d }));
+
+        var e = await t.AddIssueAsync(repo);
+        var s6 = await t.AddSprintAsync("Six");
+        var s7 = await t.AddSprintAsync("Seven");
+        await t.BoardAsync(e, sprint: s6);
+        var (_, third) = await SendAsync(t, HttpMethod.Post, $"/api/sprints/{s6}/carry-over", new { toSprintId = s7 });
+        var clean = await SendAsync(t, HttpMethod.Post, $"/api/sprints/{s6}/carry-over/{Id(third, "carryOverId")}/undo");
+        Assert.Equal(HttpStatusCode.OK, clean.Status);
+        Assert.Equal(s6, await t.ScalarAsync<Guid>("select sprint_id from board_fields where issue_id = @e", new { e }));
+    }
+
+    [DbFact]
+    public async Task Undo_is_refused_when_a_carried_issue_was_deleted()
+    {
+        await using var t = await TestTenant.CreateAsync(factory);
+        var repo = await t.AddRepoAsync("r");
+        var a = await t.AddIssueAsync(repo);
+        var b = await t.AddIssueAsync(repo);
+        var s1 = await t.AddSprintAsync("One");
+        var s2 = await t.AddSprintAsync("Two");
+        await t.BoardAsync(a, sprint: s1);
+        await t.BoardAsync(b, sprint: s1);
+        var (_, carried) = await SendAsync(t, HttpMethod.Post, $"/api/sprints/{s1}/carry-over", new { toSprintId = s2 });
+        await t.ExecAsync("delete from issues where id = @b", new { b });
+
+        var undo = await SendAsync(t, HttpMethod.Post, $"/api/sprints/{s1}/carry-over/{Id(carried, "carryOverId")}/undo");
+
+        Assert.Equal(HttpStatusCode.Conflict, undo.Status);
+        Assert.Equal(s2, await t.ScalarAsync<Guid>("select sprint_id from board_fields where issue_id = @a", new { a }));
+    }
+
+    [DbFact]
+    public async Task Ended_sprints_refuse_new_issues_but_allow_removal()
+    {
+        await using var t = await TestTenant.CreateAsync(factory);
+        var repo = await t.AddRepoAsync("r");
+        var a = await t.AddIssueAsync(repo);
+        var b = await t.AddIssueAsync(repo);
+        var live = await t.AddSprintAsync("Live");
+        var ended = Guid.NewGuid();
+        await t.ExecAsync("insert into sprints (id, tenant_id, name, start_date, end_date) values (@ended, @tid, 'Ended', current_date - 30, current_date - 10)", new { ended, tid = t.Id });
+        var closed = Guid.NewGuid();
+        await t.ExecAsync("insert into sprints (id, tenant_id, name, start_date, end_date, state) values (@closed, @tid, 'Closed', current_date - 1, current_date + 10, 'closed')", new { closed, tid = t.Id });
+        await t.BoardAsync(a, sprint: ended);
+        await t.BoardAsync(b, sprint: live);
+
+        foreach (var target in new[] { ended, closed })
+        {
+            var add = await SendAsync(t, HttpMethod.Post, $"/api/sprints/{target}/issues", new { issueIds = new[] { b } });
+            Assert.Equal(HttpStatusCode.Conflict, add.Status);
+            Assert.Equal("sprint_ended", add.Body.GetProperty("error").GetString());
+            var carry = await SendAsync(t, HttpMethod.Post, $"/api/sprints/{live}/carry-over", new { toSprintId = target });
+            Assert.Equal("sprint_ended", carry.Body.GetProperty("error").GetString());
+        }
+        Assert.Equal(live, await t.ScalarAsync<Guid>("select sprint_id from board_fields where issue_id = @b", new { b }));
+
+        var remove = await SendAsync(t, HttpMethod.Delete, $"/api/sprints/{ended}/issues", new { issueIds = new[] { a } });
+        Assert.Equal(HttpStatusCode.OK, remove.Status);
+        Assert.Equal(1, remove.Body.GetProperty("removed").GetInt32());
+    }
+
+    [DbFact]
+    public async Task Backlog_rejects_out_of_range_paging()
+    {
+        await using var t = await TestTenant.CreateAsync(factory);
+        foreach (var query in new[] { "page=0", "page=10001", "page=2147483647", "pageSize=201", "pageSize=0" })
+        {
+            var r = await SendAsync(t, HttpMethod.Get, "/api/backlog?" + query);
+            Assert.Equal(HttpStatusCode.BadRequest, r.Status);
+            Assert.Equal("invalid_request", r.Body.GetProperty("error").GetString());
+        }
+    }
 }

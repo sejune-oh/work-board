@@ -1,3 +1,4 @@
+using WorkBoard.Api.Features.Overview;
 using WorkBoard.Api.Infrastructure.Data;
 using WorkBoard.Api.Infrastructure.Identity;
 using WorkBoard.Api.Infrastructure.Writes;
@@ -12,14 +13,15 @@ public sealed class SprintWrites(ICurrentUser user, IAuditLog audit, IIssueEvent
     public const string AlreadyUndone = "already_undone";
     public const string NameTaken = "name_taken";
     public const string InvalidDates = "invalid_dates";
+    public const string SprintEnded = "sprint_ended";
 
-    private sealed record NamedSprint(Guid Id, string Name);
+    private sealed record NamedSprint(Guid Id, string Name, bool Ended);
 
     private sealed record IssueSprint(Guid Id, Guid? SprintId, string? SprintName);
 
     private sealed record SprintDates(Guid Id, string Name, string StartDate, string EndDate, string State, DateTime UpdatedAt);
 
-    private sealed record CarryOverRow(Guid Id, Guid FromSprintId, Guid ToSprintId, DateTime? UndoneAt);
+    private sealed record CarryOverRow(Guid Id, Guid FromSprintId, Guid ToSprintId, DateTime? UndoneAt, DateTime CreatedAt);
 
     private static WriteResult Error(int status, string code) => new(status, new ErrorBody(code));
 
@@ -29,7 +31,8 @@ public sealed class SprintWrites(ICurrentUser user, IAuditLog audit, IIssueEvent
 
     private static string Iso(DateOnly date) => date.ToString("yyyy-MM-dd");
 
-    // Assignment writes of a tenant run one at a time, so the sprint an issue is read in is the one it is changed from.
+    // Every writer of board_fields.sprint_id must take this lock first: assignment writes of a tenant run one at a
+    // time, so the sprint an issue is read in is the one it is changed from.
     private Task LockAssignmentsAsync(TenantSession s) =>
         s.ExecuteAsync("select pg_advisory_xact_lock(hashtextextended(@scope, 0))",
             new { scope = $"sprint-assign:{user.Identity.TenantId:N}" });
@@ -44,10 +47,10 @@ public sealed class SprintWrites(ICurrentUser user, IAuditLog audit, IIssueEvent
             return Disabled();
 
         await LockNamesAsync(s);
-        var id = await s.QuerySingleOrDefaultAsync<Guid?>("""
+        var id = await s.QuerySingleOrDefaultAsync<Guid?>($"""
             insert into sprints (tenant_id, name, start_date, end_date, state, created_by)
             values (@tenantId, @name, cast(@start as date), cast(@end as date),
-                    case when cast(@start as date) > (now() at time zone 'Asia/Seoul')::date then 'planned' else 'active' end,
+                    case when cast(@start as date) > (now() at time zone '{OverviewQueries.TimeZone}')::date then 'planned' else 'active' end,
                     @memberId)
             on conflict (tenant_id, lower(name)) do nothing
             returning id
@@ -111,6 +114,8 @@ public sealed class SprintWrites(ICurrentUser user, IAuditLog audit, IIssueEvent
         var target = await FindSprintAsync(s, sprintId);
         if (target is null)
             return NotFound();
+        if (target.Ended)
+            return Error(StatusCodes.Status409Conflict, SprintEnded);
         var rows = await LockIssuesAsync(s, issueIds);
         if (rows is null)
             return NotFound();
@@ -173,6 +178,8 @@ public sealed class SprintWrites(ICurrentUser user, IAuditLog audit, IIssueEvent
         var to = await FindSprintAsync(s, toId);
         if (from is null || to is null)
             return NotFound();
+        if (to.Ended)
+            return Error(StatusCodes.Status409Conflict, SprintEnded);
 
         var issueIds = (await s.QueryAsync<Guid>("""
             select i.id
@@ -212,7 +219,7 @@ public sealed class SprintWrites(ICurrentUser user, IAuditLog audit, IIssueEvent
             return Disabled();
         await LockAssignmentsAsync(s);
         var carry = await s.QuerySingleOrDefaultAsync<CarryOverRow>("""
-            select id, from_sprint_id, to_sprint_id, undone_at from sprint_carry_overs
+            select id, from_sprint_id, to_sprint_id, undone_at, created_at from sprint_carry_overs
              where id = @carryOverId and from_sprint_id = @sprintId for update
             """, new { carryOverId, sprintId });
         if (carry is null)
@@ -224,8 +231,24 @@ public sealed class SprintWrites(ICurrentUser user, IAuditLog audit, IIssueEvent
             "select issue_id from sprint_carry_over_issues where carry_over_id = @carryOverId order by issue_id",
             new { carryOverId })).ToArray();
         var rows = await LockIssuesAsync(s, issueIds);
-        if (rows is null || rows.Any(r => r.SprintId != carry.ToSprintId))
+        if (rows is null)
             return Error(StatusCodes.Status409Conflict, ApiErrors.Conflict);
+
+        // Undo only when nothing touched the issues since: still in the target sprint, no later event
+        // (this carry-over's own events share its transaction time), not finished.
+        var blocking = (await s.QueryAsync<Guid>("""
+            select i.id
+              from issues i
+              join issue_status st on st.issue_id = i.id
+              left join board_fields bf on bf.issue_id = i.id
+             where i.id = any(@issueIds)
+               and (bf.sprint_id is distinct from @toId
+                    or st.status in ('done', 'cancelled')
+                    or exists (select 1 from issue_events e where e.issue_id = i.id and e.at > @createdAt))
+             order by i.id
+            """, new { issueIds, toId = carry.ToSprintId, createdAt = carry.CreatedAt })).ToArray();
+        if (blocking.Length > 0)
+            return new WriteResult(StatusCodes.Status409Conflict, new { error = ApiErrors.Conflict, issueIds = blocking });
 
         var from = (await FindSprintAsync(s, carry.FromSprintId))!;
         var to = (await FindSprintAsync(s, carry.ToSprintId))!;
@@ -250,7 +273,10 @@ public sealed class SprintWrites(ICurrentUser user, IAuditLog audit, IIssueEvent
             issueIds.Length, issueIds);
 
     private static Task<NamedSprint?> FindSprintAsync(TenantSession s, Guid id) =>
-        s.QuerySingleOrDefaultAsync<NamedSprint>("select id, name from sprints where id = @id", new { id });
+        s.QuerySingleOrDefaultAsync<NamedSprint>($"""
+            select id, name, (state = 'closed' or end_date < (now() at time zone '{OverviewQueries.TimeZone}')::date) as ended
+              from sprints where id = @id
+            """, new { id });
 
     // Null when any id is not an issue of this tenant (row security hides the others).
     private static async Task<List<IssueSprint>?> LockIssuesAsync(TenantSession s, Guid[] ids)

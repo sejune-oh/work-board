@@ -96,7 +96,6 @@ export const en: Dict = {
   auth: {
     signIn: "Sign in with GitHub",
     redirecting: "Going to GitHub",
-    lead: "Work board uses your GitHub account to sign in.",
     scopeNote: "Only your GitHub profile is read. Repositories are not touched.",
     startFailed: "Couldn't start sign-in. Try again in a moment.",
     sessionEnded: "Your sign-in ended or the server didn't accept it. Sign in again.",
@@ -132,6 +131,19 @@ export const en: Dict = {
     checking: { kicker: "Starting", title: "Checking", lead: "Checking your sign-in and your company." },
     login: { kicker: "Sign in" },
     company: { kicker: "Company" },
+    tagline: "A work board for teams of about ten",
+    preview: {
+      label: "Preview of the first screen",
+      kicker: "Every morning, one sentence first",
+      example: "Example",
+      sentence: ["Of 2 urgent issues, ", 1, " hasn't started, and ", 3, " PRs are waiting for review."],
+      rows: [
+        { flag: "Urgent", fill: true, title: "Duplicate slug in localised posts", ref: "cms-api #303" },
+        { flag: "Awaiting review", fill: false, title: "Booking lookup pagination", ref: "booking-api #102" },
+        { flag: "12d", fill: false, title: "Faster message search", ref: "inbox-web #402" },
+      ],
+      note: "Sample data. Vermilion marks appear only where someone needs to look.",
+    },
     error: {
       kicker: "Connection",
       title: "Couldn't reach the server",

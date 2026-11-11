@@ -35,25 +35,27 @@ export function ThemeToggle() {
     }
   };
 
-  const options: { value: Theme; icon: string; label: string }[] = [
-    { value: "light", icon: "☼", label: t.theme.light },
-    { value: "dark", icon: "☾", label: t.theme.dark },
+  const options: { value: Theme; icon: React.ReactNode; label: string }[] = [
+    {
+      value: "light",
+      label: t.theme.light,
+      icon: (
+        <>
+          <circle cx="8" cy="8" r="3" />
+          <path d="M8 1.5v1.5M8 13v1.5M1.5 8H3M13 8h1.5M3.4 3.4l1 1M11.6 11.6l1 1M3.4 12.6l1-1M11.6 4.4l1-1" />
+        </>
+      ),
+    },
+    { value: "dark", label: t.theme.dark, icon: <path d="M13.5 9.5A5.5 5.5 0 0 1 6.5 2.5a5.5 5.5 0 1 0 7 7Z" /> },
   ];
 
   return (
-    <div role="group" aria-label={t.theme.group} className="inline-flex shrink-0 overflow-hidden rounded-control border border-rule">
+    <div role="group" aria-label={t.theme.group} className="seg">
       {options.map((o) => (
-        <button
-          key={o.value}
-          type="button"
-          aria-pressed={theme === o.value}
-          onClick={() => pick(o.value)}
-          className={`h-[26px] cursor-pointer px-2 text-meta transition-colors duration-[120ms] ease-tool ${
-            theme === o.value ? "bg-sunken font-semibold text-ink" : "text-muted hover:text-ink"
-          }`}
-        >
-          <span aria-hidden>{o.icon}</span>
-          <span className="max-[640px]:sr-only"> {o.label}</span>
+        <button key={o.value} type="button" aria-pressed={theme === o.value} aria-label={o.label} title={o.label} onClick={() => pick(o.value)}>
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
+            {o.icon}
+          </svg>
         </button>
       ))}
     </div>

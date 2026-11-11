@@ -4,14 +4,14 @@ import { useSearchParams } from "next/navigation";
 import { ErrorBox, Loading } from "@/components/Feedback";
 import { FilterChips } from "@/components/FilterChips";
 import { IssueCard } from "@/components/IssueCard";
-import { CanceledGroup } from "@/components/StatusColumns";
+import { CanceledGroup, boardCols } from "@/components/StatusColumns";
 import { Avatar, Dot, Flag, PageHeader } from "@/components/ui";
 import { useApi } from "@/lib/api";
 import { applyFilters, hasFilters, issuesQuery, readFilters } from "@/lib/filters";
 import { useFormat, useT } from "@/lib/i18n";
 import { STATUS_DOT, STATUS_ORDER, groupByStatus, isCanceled, isCrowded } from "@/lib/labels";
 import { useMe } from "@/lib/me";
-import type { BoardIssue, Member } from "@/lib/types";
+import type { BoardIssue, Member, Status } from "@/lib/types";
 
 type Row = { key: string; member: Member | null; issues: BoardIssue[] };
 
@@ -83,77 +83,59 @@ export default function PeopleBoardPage() {
       <FilterChips filters={filters} personName={memberName} sprintName={sprintName} />
 
       {rows.length === 0 ? (
-        <p className="rounded-control border border-dashed border-rule-strong px-3 py-2.5 text-meta text-muted">
+        <p className="rounded-item border border-dashed border-rule-strong px-4 py-3 text-small text-muted">
           {members.data.length === 0 ? pt.noMembers : pt.noMatch}
         </p>
       ) : (
-        <div className="card reveal mt-2 overflow-x-auto [animation-delay:30ms]">
-          <table className="w-full min-w-[960px] border-separate border-spacing-0 text-ui">
-            <thead>
-              <tr>
-                <th className="sticky left-0 z-[1] h-[30px] w-48 border-b border-rule bg-canvas px-3 text-left font-mono text-[11px] font-normal text-muted">{pt.person}</th>
-                {statuses.map((s) => (
-                  <th key={s} className="h-[30px] border-b border-l border-rule bg-canvas px-3 text-left text-meta font-semibold text-ink-soft">
-                    <span className="inline-flex items-center gap-1.5">
-                      <Dot className={STATUS_DOT[s]} />
-                      {t.status[s]}
-                    </span>
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row) => {
-                const groups = groupByStatus(row.issues);
-                const active = activeCount(row);
-                const isCrowdedRow = crowded.includes(row);
-                return (
-                  <tr key={row.key} className="align-top [&:last-child>td]:border-b-0">
-                    <td className="sticky left-0 z-[1] border-b border-rule bg-surface px-3 py-2.5">
-                      {row.member ? (
-                        <div className="flex items-start gap-2.5">
-                          <Avatar person={row.member} size="lg" />
-                          <div className="min-w-0">
-                            <p className="flex items-center gap-1.5 font-semibold">
-                              {fmt.person(row.member)}
-                              {row.member.githubUserId === myId && (
-                                <span className="rounded-[3px] border border-rule px-1 font-mono text-[10px] font-medium text-muted">{t.common.me}</span>
-                              )}
-                            </p>
-                            <p className="font-mono text-meta text-muted">
-                              {pt.activeLabel} <b className="font-medium text-ink">{active}</b>
-                              {pt.total(row.issues.length)}
-                            </p>
-                            {isCrowdedRow && (
-                              <Flag className="mt-1.5">{t.common.crowded}</Flag>
-                            )}
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="flex items-start gap-2.5">
-                          <span aria-hidden className="h-7 w-7 shrink-0 rounded-full border border-dashed border-accent" />
-                          <div>
-                            <p className="font-semibold text-accent">{t.common.unassigned}</p>
-                            <p className="font-mono text-meta text-muted">{pt.openCount(row.issues.length)}</p>
-                          </div>
-                        </div>
-                      )}
-                    </td>
-                    {statuses.map((s) => (
-                      <td key={s} className="border-b border-l border-rule bg-canvas p-2">
-                        <div className="flex flex-col gap-1.5">
-                          {groups[s].map((i) => (
-                            <IssueCard key={i.id} issue={i} showAssignee={false} />
-                          ))}
-                          {s === "done" && <CanceledGroup issues={row.issues.filter(isCanceled)} showAssignee={false} />}
-                        </div>
-                      </td>
-                    ))}
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+        <div className="reveal mt-2 flex flex-col gap-10 [animation-delay:30ms]">
+          {rows.map((row) => {
+            const groups = groupByStatus(row.issues);
+            const canceled = row.issues.filter(isCanceled);
+            // Canceled work folds under done, so done counts as filled when only canceled issues are there.
+            const filled = (s: Status) => groups[s].length > 0 || (s === "done" && canceled.length > 0);
+            const active = activeCount(row);
+            const isCrowdedRow = crowded.includes(row);
+            return (
+              <section key={row.key} aria-label={row.member ? fmt.person(row.member) : t.common.unassigned} className="@container flex flex-col gap-4">
+                {row.member ? (
+                  <header className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                    <Avatar person={row.member} size="lg" />
+                    <h2 className="flex items-center gap-1.5 text-heading font-semibold">
+                      {fmt.person(row.member)}
+                      {row.member.githubUserId === myId && <span className="text-small font-normal text-muted">{t.common.meParen}</span>}
+                    </h2>
+                    <p className="text-small text-muted">
+                      {pt.activeLabel} <b className="font-mono text-meta font-medium text-ink">{active}</b>
+                      {pt.total(row.issues.length)}
+                    </p>
+                    {isCrowdedRow && <Flag>{t.common.crowded}</Flag>}
+                  </header>
+                ) : (
+                  <header className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                    <span aria-hidden className="h-8 w-8 shrink-0 rounded-full border border-dashed border-accent" />
+                    <h2 className="text-heading font-semibold text-accent">{t.common.unassigned}</h2>
+                    <p className="text-small text-muted">{pt.openCount(row.issues.length)}</p>
+                  </header>
+                )}
+                <div className={`grid grid-cols-1 items-start gap-x-4 gap-y-5 ${boardCols(statuses.length)}`}>
+                  {statuses.map((s) => (
+                    <div key={s} className={`flex min-w-0 flex-col gap-2 ${filled(s) ? "" : "@max-[34rem]:hidden"}`}>
+                      <h3 className="flex items-center gap-2 px-1 text-small font-semibold text-ink-soft">
+                        <Dot className={STATUS_DOT[s]} />
+                        {t.status[s]}
+                        <span className="font-mono text-meta font-normal text-muted">{groups[s].length}</span>
+                      </h3>
+                      {!filled(s) && <p className="px-1 py-2 text-small text-muted">{t.common.none}</p>}
+                      {groups[s].map((i) => (
+                        <IssueCard key={i.id} issue={i} showAssignee={false} />
+                      ))}
+                      {s === "done" && <CanceledGroup issues={canceled} showAssignee={false} />}
+                    </div>
+                  ))}
+                </div>
+              </section>
+            );
+          })}
         </div>
       )}
     </div>

@@ -65,7 +65,7 @@ export function FilterChips({ filters, personName = (l) => l, sprintName }: Prop
 
   return (
     <div className="flex flex-wrap items-center gap-2" aria-label={f.aria}>
-      <span className="font-mono text-meta text-muted">{f.label}</span>
+      <span className="text-small text-muted">{f.label}</span>
       {chips.map((c) => (
         <button
           key={c.key}
@@ -73,7 +73,7 @@ export function FilterChips({ filters, personName = (l) => l, sprintName }: Prop
           onClick={c.onRemove}
           title={c.title}
           aria-label={c.title}
-          className="inline-flex h-[26px] cursor-pointer items-center gap-1.5 rounded-control border border-rule bg-surface px-2 text-meta font-medium text-ink transition-colors duration-[120ms] ease-tool hover:border-rule-strong"
+          className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full bg-surface px-3 text-small font-medium text-ink shadow-[inset_0_0_0_1px_var(--wb-rule-strong)] transition-colors duration-[120ms] ease-tool hover:bg-hover"
         >
           {c.label}
           <span aria-hidden className="text-muted">
@@ -85,7 +85,7 @@ export function FilterChips({ filters, personName = (l) => l, sprintName }: Prop
         <button
           type="button"
           onClick={() => replace((n) => FILTER_KEYS.forEach((k) => n.delete(k)))}
-          className="link cursor-pointer text-meta text-ink-soft"
+          className="link cursor-pointer text-small text-ink-soft"
         >
           {f.clearAll}
         </button>

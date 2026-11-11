@@ -46,19 +46,20 @@ export default function OverviewPage() {
         {o && !isEmptyTeam(o) && <Stats o={o} />}
       </section>
 
-      <div className="mt-6 grid grid-cols-1 items-start gap-4 min-[1100px]:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
-        <div className="contents min-[1100px]:flex min-[1100px]:min-w-0 min-[1100px]:flex-col min-[1100px]:gap-4">
-          <section className="reveal order-1 min-w-0 [animation-delay:30ms]" aria-labelledby="att">
+      {/* One column below 768px; a two-card row for projects and meetings up to 1439px; a 360px rail from 1440px. */}
+      <div className="mt-6 grid grid-cols-1 items-start gap-6 min-[768px]:grid-cols-2 min-[1440px]:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="contents min-[1440px]:flex min-[1440px]:min-w-0 min-[1440px]:flex-col min-[1440px]:gap-6">
+          <section className="reveal order-1 col-span-full min-w-0 [animation-delay:30ms]" aria-labelledby="att">
             <Attention o={o} myLogin={me.data?.member.githubLogin ?? null} />
           </section>
-          <section className="reveal order-2 min-w-0 [animation-delay:60ms]" aria-labelledby="people">
+          <section className="reveal order-2 col-span-full min-w-0 [animation-delay:60ms]" aria-labelledby="people">
             <People o={o} myId={me.data?.member.githubUserId ?? null} />
           </section>
-          <section className="reveal order-5 min-w-0 [animation-delay:90ms]" aria-labelledby="feed">
+          <section className="reveal order-5 col-span-full min-w-0 [animation-delay:90ms]" aria-labelledby="feed">
             <Activity o={o} />
           </section>
         </div>
-        <div className="contents min-[1100px]:flex min-[1100px]:min-w-0 min-[1100px]:flex-col min-[1100px]:gap-4">
+        <div className="contents min-[1440px]:flex min-[1440px]:min-w-0 min-[1440px]:flex-col min-[1440px]:gap-6">
           <section className="reveal order-3 min-w-0 [animation-delay:60ms]" aria-labelledby="proj">
             <Projects o={o} />
           </section>
@@ -78,16 +79,16 @@ function MetaLine({ o }: { o: O }) {
   const t = useT();
   const fmt = useFormat();
   return (
-    <p className="flex flex-wrap gap-x-3.5 gap-y-1 font-mono text-meta text-muted">
+    <p className="flex flex-wrap gap-x-3 gap-y-1 text-small text-muted [&>*+*]:before:mr-3 [&>*+*]:before:text-faint [&>*+*]:before:content-['·']">
       <span>{fmt.date(new Date().toISOString())}</span>
       {o && (
         <span>
-          {t.overview.open} <b className="font-medium text-ink-soft">{fmt.num(o.counts.open)}</b>
+          {t.overview.open} <b className="font-mono font-medium text-ink">{fmt.num(o.counts.open)}</b>
         </span>
       )}
       {settings.sprintsEnabled && o?.sprint && (
         <span>
-          {o.sprint.name} · <b className="font-medium text-ink-soft">{o.sprint.daysLeft}</b>
+          {o.sprint.name} · <b className="font-mono font-medium text-ink">{o.sprint.daysLeft}</b>
           {t.overview.daysLeft(o.sprint.daysLeft)}
         </span>
       )}
@@ -101,7 +102,7 @@ function ClauseView({ clause, last }: { clause: Clause; last: boolean }) {
     <>
       {clause.parts.map((p, i) =>
         typeof p === "number" ? (
-          <em key={i} className="font-mono font-semibold not-italic text-accent">
+          <em key={i} className="not-italic text-accent">
             {fmt.num(p)}
           </em>
         ) : (
@@ -116,7 +117,7 @@ function ClauseView({ clause, last }: { clause: Clause; last: boolean }) {
 function Headline({ o }: { o: Overview }) {
   const settings = useSettings();
   const t = useT();
-  const h1 = "mt-2 max-w-[40em] text-[19px] font-semibold leading-[1.4] tracking-[-0.015em] min-[640px]:text-display";
+  const h1 = "mt-3 max-w-[28em] text-display font-semibold";
 
   if (isEmptyTeam(o))
     return (
@@ -137,7 +138,7 @@ function Headline({ o }: { o: Overview }) {
           <ClauseView key={i} clause={c} last={i === lead.length - 1} />
         ))}
       </h1>
-      {sub && <p className="mt-0.5 text-body text-ink-soft">{sub}</p>}
+      {sub && <p className="mt-2 text-body text-ink-soft">{sub}</p>}
     </>
   );
 }
@@ -165,38 +166,32 @@ function Stats({ o }: { o: Overview }) {
   ];
 
   return (
-    <>
-      <div className="card mt-5 grid grid-cols-2 min-[640px]:grid-cols-4">
-        {stats.map((s, i) => (
+    <div className="card mt-8">
+      <div className="grid grid-cols-2 gap-px bg-rule min-[900px]:grid-cols-4">
+        {stats.map((s) => (
           <Link
             key={s.href}
             href={s.href}
             title={s.title}
-            className={`grid grid-cols-[minmax(0,1fr)_auto] items-end gap-x-2 gap-y-0.5 px-3 pb-3 pt-2.5 transition-colors duration-[120ms] ease-tool hover:bg-hover focus-visible:-outline-offset-2 min-[640px]:px-4 min-[640px]:pb-3.5 min-[640px]:pt-3 ${
-              i % 2 === 1 ? "border-l border-rule" : ""
-            } ${i >= 2 ? "border-t border-rule min-[640px]:border-t-0" : ""} ${i === 2 ? "min-[640px]:border-l" : ""} ${
-              s.warn ? "shadow-[inset_0_2px_0_var(--wb-accent)]" : ""
+            className={`relative flex min-w-0 flex-col gap-2 bg-surface p-5 transition-colors duration-[120ms] ease-tool hover:bg-[linear-gradient(var(--wb-hover),var(--wb-hover))] focus-visible:-outline-offset-2 max-[639px]:p-4 ${
+              s.warn ? "before:absolute before:inset-x-5 before:top-0 before:h-0.5 before:rounded-b-sm before:bg-accent" : ""
             }`}
           >
-            <span className="col-span-full inline-flex items-center gap-1.5 text-[12.5px] text-ink-soft">
+            <span className="inline-flex items-center gap-2 text-small font-medium text-ink-soft">
               <Dot className={s.dot} />
               {s.label}
             </span>
-            <span className={`font-mono text-[24px] font-medium leading-[1.15] tracking-[-0.02em] min-[640px]:text-figure ${s.warn ? "text-accent" : ""}`}>
+            <span className={`font-mono text-figure font-medium ${s.warn ? "text-accent" : ""}`}>
               {fmt.num(s.n)}
-              {t.common.countUnit && <small className="ml-0.5 font-sans text-meta font-normal tracking-normal text-muted">{t.common.countUnit}</small>}
+              {t.common.countUnit && <small className="ml-1.5 font-sans text-small font-normal tracking-normal text-muted">{t.common.countUnit}</small>}
             </span>
-            <span className="truncate pb-1 text-right text-meta text-muted max-[640px]:col-span-full max-[640px]:pb-0 max-[640px]:text-left">
-              {s.note}
-            </span>
+            <span className="truncate text-small text-muted">{s.note}</span>
           </Link>
         ))}
       </div>
-      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2" aria-label={st.teamAria}>
-        <div className="min-w-[240px] flex-[1_1_280px]">
-          <ProgressBar counts={{ done: o.counts.doneThisWeek, inReview: o.counts.inReview, inProgress: o.counts.inProgress, todo }} />
-        </div>
-        <div className="flex flex-wrap gap-x-3.5 gap-y-1 text-meta text-ink-soft">
+      <div className="flex flex-col gap-3 border-t border-rule px-5 pb-5 pt-4 max-[639px]:px-4" aria-label={st.teamAria}>
+        <ProgressBar counts={{ done: o.counts.doneThisWeek, inReview: o.counts.inReview, inProgress: o.counts.inProgress, todo }} />
+        <div className="flex flex-wrap gap-x-4 gap-y-1 text-small text-ink-soft">
           {(
             [
               ["done", o.counts.doneThisWeek],
@@ -205,29 +200,29 @@ function Stats({ o }: { o: Overview }) {
               ["todo", todo],
             ] as [Status, number][]
           ).map(([s, n]) => (
-            <span key={s} className="inline-flex items-center gap-[5px]">
+            <span key={s} className="inline-flex items-center gap-1.5">
               <Dot className={STATUS_DOT[s]} />
-              {t.status[s]} <b className="font-mono font-medium text-ink">{fmt.num(n)}</b>
+              {t.status[s]} <b className="font-mono text-meta font-medium text-ink">{fmt.num(n)}</b>
             </span>
           ))}
           <span className="text-muted">{st.doneNote}</span>
         </div>
       </div>
-    </>
+    </div>
   );
 }
 
 /* 2. Attention table -------------------------------------------------------------------------- */
 
-/** Below 36rem of card width each row folds into ref/age, title, status/who. */
-const gridCols = "grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 @[36rem]:grid-cols-[8.5rem_minmax(0,1fr)_6rem_auto_3.5rem]";
-const rowClass = `${gridCols} w-full cursor-pointer items-center gap-y-0.5 border-t border-rule px-3.5 py-2 text-left transition-colors duration-[120ms] ease-tool hover:bg-hover focus-visible:bg-hover focus-visible:-outline-offset-2 @[36rem]:min-h-9 @[36rem]:py-1`;
+/** Below 560px of card width each row folds into ref/age, title, status/who. Row lines are inset to the card padding. */
+const gridCols = "grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 @[35rem]:grid-cols-[8.5rem_minmax(0,1fr)_6.5rem_7.5rem_4.5rem]";
+const rowClass = `${gridCols} relative w-full cursor-pointer items-center gap-y-1 px-5 py-4 text-left transition-colors duration-[120ms] ease-tool after:absolute after:inset-x-5 after:top-0 after:h-px after:bg-rule hover:bg-hover focus-visible:bg-hover focus-visible:-outline-offset-2 @[35rem]:min-h-[46px] @[35rem]:py-3`;
 const cell = {
-  ref: "col-start-1 row-start-1 truncate font-mono text-meta text-muted @[36rem]:col-start-auto @[36rem]:row-start-auto",
-  title: "col-span-2 row-start-2 min-w-0 text-ui font-medium @[36rem]:col-span-1 @[36rem]:row-start-auto",
-  status: "col-start-1 row-start-3 @[36rem]:col-start-auto @[36rem]:row-start-auto",
-  who: "col-start-2 row-start-3 justify-self-end whitespace-nowrap text-[12.5px] text-ink-soft @[36rem]:col-start-auto @[36rem]:row-start-auto @[36rem]:justify-self-start",
-  age: "col-start-2 row-start-1 justify-self-end whitespace-nowrap font-mono text-meta text-muted @[36rem]:col-start-auto @[36rem]:row-start-auto",
+  ref: "col-start-1 row-start-1 truncate font-mono text-meta text-muted @[35rem]:col-start-auto @[35rem]:row-start-auto",
+  title: "col-span-2 row-start-2 min-w-0 text-ui font-medium @[35rem]:col-span-1 @[35rem]:row-start-auto",
+  status: "col-start-1 row-start-3 @[35rem]:col-start-auto @[35rem]:row-start-auto",
+  who: "col-start-2 row-start-3 justify-self-end whitespace-nowrap text-small text-ink-soft @[35rem]:col-start-auto @[35rem]:row-start-auto @[35rem]:justify-self-start",
+  age: "col-start-2 row-start-1 justify-self-end whitespace-nowrap text-small text-muted @[35rem]:col-start-auto @[35rem]:row-start-auto",
 };
 
 function Who({ people }: { people: { displayName: string | null; githubLogin: string | null }[] }) {
@@ -236,7 +231,7 @@ function Who({ people }: { people: { displayName: string | null; githubLogin: st
   if (people.length === 0)
     return (
       <span className="inline-flex items-center gap-1.5 text-accent">
-        <span aria-hidden className="h-[18px] w-[18px] rounded-full border border-dashed border-accent" />
+        <span aria-hidden className="h-5 w-5 rounded-full border border-dashed border-accent" />
         <span className="@max-[44rem]:sr-only">{t.common.unassigned}</span>
       </span>
     );
@@ -277,7 +272,7 @@ function IssueRow({
         </span>
         <span className={`${cell.title} ${fade}`}>
           <span className="block truncate">{issue.title}</span>
-          {sub && <span className="block truncate text-meta font-normal text-muted">{sub}</span>}
+          {sub && <span className="block truncate text-small font-normal text-muted">{sub}</span>}
         </span>
         <span className={`${cell.status} ${fade}`}>{status}</span>
         <span className={`${cell.who} ${fade}`}>
@@ -305,14 +300,14 @@ function Group({
   const t = useT();
   return (
     <div>
-      <h3 className="flex flex-wrap items-center gap-2 px-3.5 pb-1.5 pt-2.5 text-meta font-normal text-muted">
+      <h3 className="flex flex-wrap items-center gap-x-3 gap-y-1 px-5 pb-1 pt-5 text-small font-normal text-muted">
         {flag}
-        <span className="font-mono">{total}</span>
+        <span className="font-mono text-meta text-ink">{total}</span>
         <span>{why}</span>
       </h3>
-      <ul className="[&>li:first-child>*]:border-t-transparent">{children}</ul>
+      <ul className="[&>li:first-child>*]:after:hidden">{children}</ul>
       {total > more.shown && (
-        <Link href={more.href} className="link mx-3.5 mb-2 mt-1 inline-block text-meta text-ink-soft">
+        <Link href={more.href} className="link mx-5 mb-2 mt-1 inline-block text-small text-ink-soft">
           {t.overview.attention.more(total - more.shown)}
         </Link>
       )}
@@ -340,7 +335,7 @@ function Attention({ o, myLogin }: { o: O; myLogin: string | null }) {
   if (sum === 0)
     return card(
       0,
-      <div className="p-3.5">
+      <div className="px-5 pb-5">
         <Empty>{at.empty}</Empty>
       </div>,
     );
@@ -348,7 +343,7 @@ function Attention({ o, myLogin }: { o: O; myLogin: string | null }) {
   return card(
     sum,
     <>
-      <div aria-hidden className={`${gridCols} hidden h-[30px] items-center border-b border-rule bg-canvas px-3.5 font-mono text-[11px] text-muted @[36rem]:grid`}>
+      <div aria-hidden className={`${gridCols} hidden h-9 items-center border-b border-rule px-5 text-meta text-muted @[35rem]:grid`}>
         <span>{at.colRef}</span>
         <span>{at.colTitle}</span>
         <span>{at.colStatus}</span>
@@ -403,12 +398,12 @@ function Attention({ o, myLogin }: { o: O; myLogin: string | null }) {
           {a.actionItemsWithoutIssue.map((item) => (
             <li key={item.id}>
               <Link href={`/notes/view?id=${item.note.id}`} {...row} className={rowClass}>
-                <span className={cell.ref}>{at.meetingOn(fmt.shortDate(item.note.heldAt))}</span>
+                <span className={`${cell.ref} font-sans text-small`}>{at.meetingOn(fmt.shortDate(item.note.heldAt))}</span>
                 <span className={cell.title}>
                   <span className="block truncate">{item.text}</span>
-                  <span className="block truncate text-meta font-normal text-muted">{at.fromNote(item.note.title)}</span>
+                  <span className="block truncate text-small font-normal text-muted">{at.fromNote(item.note.title)}</span>
                 </span>
-                <span className={`${cell.status} text-[12.5px] text-muted`}>{t.common.noIssue}</span>
+                <span className={`${cell.status} text-small text-muted`}>{t.common.noIssue}</span>
                 <span className={cell.who}>
                   <Who people={item.assignee ? [item.assignee] : []} />
                   {item.assignee?.githubLogin === myLogin && <span className="ml-1 text-muted">{t.common.meParen}</span>}
@@ -420,7 +415,7 @@ function Attention({ o, myLogin }: { o: O; myLogin: string | null }) {
         </Group>
       )}
       {clear.length > 0 && (
-        <p className="mt-1 flex flex-wrap gap-x-4 gap-y-1 border-t border-rule px-3.5 py-2 text-meta text-muted">
+        <p className="mt-1 flex flex-wrap gap-x-4 gap-y-1 border-t border-rule px-5 pb-5 pt-4 text-small text-muted">
           {clear.map((c) => (
             <span key={c} className="inline-flex items-center gap-1.5">
               <Dot className="bg-status-done" />
@@ -459,7 +454,7 @@ function People({ o, myId }: { o: O; myId: number | null }) {
   if (!o) return card(<Loading />);
   if (o.people.length === 0)
     return card(
-      <div className="p-3.5">
+      <div className="px-5 pb-5">
         <Empty>{pp.empty}</Empty>
       </div>,
     );
@@ -474,26 +469,26 @@ function People({ o, myId }: { o: O; myId: number | null }) {
         return (
           <li
             key={p.member.id}
-            className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3.5 gap-y-1.5 border-t border-rule px-3.5 py-2 first:border-t-0 @[40rem]:grid-cols-[8.5rem_minmax(100px,1fr)_7rem_minmax(0,1.4fr)]"
+            className="relative grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-2 px-5 py-3.5 after:absolute after:inset-x-5 after:top-0 after:h-px after:bg-rule first:after:hidden @[35rem]:grid-cols-[11rem_minmax(100px,1fr)_6.5rem_minmax(0,1.4fr)]"
           >
             <Link href={href} className="group flex min-w-0 items-center gap-2">
               <Avatar person={p.member} ghost={openCount === 0} />
               <span className="min-w-0">
-                <span className="flex items-center gap-1.5 text-[13px] font-semibold group-hover:underline group-hover:underline-offset-3">
+                <span className="flex items-center gap-1.5 text-ui font-semibold group-hover:underline group-hover:underline-offset-3">
                   <span className="truncate">{fmt.person(p.member)}</span>
                   {p.member.githubUserId === myId && (
-                    <span className="rounded-[3px] border border-rule px-[3px] font-mono text-[10px] font-medium text-muted">{t.common.me}</span>
+                    <span className="text-small font-normal text-muted">{t.common.meParen}</span>
                   )}
                 </span>
-                <span className="block font-mono text-[11px] text-muted">{p.lastActivityAt ? fmt.relativeTime(p.lastActivityAt) : pp.noActivity}</span>
+                <span className="block text-meta text-muted">{p.lastActivityAt ? fmt.relativeTime(p.lastActivityAt) : pp.noActivity}</span>
               </span>
             </Link>
             {openCount === 0 ? (
-              <span className="col-span-full row-start-2 text-[12.5px] text-muted @[40rem]:col-span-1 @[40rem]:row-start-auto">{pp.noWork}</span>
+              <span className="col-span-full row-start-2 text-small text-muted @[35rem]:col-span-1 @[35rem]:row-start-auto">{pp.noWork}</span>
             ) : (
               <Link
                 href={href}
-                className="col-span-full row-start-2 block @[40rem]:col-span-1 @[40rem]:row-start-auto"
+                className="col-span-full row-start-2 block @[35rem]:col-span-1 @[35rem]:row-start-auto"
                 aria-label={pp.openAria(fmt.person(p.member), openCount)}
               >
                 <div className="bar !bg-transparent">
@@ -505,19 +500,19 @@ function People({ o, myId }: { o: O; myId: number | null }) {
                 </div>
               </Link>
             )}
-            <span className="col-start-2 row-start-1 flex flex-wrap items-center justify-end gap-x-2 whitespace-nowrap font-mono text-meta text-muted @[40rem]:col-start-auto @[40rem]:row-start-auto @[40rem]:justify-start">
+            <span className="col-start-2 row-start-1 flex flex-wrap items-center justify-end gap-x-2 whitespace-nowrap text-small text-muted @[35rem]:col-start-auto @[35rem]:row-start-auto @[35rem]:justify-start">
               <span title={pp.activeTitle(p.inProgress + p.inReview)}>
-                {pp.open} <b className="font-medium text-ink">{openCount}</b>
+                {pp.open} <b className="font-mono text-meta font-medium text-ink">{openCount}</b>
               </span>
               {p.doneThisWeek > 0 && <span>{pp.done(p.doneThisWeek)}</span>}
-              {p.overloaded && <Flag className="font-sans">{t.common.crowded}</Flag>}
+              {p.overloaded && <Flag>{t.common.crowded}</Flag>}
             </span>
             {p.current ? (
               <button
                 type="button"
                 {...row}
                 onClick={() => open(p.current!.id)}
-                className="group col-span-full flex min-w-0 cursor-pointer items-center gap-2 text-left text-[13px] @[40rem]:col-span-1"
+                className="group col-span-full flex min-w-0 cursor-pointer items-center gap-2 text-left text-small @[35rem]:col-span-1"
               >
                 <Dot className={STATUS_DOT[p.current.status]} />
                 <span className="sr-only">{t.status[p.current.status]}</span>
@@ -527,7 +522,7 @@ function People({ o, myId }: { o: O; myId: number | null }) {
                 <span className="truncate font-medium group-hover:underline group-hover:underline-offset-3">{p.current.title}</span>
               </button>
             ) : (
-              <span className="col-span-full text-[12.5px] text-muted @[40rem]:col-span-1">{openCount ? pp.nothingInProgress : ""}</span>
+              <span className="col-span-full text-small text-muted @[35rem]:col-span-1">{openCount ? pp.nothingInProgress : ""}</span>
             )}
           </li>
         );
@@ -562,7 +557,7 @@ function Projects({ o }: { o: O }) {
   return card(
     <>
       {o.projects.length === 0 ? (
-        <div className="p-3.5">
+        <div className="px-5 pb-5">
           <Empty>{pj.empty}</Empty>
         </div>
       ) : (
@@ -573,16 +568,16 @@ function Projects({ o }: { o: O }) {
               <Link
                 key={p.id}
                 href={`/projects?project=${p.id}`}
-                className="block border-t border-rule px-3.5 pb-3 pt-2.5 transition-colors duration-[120ms] ease-tool first:border-t-0 hover:bg-hover focus-visible:-outline-offset-2"
+                className="relative block px-5 py-4 transition-colors duration-[120ms] ease-tool after:absolute after:inset-x-5 after:top-0 after:h-px after:bg-rule first:after:hidden hover:bg-hover focus-visible:-outline-offset-2"
               >
-                <div className="mb-[7px] flex min-w-0 items-center gap-2">
-                  <span aria-hidden className="h-2 w-2 shrink-0 rounded-mark" style={{ background: p.color ?? "var(--wb-muted)" }} />
-                  <span className="shrink-0 text-heading font-semibold">{p.name}</span>
-                  <span className="truncate font-mono text-[11.5px] text-muted">{p.repositories.join(" · ") || t.common.noRepos}</span>
-                  <span className="ml-auto shrink-0 font-mono text-ui font-medium">{percent(byStatus.done, total)}%</span>
+                <div className="mb-3 flex min-w-0 items-center gap-2">
+                  <span aria-hidden className="h-2.5 w-2.5 shrink-0 rounded-mark" style={{ background: p.color ?? "var(--wb-muted)" }} />
+                  <span className="shrink-0 text-ui font-semibold">{p.name}</span>
+                  <span className={`truncate text-meta text-muted ${p.repositories.length ? "font-mono" : ""}`}>{p.repositories.join(" · ") || t.common.noRepos}</span>
+                  <span className="ml-auto shrink-0 font-mono text-small font-medium">{percent(byStatus.done, total)}%</span>
                 </div>
                 <ProgressBar counts={byStatus} />
-                <div className="mt-1.5 flex flex-wrap justify-between gap-x-2.5 gap-y-0.5 text-meta text-muted">
+                <div className="mt-2.5 flex flex-wrap justify-between gap-x-3 gap-y-0.5 text-small text-muted">
                   <span>
                     {total > 0 ? (
                       <>
@@ -604,7 +599,7 @@ function Projects({ o }: { o: O }) {
       {settings.sprintsEnabled && o.sprint && <Sprint sprint={o.sprint} />}
 
       {o.milestones === null && (
-        <p className="m-3.5 rounded-control border border-dashed border-rule-strong px-3 py-2 text-meta text-muted">
+        <p className="mx-5 mb-5 mt-1 rounded-item border border-dashed border-rule-strong px-4 py-3 text-small text-muted">
           <b className="mr-1.5 font-semibold text-ink-soft">{pj.milestones}</b>
           {pj.milestonesHint}
         </p>
@@ -622,16 +617,16 @@ function Sprint({ sprint }: { sprint: NonNullable<Overview["sprint"]> }) {
   return (
     <Link
       href={`/projects?sprint=${sprint.id}`}
-      className="block border-t border-rule bg-canvas px-3.5 pb-3.5 pt-3 transition-colors duration-[120ms] ease-tool hover:bg-hover focus-visible:-outline-offset-2"
+      className="block border-t border-rule bg-canvas px-5 pb-5 pt-4 transition-colors duration-[120ms] ease-tool hover:bg-hover focus-visible:-outline-offset-2"
     >
       <div className="mb-2 flex items-baseline justify-between gap-2.5">
         <div className="min-w-0">
-          <span className="text-[13px] font-semibold">{sprint.name}</span>{" "}
+          <span className="text-ui font-semibold">{sprint.name}</span>{" "}
           <span className="font-mono text-meta text-muted">
             {sprint.startDate.slice(5).replace("-", ".")}–{sprint.endDate.slice(5).replace("-", ".")}
           </span>
         </div>
-        <div className="whitespace-nowrap font-mono text-[13px] font-medium">
+        <div className="whitespace-nowrap font-mono text-small font-medium">
           {sprint.daysLeft}
           <small className="ml-0.5 font-sans text-meta font-normal text-muted">{sp.daysLeft(sprint.daysLeft)}</small>
         </div>
@@ -654,8 +649,8 @@ function Sprint({ sprint }: { sprint: NonNullable<Overview["sprint"]> }) {
         </div>
       )}
       <ProgressBar counts={s} />
-      <div className="mt-1.5 flex flex-wrap justify-between gap-x-2.5 gap-y-0.5 text-meta text-muted">
-        <span className="font-mono">{progressLine(s, t)}</span>
+      <div className="mt-2.5 flex flex-wrap justify-between gap-x-3 gap-y-0.5 text-small text-muted">
+        <span>{progressLine(s, t)}</span>
         <span>{sp.reviewAndProgress(s.inReview, s.inProgress)}</span>
       </div>
     </Link>
@@ -686,7 +681,7 @@ function ActionItems({ o, myLogin }: { o: O; myLogin: string | null }) {
   if (!o) return card(<Loading />);
   if (o.actionItems.length === 0)
     return card(
-      <div className="p-3.5">
+      <div className="px-5 pb-5">
         <Empty>{ac.empty}</Empty>
       </div>,
     );
@@ -694,9 +689,9 @@ function ActionItems({ o, myLogin }: { o: O; myLogin: string | null }) {
   return card(
     <ul>
       {o.actionItems.map((a) => (
-        <li key={a.id} className="flex flex-col gap-1 border-t border-rule px-3.5 py-2.5 first:border-t-0">
+        <li key={a.id} className="relative flex flex-col gap-1.5 px-5 py-4 after:absolute after:inset-x-5 after:top-0 after:h-px after:bg-rule first:after:hidden">
           <span className="text-ui font-medium">{a.text}</span>
-          <span className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-meta text-ink-soft">
+          <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-small text-ink-soft">
             {a.assignee ? (
               <span className="inline-flex items-center gap-1.5">
                 <Avatar person={a.assignee} size="sm" />
@@ -710,7 +705,7 @@ function ActionItems({ o, myLogin }: { o: O; myLogin: string | null }) {
               <button
                 type="button"
                 onClick={() => open(a.issue!.id)}
-                className="group inline-flex cursor-pointer items-center gap-1.5"
+                className="group inline-flex cursor-pointer items-center gap-1.5 [&>.font-mono]:text-meta"
               >
                 <Dot className={STATUS_DOT[a.issue.status]} />
                 <span className="font-mono group-hover:underline group-hover:underline-offset-3">
@@ -755,7 +750,7 @@ function Activity({ o }: { o: O }) {
   if (!o) return card(<Loading />);
   if (o.activity.length === 0)
     return card(
-      <div className="p-3.5">
+      <div className="px-5 pb-5">
         <Empty>{av.empty}</Empty>
       </div>,
     );
@@ -776,30 +771,30 @@ function Activity({ o }: { o: O }) {
   );
 
   return card(
-    <ul className="pb-2">
+    <ul className="pb-4">
       {days.map((d) => (
         <li key={d.label}>
-          <div className="px-3.5 pb-1 pt-2.5 font-mono text-[11px] text-muted">{d.label}</div>
+          <div className="px-5 pb-1.5 pt-4 text-meta font-medium text-muted">{d.label}</div>
           {d.events.map((e, i) => {
             const dot = KIND_DOT[e.kind];
             const who = e.actor ? fmt.person(e.actor) : null;
             return (
               <div
                 key={`${e.at}-${i}`}
-                className="grid grid-cols-[18px_minmax(0,1fr)_auto] items-start gap-2.5 px-3.5 py-[5px] min-[640px]:grid-cols-[4.75rem_18px_minmax(0,1fr)]"
+                className="grid grid-cols-[20px_minmax(0,1fr)_auto] items-start gap-3 px-5 py-1.5 min-[640px]:grid-cols-[5.5rem_20px_minmax(0,1fr)]"
               >
                 <time
                   dateTime={e.at}
-                  className="col-start-3 row-start-1 whitespace-nowrap pt-px font-mono text-[11.5px] text-muted min-[640px]:col-start-1"
+                  className="col-start-3 row-start-1 whitespace-nowrap text-small text-muted min-[640px]:col-start-1"
                 >
                   {fmt.relativeTime(e.at, true)}
                 </time>
-                <span className="col-start-1 row-start-1 pt-px min-[640px]:col-start-2">
-                  {e.actor ? <Avatar person={e.actor} size="sm" /> : <span aria-hidden className="block h-[18px] w-[18px] rounded-full border border-dashed border-rule-strong" />}
+                <span className="col-start-1 row-start-1 min-[640px]:col-start-2">
+                  {e.actor ? <Avatar person={e.actor} size="sm" /> : <span aria-hidden className="block h-5 w-5 rounded-full border border-dashed border-rule-strong" />}
                 </span>
-                <div className="col-start-2 row-start-1 min-w-0 text-[13px] min-[640px]:col-start-3">
+                <div className="col-start-2 row-start-1 min-w-0 text-small min-[640px]:col-start-3">
                   {e.kind !== "comment" && (
-                    <span className="mr-1.5 inline-flex items-center gap-[5px] text-meta text-ink-soft">
+                    <span className="mr-1.5 inline-flex items-center gap-1.5 text-ink-soft">
                       {dot && <Dot className={dot} />}
                       {av.kind[e.kind]}
                     </span>
@@ -810,7 +805,7 @@ function Activity({ o }: { o: O }) {
                       <span className="text-muted">{av.commentBefore}</span>
                       {issueRef(e.issue)}
                       {av.commentAfter && <span className="text-muted">{av.commentAfter}</span>}
-                      {e.snippet && <p className="mt-0.5 border-l-2 border-rule-strong pl-2 text-[12.5px] text-ink-soft">{e.snippet}</p>}
+                      {e.snippet && <p className="mt-1 border-l-2 border-rule-strong pl-2.5 text-small text-ink-soft">{e.snippet}</p>}
                     </>
                   )}
                   {e.pullRequest && (

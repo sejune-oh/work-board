@@ -98,7 +98,6 @@ export const ko = {
   auth: {
     signIn: "GitHub으로 로그인",
     redirecting: "GitHub으로 이동하는 중",
-    lead: "업무 보드는 GitHub 계정으로 로그인합니다.",
     scopeNote: "GitHub 프로필만 확인합니다. 저장소에는 접근하지 않습니다.",
     startFailed: "로그인을 시작하지 못했습니다. 잠시 뒤 다시 시도하세요.",
     sessionEnded: "로그인이 끝났거나 서버가 받아들이지 않았습니다. 다시 로그인하세요.",
@@ -134,6 +133,20 @@ export const ko = {
     checking: { kicker: "시작", title: "확인하는 중", lead: "로그인 상태와 소속 회사를 확인하고 있습니다." },
     login: { kicker: "로그인" },
     company: { kicker: "회사 확인" },
+    tagline: "10명 안팎의 팀을 위한 업무 보드",
+    /** Sample data on the sign-in screen; always labelled as an example. */
+    preview: {
+      label: "첫 화면 미리 보기",
+      kicker: "매일 아침, 한 문장 먼저",
+      example: "예시",
+      sentence: ["긴급 2건 중 ", 1, "건은 아직 시작 전이고, 리뷰를 기다리는 PR이 ", 3, "건 있습니다."] as (string | number)[],
+      rows: [
+        { flag: "긴급", fill: true, title: "다국어 슬러그 중복 오류", ref: "cms-api #303" },
+        { flag: "리뷰 대기", fill: false, title: "예약 조회 API 페이지네이션", ref: "booking-api #102" },
+        { flag: "12일째", fill: false, title: "메시지 검색 속도 개선", ref: "inbox-web #402" },
+      ],
+      note: "예시 데이터입니다. 주홍 표시는 누군가 봐야 하는 곳에만 나옵니다.",
+    },
     error: {
       kicker: "연결",
       title: "서버와 연결하지 못했습니다",

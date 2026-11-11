@@ -51,6 +51,7 @@ first calls `select set_config('app.tenant_id', @tenantId, true)`. RLS policies 
 | GET | `/api/members` | dev user | `Member[]` |
 | GET | `/api/projects` | dev user | `Project[]` |
 | GET | `/api/connections` | dev user | `GithubConnection[]`, active first |
+| POST | `/api/connections/github` | dev user, admin | `GithubConnection` (`201` new, `200` existing updated) |
 | GET | `/api/overview` | dev user | `Overview` |
 | GET | `/api/issues` | dev user | `BoardIssue[]` |
 | GET | `/api/issues/{id}` | dev user | `IssueDetail` or 404 |
@@ -66,6 +67,18 @@ GitHub identity). Response `201 {"tenant": {"id", "name"}, "member": Member}`; s
 afterwards. Errors: `401 unauthenticated` (no valid sign-in, or the GitHub identity has no login),
 `400 invalid_name` (also for a body that is not JSON), `409 tenant_limit` (the person already created 5
 tenants; tenants they only joined do not count).
+
+`POST /api/connections/github` connects the caller's personal GitHub account after they install the GitHub App.
+Body `{"code": "<oauth code>", "installationId": <number>}` (`application/json`), both from the redirect to
+`/connect/github`. The server exchanges `code` for a user token (never stored or logged), checks that the token's
+GitHub user is the caller and that the installation is in that user's installations, reads the account from the
+App's own installation record, then inserts (or, for the same tenant's active account, updates) the
+`github_connections` row on the `workboard_sync` role in one transaction. Response is the `GithubConnection`.
+Errors: `400 invalid_request` (missing code or installationId, not JSON), `400 invalid_code`,
+`401 unauthenticated`, `403 admin_only`, `403 not_your_account`, `403 not_your_installation`,
+`409 account_connected` (active in another tenant), `422 organization_not_supported`,
+`502 github_unavailable` (GitHub call failed), `503 github_app_not_configured`.
+Settings `GitHub:App:AppId`, `ClientId`, `ClientSecret`, `PrivateKeyPath`, `Slug`.
 
 `GET /api/issues` query parameters, all optional:
 
@@ -193,7 +206,7 @@ type Me = {
 };
 
 type GithubConnection = {
-  id: string; accountId: number; accountLogin: string; accountType: "organization" | "user";
+  id: string; accountId: number; accountLogin: string; accountType: "organization" | "user"; installationId: number | null;
   repositorySelection: "all" | "selected" | null; createdAt: string; disconnectedAt: string | null;
 };
 

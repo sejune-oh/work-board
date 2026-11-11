@@ -38,10 +38,29 @@ export type GithubConnection = {
   accountId: number;
   accountLogin: string;
   accountType: "organization" | "user";
+  /** GitHub App installation; null while the connection uses a token. */
+  installationId: number | null;
   repositorySelection: "all" | "selected" | null;
   createdAt: string;
   disconnectedAt: string | null;
 };
+
+export type ConnectGithubRequest = {
+  code: string;
+  installationId: number;
+};
+
+export type ConnectGithubError =
+  | "invalid_request"
+  | "invalid_code"
+  | "unauthenticated"
+  | "admin_only"
+  | "not_your_account"
+  | "not_your_installation"
+  | "account_connected"
+  | "organization_not_supported"
+  | "github_unavailable"
+  | "github_app_not_configured";
 
 export type Project = {
   id: string;

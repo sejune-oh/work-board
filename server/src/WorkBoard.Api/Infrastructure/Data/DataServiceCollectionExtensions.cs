@@ -1,5 +1,6 @@
 using Npgsql;
 using WorkBoard.Api.Infrastructure.Identity;
+using WorkBoard.Api.Infrastructure.Writes;
 
 namespace WorkBoard.Api.Infrastructure.Data;
 
@@ -16,6 +17,8 @@ public static class DataServiceCollectionExtensions
         services.AddScoped<CurrentUser>();
         services.AddScoped<ICurrentUser>(sp => sp.GetRequiredService<CurrentUser>());
         services.AddScoped<TenantDb>();
+        services.AddScoped<IAuditLog, AuditLog>();
+        services.AddScoped<IIssueEvents, IssueEvents>();
         return services;
     }
 

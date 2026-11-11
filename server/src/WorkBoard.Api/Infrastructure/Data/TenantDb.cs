@@ -8,6 +8,9 @@ public sealed class TenantDb(ICurrentUser user, IAppConnectionFactory connection
 {
     public const string SetTenantSql = "select set_config('app.tenant_id', @tenantId, true)";
 
+    // Same transaction as ReadAsync: everything the work does commits together, or rolls back if it throws.
+    public Task<T> WriteAsync<T>(Func<TenantSession, Task<T>> work, CancellationToken ct) => ReadAsync(work, ct);
+
     public async Task<T> ReadAsync<T>(Func<TenantSession, Task<T>> work, CancellationToken ct)
     {
         var tenantId = user.Identity.TenantId;

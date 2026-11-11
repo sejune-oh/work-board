@@ -8,13 +8,13 @@ namespace WorkBoard.Api.Infrastructure.Sync;
 
 public sealed record MirrorResult(Guid RepositoryId, int Issues, int PullRequests, int Comments);
 
-// Applied is false when a newer copy of the issue was already stored and the response was ignored.
 public enum IssueStateChange
 {
     Closed,
     Reopened,
 }
 
+// Applied is false when a newer copy of the issue was already stored and the response was ignored.
 public sealed record MirroredIssue(Guid IssueId, bool Applied);
 
 // Writes GitHub data into one tenant's mirror tables on the workboard_sync role (which bypasses RLS),

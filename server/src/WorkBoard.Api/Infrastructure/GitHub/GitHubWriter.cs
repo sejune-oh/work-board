@@ -15,7 +15,7 @@ public sealed class GitHubWriter(HttpClient http, IGitHubInstallationTokens toke
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
     };
 
-    public static string Footer(string login) => $"\n\n---\n_작성: @{login} (work-board)_";
+    public static string Footer(string login) => $"\n\n---\n_작성: `@{login}` (work-board)_";
 
     private static string WithFooter(string? body, string login) => (body ?? "").TrimEnd() + Footer(login);
 
@@ -125,7 +125,7 @@ public sealed class GitHubWriter(HttpClient http, IGitHubInstallationTokens toke
 
         return code switch
         {
-            HttpStatusCode.Forbidden => new(GitHubWriteErrorKind.NotGranted, status),
+            HttpStatusCode.Forbidden => await ClassifyForbiddenAsync(response, status, ct),
             HttpStatusCode.Unauthorized => new(GitHubWriteErrorKind.Unavailable, status),
             HttpStatusCode.NotFound or HttpStatusCode.Gone => new(GitHubWriteErrorKind.NotFound, status),
             HttpStatusCode.UnprocessableEntity => new(
@@ -133,6 +133,32 @@ public sealed class GitHubWriter(HttpClient http, IGitHubInstallationTokens toke
                 status),
             _ => new(GitHubWriteErrorKind.InvalidRequest, status),
         };
+    }
+
+    // Secondary rate limits are 403s, often with requests remaining and no Retry-After, so the message decides.
+    // A message about rate limits is Unavailable; one about a missing permission is NotGranted; any other 403
+    // (blocked, archived repository, SSO) is Unavailable too, because the board cannot fix it and it is not a
+    // missing App permission.
+    private static async Task<GitHubWriteException> ClassifyForbiddenAsync(HttpResponseMessage response, string status, CancellationToken ct)
+    {
+        var message = "";
+        try
+        {
+            using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync(ct));
+            if (doc.RootElement.TryGetProperty("message", out var m) && m.ValueKind == JsonValueKind.String)
+                message = m.GetString() ?? "";
+        }
+        catch (JsonException)
+        {
+        }
+
+        if (message.Contains("rate limit", StringComparison.OrdinalIgnoreCase)
+            || message.Contains("abuse", StringComparison.OrdinalIgnoreCase))
+            return new(GitHubWriteErrorKind.Unavailable, "GitHub rate limit reached.");
+        if (message.Contains("not accessible by integration", StringComparison.OrdinalIgnoreCase)
+            || message.Contains("permission", StringComparison.OrdinalIgnoreCase))
+            return new(GitHubWriteErrorKind.NotGranted, status);
+        return new(GitHubWriteErrorKind.Unavailable, status);
     }
 
     private static bool Mentions(string? text) => text?.Contains("assignee", StringComparison.OrdinalIgnoreCase) == true;

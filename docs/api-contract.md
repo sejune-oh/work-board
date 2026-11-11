@@ -39,7 +39,7 @@ Write endpoints (`POST`, `PATCH`, `PUT`, `DELETE`) use these standard codes, alw
 | 409 | `idempotency_key_reused` | the `Idempotency-Key` was already used for a different request |
 | 502 | `github_unavailable` | GitHub returned a 5xx or hit its rate limit, or the App token could not be obtained |
 | 504 | `github_unavailable` | the GitHub call got no answer: network error, the client's own 30 second timeout, or the 60 second call limit |
-| 403 | `github_write_not_granted` | the GitHub App lacks the permission the write needs (GitHub answered 403) |
+| 403 | `github_write_not_granted` | the GitHub App lacks the permission the write needs (GitHub answered 403 with a permission message; a rate-limit or other 403 is `github_unavailable`) |
 | 422 | `assignee_not_collaborator` | GitHub rejected an assignee who cannot be assigned in that repository |
 | 422 | `invalid_request` | GitHub rejected the request as invalid (a write that calls GitHub only; 400 is for the board's own validation) |
 

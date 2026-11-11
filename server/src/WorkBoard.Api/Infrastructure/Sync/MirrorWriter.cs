@@ -9,6 +9,12 @@ namespace WorkBoard.Api.Infrastructure.Sync;
 public sealed record MirrorResult(Guid RepositoryId, int Issues, int PullRequests, int Comments);
 
 // Applied is false when a newer copy of the issue was already stored and the response was ignored.
+public enum IssueStateChange
+{
+    Closed,
+    Reopened,
+}
+
 public sealed record MirroredIssue(Guid IssueId, bool Applied);
 
 // Writes GitHub data into one tenant's mirror tables on the workboard_sync role (which bypasses RLS),
@@ -57,10 +63,11 @@ public sealed class MirrorWriter([FromKeyedServices(DataKeys.Sync)] NpgsqlDataSo
 
     // Mirrors the response of a board write right away. Same upsert and "older is ignored" rule as a sync run, on
     // one issue. A REST response does not carry the parent issue, so the stored parent link is left alone.
-    // When the stored state differs from the response, a closed or reopened issue_events row is written in the
-    // same transaction, attributed to memberId.
+    // change is set only by the close and reopen calls: exactly that closed or reopened issue_events row is written
+    // in the same transaction, attributed to memberId, whatever the stored state or the response age. Other writes
+    // never record one.
     public async Task<MirroredIssue?> ApplyWrittenIssueAsync(
-        Guid tenantId, Guid repositoryId, SourceIssue issue, Guid? memberId, CancellationToken ct)
+        Guid tenantId, Guid repositoryId, SourceIssue issue, Guid? memberId, IssueStateChange? change, CancellationToken ct)
     {
         await using var conn = await sync.OpenConnectionAsync(ct);
         await using var tx = await conn.BeginTransactionAsync(ct);
@@ -79,30 +86,31 @@ public sealed class MirrorWriter([FromKeyedServices(DataKeys.Sync)] NpgsqlDataSo
         var milestones = await db.Query<(int Number, Guid Id)>(
             "select number, id from milestones where tenant_id = @tenantId and repository_id = @repositoryId", new { repositoryId });
         var applied = await UpsertIssuesAsync(db, repositoryId, [issue], milestones.ToDictionary(m => m.Number, m => m.Id), keepParent: true);
+
+        Guid issueId;
         if (applied.Count == 0)
-        {
-            var existing = await db.Scalar<Guid>(
+            issueId = await db.Scalar<Guid>(
                 "select id from issues where tenant_id = @tenantId and github_issue_id = @githubId", new { githubId = issue.DatabaseId });
-            await tx.CommitAsync(ct);
-            return new MirroredIssue(existing, false);
+        else
+        {
+            issueId = applied[0].Id;
+            await ReplaceIssueChildrenAsync(db, repositoryId, applied, await LoadLabelIndexAsync(db, repositoryId));
         }
 
-        var issueId = applied[0].Id;
-        await ReplaceIssueChildrenAsync(db, repositoryId, applied, await LoadLabelIndexAsync(db, repositoryId));
-        if (previous is { } p && p.State != issue.State)
+        if (change is { } c)
             await db.Exec("""
                 insert into issue_events (tenant_id, issue_id, kind, from_value, to_value, member_id)
                 values (@tenantId, @issueId, @kind, @fromValue, @toValue, @memberId)
                 """, new
             {
                 issueId,
-                kind = issue.State == "closed" ? "closed" : "reopened",
-                fromValue = p.StateReason,
+                kind = c == IssueStateChange.Closed ? "closed" : "reopened",
+                fromValue = previous?.StateReason,
                 toValue = issue.StateReason,
                 memberId,
             });
         await tx.CommitAsync(ct);
-        return new MirroredIssue(issueId, true);
+        return new MirroredIssue(issueId, applied.Count > 0);
     }
 
     // Returns false when the comment was not written: the issue is not in the mirror yet, or a newer copy is stored.

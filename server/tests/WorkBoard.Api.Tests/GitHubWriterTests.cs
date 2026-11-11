@@ -73,7 +73,7 @@ public class GitHubWriterTests
         Assert.Equal("2022-11-28", r.Version);
         var b = Body(r);
         Assert.Equal("T", b.GetProperty("title").GetString());
-        Assert.Equal("hello\n\n---\n_작성: @carol (work-board)_", b.GetProperty("body").GetString());
+        Assert.Equal("hello\n\n---\n_작성: `@carol` (work-board)_", b.GetProperty("body").GetString());
         Assert.Equal("bug", b.GetProperty("labels")[0].GetString());
         Assert.Equal("alice", b.GetProperty("assignees")[0].GetString());
 
@@ -92,7 +92,7 @@ public class GitHubWriterTests
     {
         var (w, h, _) = Make(_ => Json(HttpStatusCode.Created, IssueJson));
         await w.CreateIssueAsync(Repo, "carol", "T", null, [], [], default);
-        Assert.Equal("\n\n---\n_작성: @carol (work-board)_", Body(h.Requests[0]).GetProperty("body").GetString());
+        Assert.Equal("\n\n---\n_작성: `@carol` (work-board)_", Body(h.Requests[0]).GetProperty("body").GetString());
     }
 
     [Fact]
@@ -119,7 +119,7 @@ public class GitHubWriterTests
         var r = Assert.Single(h.Requests);
         Assert.Equal(HttpMethod.Post, r.Method);
         Assert.EndsWith("/repos/octo/api/issues/7/comments", r.Uri.ToString());
-        Assert.Equal("hi\n\n---\n_작성: @carol (work-board)_", Body(r).GetProperty("body").GetString());
+        Assert.Equal("hi\n\n---\n_작성: `@carol` (work-board)_", Body(r).GetProperty("body").GetString());
         Assert.Equal(900, c.Id);
         Assert.Equal(7, c.IssueNumber);
     }
@@ -167,7 +167,7 @@ public class GitHubWriterTests
     }
 
     [Fact]
-    public async Task Forbidden_without_rate_limit_is_not_granted()
+    public async Task Forbidden_for_a_missing_permission_is_not_granted()
     {
         var e = await FailAsync(_ => Json(HttpStatusCode.Forbidden, """{"message":"Resource not accessible by integration"}"""));
         Assert.Equal(GitHubWriteErrorKind.NotGranted, e.Kind);
@@ -175,6 +175,32 @@ public class GitHubWriterTests
         var result = GitHubWriteErrors.ToResult(e);
         Assert.Equal(403, result.StatusCode);
         Assert.Contains("github_write_not_granted", JsonSerializer.Serialize(result.Body, JsonSerializerOptions.Web));
+    }
+
+    [Fact]
+    public async Task Secondary_rate_limit_403_with_requests_remaining_is_unavailable()
+    {
+        var e = await FailAsync(_ =>
+        {
+            var r = Json(HttpStatusCode.Forbidden,
+                """{"message":"You have exceeded a secondary rate limit. Please wait a few minutes before you try again."}""");
+            r.Headers.Add("x-ratelimit-remaining", "4000");
+            return r;
+        });
+        Assert.Equal(GitHubWriteErrorKind.Unavailable, e.Kind);
+        Assert.False(e.SideEffectPossible);
+        Assert.Equal(502, GitHubWriteErrors.ToResult(e).StatusCode);
+    }
+
+    [Fact]
+    public async Task Other_forbidden_is_unavailable_not_a_missing_grant()
+    {
+        var e = await FailAsync(_ => Json(HttpStatusCode.Forbidden, """{"message":"Repository was archived so is read-only."}"""));
+        Assert.Equal(GitHubWriteErrorKind.Unavailable, e.Kind);
+        Assert.False(e.SideEffectPossible);
+
+        e = await FailAsync(_ => Json(HttpStatusCode.Forbidden, "not json"));
+        Assert.Equal(GitHubWriteErrorKind.Unavailable, e.Kind);
     }
 
     [Fact]

@@ -87,12 +87,12 @@
 
 ## GitHub 쓰기
 
-`IGitHubWriter`(`Infrastructure/GitHub/`)가 설치 토큰으로 이슈를 만들고, 담당자를 바꾸고, 댓글을 달고, 닫고(`completed` | `not_planned`), 다시 엽니다. GitHub에는 App 봇이 쓴 것으로 보이므로 실제 사람은 본문과 댓글 끝의 한 줄(`\n\n---\n_작성: @<login> (work-board)_`)과 `audit_log`에 남깁니다.
+`IGitHubWriter`(`Infrastructure/GitHub/`)가 설치 토큰으로 이슈를 만들고, 담당자를 바꾸고, 댓글을 달고, 닫고(`completed` | `not_planned`), 다시 엽니다. GitHub에는 App 봇이 쓴 것으로 보이므로 실제 사람은 본문과 댓글 끝의 한 줄(`\n\n---\n_작성: `@<login>` (work-board)_`)과 `audit_log`에 남깁니다. 로그인은 백틱으로 감싸서 쓸 때마다 알림이 가지 않게 합니다.
 
 - 응답은 읽기와 같은 `SourceIssue`, `SourceComment`로 돌려줍니다. 호출한 쪽이 `MirrorWriter.ApplyWrittenIssueAsync` / `ApplyWrittenCommentAsync`로 바로 넘기면 다음 동기화를 기다리지 않고 보드에 보입니다. 저장된 `github_updated_at`보다 오래된 응답은 무시하고(자식 행과 이벤트 포함), 응답에 없는 부모 이슈 연결은 건드리지 않습니다.
-- 저장된 상태와 응답의 상태가 다르면 같은 트랜잭션에서 `issue_events`에 `closed`(to_value = state_reason) 또는 `reopened`를 남깁니다.
+- 닫기와 다시 열기 호출만 `StateChange`를 넘기며, 그 이벤트(`closed`는 to_value = state_reason, 또는 `reopened`)를 같은 트랜잭션에서 호출한 사람 이름으로 `issue_events`에 남깁니다. 저장된 상태가 이미 같거나 응답이 더 오래돼도 남기고, 다른 쓰기는 상태가 달라 보여도 남기지 않습니다.
 - 대상 저장소는 `IGitHubWriteTargets.ResolveAsync`로 확인합니다. 호출자 회사의 저장소이고, 연결이 끊기지 않았고, App 설치 id가 있어야 합니다. 아니면 null(`404 not_found`로 답함).
-- 실패는 `GitHubWriteException`: 403 → `github_write_not_granted`, 422 → `assignee_not_collaborator` 또는 `invalid_request`, 404 → `not_found`, 5xx와 속도 제한 → 502 `github_unavailable`, 응답 없음(네트워크, 30초 타임아웃) → 504 `github_unavailable`. `GitHubWriteErrors.ToResult/ToOutcome`이 응답으로 바꿉니다. 메시지에는 상태 코드만 들어가고 토큰과 응답 내용은 없습니다. 응답 없음 예외는 `Idempotency.RunExternalAsync`에 그대로 던지면 키를 예약 상태로 두고 504를 돌려줍니다.
+- 실패는 `GitHubWriteException`: 403 → 메시지가 권한 부족(`Resource not accessible by integration` 등)이면 `github_write_not_granted`, 속도 제한(2차 포함) 문구이거나 그 밖의 403(보관된 저장소 등)이면 502 `github_unavailable`, 422 → `assignee_not_collaborator` 또는 `invalid_request`, 404 → `not_found`, 5xx와 속도 제한 → 502 `github_unavailable`, 응답 없음(네트워크, 30초 타임아웃) → 504 `github_unavailable`. `GitHubWriteErrors.ToResult/ToOutcome`이 응답으로 바꿉니다. 메시지에는 상태 코드만 들어가고 토큰과 응답 내용은 없습니다. 응답 없음 예외는 `Idempotency.RunExternalAsync`에 그대로 던지면 키를 예약 상태로 두고 504를 돌려줍니다.
 - 담당자: GitHub는 push 권한이 없는 사용자를 조용히 빼는 경우가 있으므로, 호출한 쪽이 응답의 `Assignees`가 요청과 같은지 확인합니다.
 
 ### App 소유자가 할 일: Issues 쓰기 권한

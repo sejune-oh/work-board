@@ -290,20 +290,6 @@ html[data-lang-pending] body {
     overflow: hidden;
   }
 
-  /* Hairline between rows that starts and ends at the card padding. */
-  .row-rule {
-    position: relative;
-  }
-  .row-rule + .row-rule::before {
-    content: "";
-    position: absolute;
-    left: 20px;
-    right: 20px;
-    top: 0;
-    height: 1px;
-    background: var(--wb-rule);
-  }
-
   .btn {
     display: inline-flex;
     align-items: center;
@@ -418,10 +404,18 @@ html[data-lang-pending] body {
     text-decoration-color: currentColor;
   }
 
-  /* Horizontal tab strip that scrolls on its own; the page never does. */
+  /* Horizontal tab strip that scrolls on its own; the page never does. An edge fades only while more tabs lie past it. */
   .tabs {
     scrollbar-width: none;
+  }
+  .tabs[data-more="end"] {
     mask-image: linear-gradient(90deg, #000 85%, transparent);
+  }
+  .tabs[data-more="start"] {
+    mask-image: linear-gradient(270deg, #000 85%, transparent);
+  }
+  .tabs[data-more="both"] {
+    mask-image: linear-gradient(90deg, transparent, #000 15%, #000 85%, transparent);
   }
   .tabs::-webkit-scrollbar {
     display: none;

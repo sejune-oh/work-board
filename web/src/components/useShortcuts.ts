@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { type RefObject, useEffect } from "react";
+import { useEffect } from "react";
 
 /**
  * `g` then a letter jumps to a screen. The nav shows the same letters. Keys are matched by
@@ -41,7 +41,7 @@ function moveRow(step: 1 | -1): boolean {
  * `/` search, `g`+letter screens, `j`/`k` rows. Off while typing, with a modifier held,
  * or while the issue panel (a dialog) is open; Esc for the panel lives in IssuePanel.
  */
-export function useShortcuts(searchRef: RefObject<HTMLInputElement | null>) {
+export function useShortcuts(focusSearch: () => void) {
   const router = useRouter();
 
   useEffect(() => {
@@ -65,7 +65,7 @@ export function useShortcuts(searchRef: RefObject<HTMLInputElement | null>) {
 
       if (e.key === "/" || (e.code === "Slash" && !e.shiftKey)) {
         e.preventDefault();
-        searchRef.current?.focus();
+        focusSearch();
         return;
       }
       if (e.shiftKey) return;
@@ -88,5 +88,5 @@ export function useShortcuts(searchRef: RefObject<HTMLInputElement | null>) {
       window.removeEventListener("keydown", onKey);
       clearTimeout(goTimer);
     };
-  }, [router, searchRef]);
+  }, [router, focusSearch]);
 }

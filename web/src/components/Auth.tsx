@@ -96,7 +96,7 @@ export function GateFrame({
           {footer && <div className="mt-5">{footer}</div>}
         </div>
       </main>
-      <footer className="px-4 py-5 text-meta text-faint min-[640px]:px-6 min-[1024px]:px-10">{t.gate.tagline}</footer>
+      <footer className="px-4 py-5 text-meta text-muted min-[640px]:px-6 min-[1024px]:px-10">{t.gate.tagline}</footer>
     </div>
   );
 

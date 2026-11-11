@@ -4,14 +4,14 @@ import { useSearchParams } from "next/navigation";
 import { ErrorBox, Loading } from "@/components/Feedback";
 import { FilterChips } from "@/components/FilterChips";
 import { IssueCard } from "@/components/IssueCard";
-import { CanceledGroup } from "@/components/StatusColumns";
+import { CanceledGroup, boardCols } from "@/components/StatusColumns";
 import { Avatar, Dot, Flag, PageHeader } from "@/components/ui";
 import { useApi } from "@/lib/api";
 import { applyFilters, hasFilters, issuesQuery, readFilters } from "@/lib/filters";
 import { useFormat, useT } from "@/lib/i18n";
 import { STATUS_DOT, STATUS_ORDER, groupByStatus, isCanceled, isCrowded } from "@/lib/labels";
 import { useMe } from "@/lib/me";
-import type { BoardIssue, Member } from "@/lib/types";
+import type { BoardIssue, Member, Status } from "@/lib/types";
 
 type Row = { key: string; member: Member | null; issues: BoardIssue[] };
 
@@ -90,10 +90,13 @@ export default function PeopleBoardPage() {
         <div className="reveal mt-2 flex flex-col gap-10 [animation-delay:30ms]">
           {rows.map((row) => {
             const groups = groupByStatus(row.issues);
+            const canceled = row.issues.filter(isCanceled);
+            // Canceled work folds under done, so done counts as filled when only canceled issues are there.
+            const filled = (s: Status) => groups[s].length > 0 || (s === "done" && canceled.length > 0);
             const active = activeCount(row);
             const isCrowdedRow = crowded.includes(row);
             return (
-              <section key={row.key} aria-label={row.member ? fmt.person(row.member) : t.common.unassigned} className="flex flex-col gap-4">
+              <section key={row.key} aria-label={row.member ? fmt.person(row.member) : t.common.unassigned} className="@container flex flex-col gap-4">
                 {row.member ? (
                   <header className="flex flex-wrap items-center gap-x-3 gap-y-1">
                     <Avatar person={row.member} size="lg" />
@@ -114,19 +117,19 @@ export default function PeopleBoardPage() {
                     <p className="text-small text-muted">{pt.openCount(row.issues.length)}</p>
                   </header>
                 )}
-                <div className={`grid grid-cols-1 items-start gap-x-4 gap-y-5 ${statuses.length >= 4 ? "md:grid-cols-2 xl:grid-cols-4" : statuses.length > 1 ? "md:grid-cols-2" : ""}`}>
+                <div className={`grid grid-cols-1 items-start gap-x-4 gap-y-5 ${boardCols(statuses.length)}`}>
                   {statuses.map((s) => (
-                    <div key={s} className={`flex min-w-0 flex-col gap-2 ${groups[s].length === 0 ? "max-[767px]:hidden" : ""}`}>
+                    <div key={s} className={`flex min-w-0 flex-col gap-2 ${filled(s) ? "" : "@max-[34rem]:hidden"}`}>
                       <h3 className="flex items-center gap-2 px-1 text-small font-semibold text-ink-soft">
                         <Dot className={STATUS_DOT[s]} />
                         {t.status[s]}
                         <span className="font-mono text-meta font-normal text-muted">{groups[s].length}</span>
                       </h3>
-                      {groups[s].length === 0 && <p className="px-1 py-2 text-small text-muted">{t.common.none}</p>}
+                      {!filled(s) && <p className="px-1 py-2 text-small text-muted">{t.common.none}</p>}
                       {groups[s].map((i) => (
                         <IssueCard key={i.id} issue={i} showAssignee={false} />
                       ))}
-                      {s === "done" && <CanceledGroup issues={row.issues.filter(isCanceled)} showAssignee={false} />}
+                      {s === "done" && <CanceledGroup issues={canceled} showAssignee={false} />}
                     </div>
                   ))}
                 </div>

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { authEnabled } from "@/lib/auth";
 import { type Dict, useT } from "@/lib/i18n";
 import { useMe } from "@/lib/me";
@@ -98,6 +98,31 @@ function OrgMark({ org, size }: { org: string; size: "sm" | "md" }) {
   );
 }
 
+/** Marks which edges of the tab strip still have tabs past them (`data-more`), so only those edges fade. */
+function useTabFade() {
+  const ref = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const update = () => {
+      const start = el.scrollLeft > 1;
+      const end = el.scrollLeft + el.clientWidth < el.scrollWidth - 1;
+      const more = start && end ? "both" : start ? "start" : end ? "end" : null;
+      if (more) el.dataset.more = more;
+      else delete el.dataset.more;
+    };
+    update();
+    el.addEventListener("scroll", update, { passive: true });
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => {
+      el.removeEventListener("scroll", update);
+      ro.disconnect();
+    };
+  }, []);
+  return ref;
+}
+
 /**
  * The app chrome. Only the sign-in gate renders it, once `/api/me` has succeeded.
  * From 1024px a full-height sidebar; below that a top bar with tabs that scroll on their own.
@@ -111,17 +136,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const org = useMe().data?.tenant.name ?? "";
   const t = useT();
 
-  useShortcuts(searchRef);
-
-  const openSearch = () => {
+  /** On phones the field is hidden until opened, so it is shown first and focused after the next paint. */
+  const openSearch = useCallback(() => {
     setSearchOpen(true);
     requestAnimationFrame(() => searchRef.current?.focus());
-  };
+  }, []);
+
+  useShortcuts(openSearch);
+  const tabsRef = useTabFade();
 
   return (
     <div className="flex min-h-dvh">
       <div className="hidden w-[248px] shrink-0 border-r border-rule min-[1024px]:block">
-        <aside className="sticky top-0 flex h-dvh flex-col gap-6 px-4 py-5">
+        <aside className="sticky top-0 flex h-dvh flex-col gap-6 overflow-y-auto px-4 py-5">
           <Link href="/" className="flex items-center gap-2.5 rounded-control px-2 py-1.5 hover:bg-hover">
             <OrgMark org={org} size="md" />
             <span className="min-w-0">
@@ -206,6 +233,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <b className="font-semibold text-ink">{screenLabel(pathname, t)}</b>
             </p>
             <form
+              id="site-search"
               role="search"
               className={`ml-auto h-9 min-w-0 flex-1 items-center gap-2 rounded-control bg-surface pl-3 pr-1.5 text-small text-muted shadow-elev-1 focus-within:shadow-[0_0_0_2px_var(--wb-focus)] min-[640px]:flex min-[1024px]:max-w-[340px] ${
                 searchOpen ? "flex" : "hidden"
@@ -226,7 +254,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 placeholder={t.shell.searchPlaceholder}
                 aria-label={t.shell.searchLabel}
                 aria-keyshortcuts="/"
-                className="w-full min-w-0 bg-transparent text-ink outline-none placeholder:text-faint"
+                className="w-full min-w-0 bg-transparent text-ink outline-none placeholder:text-muted"
               />
               <Kbd className="max-[639px]:hidden">/</Kbd>
             </form>
@@ -234,6 +262,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               type="button"
               onClick={openSearch}
               aria-label={t.shell.searchLabel}
+              aria-expanded={searchOpen}
+              aria-controls="site-search"
               className={`ml-auto h-9 w-9 shrink-0 cursor-pointer place-items-center rounded-control text-ink-soft hover:bg-hover min-[640px]:hidden ${searchOpen ? "hidden" : "grid"}`}
             >
               <SearchIcon size={18} />
@@ -246,7 +276,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               {authEnabled ? <AccountMenu /> : <UserPicker />}
             </div>
           </div>
-          <nav aria-label={t.nav.screens} className="tabs -mx-4 flex gap-5 overflow-x-auto px-4 min-[640px]:-mx-6 min-[640px]:px-6 min-[1024px]:hidden">
+          <nav ref={tabsRef} aria-label={t.nav.screens} className="tabs -mx-4 flex gap-5 overflow-x-auto px-4 min-[640px]:-mx-6 min-[640px]:px-6 min-[1024px]:hidden">
             {NAV.map((item) => {
               const active = isActive(pathname, item.href);
               return (

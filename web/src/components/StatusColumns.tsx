@@ -8,14 +8,25 @@ import { Count, Dot } from "./ui";
 
 type Props = { issues: BoardIssue[]; showAssignee?: boolean; statuses?: Status[] };
 
+/**
+ * Column count for a board grid inside an `@container`, from the width the board actually has:
+ * one column below 544px, two up to 1024px, then all of them (so no column gets narrower than ~240px).
+ */
+export function boardCols(count: number): string {
+  if (count >= 4) return "@[34rem]:grid-cols-2 @[64rem]:grid-cols-4";
+  if (count === 3) return "@[34rem]:grid-cols-2 @[48rem]:grid-cols-3";
+  if (count === 2) return "@[34rem]:grid-cols-2";
+  return "";
+}
+
 export function StatusColumns({ issues, showAssignee = true, statuses = STATUS_ORDER }: Props) {
   const t = useT();
   const groups = groupByStatus(issues);
   const canceled = issues.filter(isCanceled);
-  const cols = statuses.length >= 4 ? "md:grid-cols-2 xl:grid-cols-4" : statuses.length === 3 ? "md:grid-cols-3" : statuses.length === 2 ? "md:grid-cols-2" : "";
 
   return (
-    <div className={`grid grid-cols-1 items-start gap-x-4 gap-y-6 ${cols}`}>
+    <div className="@container">
+    <div className={`grid grid-cols-1 items-start gap-x-4 gap-y-6 ${boardCols(statuses.length)}`}>
       {statuses.map((status) => (
         <section key={status} className="flex min-w-0 flex-col gap-2">
           <h3 className="flex items-center gap-2 px-1 pb-1 text-ui font-semibold text-ink">
@@ -34,6 +45,7 @@ export function StatusColumns({ issues, showAssignee = true, statuses = STATUS_O
           </div>
         </section>
       ))}
+    </div>
     </div>
   );
 }

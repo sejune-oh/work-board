@@ -251,6 +251,9 @@ public class CreateTenantTests
     [InlineData("""{"name":5}""")]
     [InlineData("""not json""")]
     [InlineData("""{"name":"a\nb"}""")]
+    [InlineData("""{"name":"a​b"}""")]
+    [InlineData("""{"name":"a‮b"}""")]
+    [InlineData("""{"name":"a\uD800b"}""")]
     public async Task Invalid_names_are_400(string json)
     {
         await using var host = Create();
@@ -258,6 +261,25 @@ public class CreateTenantTests
         using var client = Client(host);
 
         var response = await client.SendAsync(Post(Token(authUser), json));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal("""{"error":"invalid_name"}""", await response.Content.ReadAsStringAsync());
+    }
+
+    [Theory]
+    [InlineData("text/plain")]
+    [InlineData(null)]
+    public async Task Body_that_is_not_json_content_is_400(string? contentType)
+    {
+        await using var host = Create();
+        var (authUser, _, _) = host.NewPerson();
+        using var client = Client(host);
+        var request = Post(Token(authUser), """{"name":"Fresh"}""");
+        request.Content = new ByteArrayContent(Encoding.UTF8.GetBytes("""{"name":"Fresh"}"""));
+        if (contentType is not null)
+            request.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(contentType);
+
+        var response = await client.SendAsync(request);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Equal("""{"error":"invalid_name"}""", await response.Content.ReadAsStringAsync());

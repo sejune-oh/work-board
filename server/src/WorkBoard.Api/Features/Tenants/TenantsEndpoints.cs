@@ -1,3 +1,6 @@
+using System.Buffers;
+using System.Globalization;
+using System.Text;
 using System.Text.Json;
 using Dapper;
 using Npgsql;
@@ -57,6 +60,9 @@ public static class TenantsEndpoints
 
     private static async Task<string?> ReadNameAsync(HttpContext http, CancellationToken ct)
     {
+        if (!http.Request.HasJsonContentType())
+            return null;
+
         CreateTenantRequest? body;
         try
         {
@@ -68,7 +74,21 @@ public static class TenantsEndpoints
         }
 
         var name = body?.Name?.Trim();
-        return string.IsNullOrEmpty(name) || name.Length > NameMaxLength || name.Any(char.IsControl) ? null : name;
+        return string.IsNullOrEmpty(name) || name.Length > NameMaxLength || !IsPrintable(name) ? null : name;
+    }
+
+    // Rejects control and invisible format characters (zero-width, bidi overrides) and broken surrogates.
+    private static bool IsPrintable(string name)
+    {
+        for (var i = 0; i < name.Length;)
+        {
+            if (Rune.DecodeFromUtf16(name.AsSpan(i), out var rune, out var used) != OperationStatus.Done)
+                return false;
+            if (Rune.GetUnicodeCategory(rune) is UnicodeCategory.Control or UnicodeCategory.Format)
+                return false;
+            i += used;
+        }
+        return true;
     }
 
     // Null when the person already created MaxTenantsPerPerson tenants.

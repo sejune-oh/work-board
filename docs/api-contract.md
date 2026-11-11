@@ -60,7 +60,7 @@ first calls `select set_config('app.tenant_id', @tenantId, true)`. RLS policies 
 
 `POST /api/tenants` creates a company for a signed-in person (bearer token, or `X-Dev-User` with a known
 login in Development) and makes them its `admin`. Body `{"name": "<string>"}`; the name is trimmed and must be
-1..80 characters without control characters. One transaction on the `workboard_sync` role inserts the tenant,
+1..80 characters without control or invisible format characters (zero-width, bidi overrides); the request must be `application/json`. One transaction on the `workboard_sync` role inserts the tenant,
 its `tenant_settings` row (all flags off) and the member (GitHub id, login, display name and avatar from the
 GitHub identity). Response `201 {"tenant": {"id", "name"}, "member": Member}`; send `X-Tenant: <tenant.id>`
 afterwards. Errors: `401 unauthenticated` (no valid sign-in, or the GitHub identity has no login),

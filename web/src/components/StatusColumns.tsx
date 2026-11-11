@@ -1,7 +1,7 @@
 "use client";
 
 import { useT } from "@/lib/i18n";
-import { CANCELED_DOT, STATUS_DOT, STATUS_ORDER, groupByStatus, isCanceled } from "@/lib/labels";
+import { STATUS_DOT, STATUS_ORDER, groupByStatus } from "@/lib/labels";
 import type { BoardIssue, Status } from "@/lib/types";
 import { IssueCard } from "./IssueCard";
 import { Count, Dot } from "./ui";
@@ -22,7 +22,7 @@ export function boardCols(count: number): string {
 export function StatusColumns({ issues, showAssignee = true, statuses = STATUS_ORDER }: Props) {
   const t = useT();
   const groups = groupByStatus(issues);
-  const canceled = issues.filter(isCanceled);
+  const foldCancelled = !statuses.includes("cancelled");
 
   return (
     <div className="@container">
@@ -41,7 +41,7 @@ export function StatusColumns({ issues, showAssignee = true, statuses = STATUS_O
             {groups[status].map((issue) => (
               <IssueCard key={issue.id} issue={issue} showAssignee={showAssignee} />
             ))}
-            {status === "done" && <CanceledGroup issues={canceled} showAssignee={showAssignee} />}
+            {status === "done" && foldCancelled && <CanceledGroup issues={groups.cancelled} showAssignee={showAssignee} />}
           </div>
         </section>
       ))}
@@ -50,16 +50,19 @@ export function StatusColumns({ issues, showAssignee = true, statuses = STATUS_O
   );
 }
 
-/** Canceled work folds under done instead of taking a fifth column; hidden when there is none. */
+/** Cancelled work folds under done, closed by default, instead of taking a fifth column; hidden when there is none. */
 export function CanceledGroup({ issues, showAssignee = true }: { issues: BoardIssue[]; showAssignee?: boolean }) {
   const t = useT();
   if (issues.length === 0) return null;
   return (
     <details className="group mt-1">
-      <summary className="flex cursor-pointer list-none items-center gap-2 rounded-control px-1 py-1.5 text-small text-muted hover:text-ink-soft">
+      <summary
+        title={t.cancelledHint}
+        className="flex cursor-pointer list-none items-center gap-2 rounded-control px-1 py-1.5 text-small text-muted hover:text-ink-soft"
+      >
         <span aria-hidden className="transition-transform duration-200 ease-tool group-open:rotate-90">›</span>
-        <Dot className={CANCELED_DOT} />
-        {t.canceled}
+        <Dot className={STATUS_DOT.cancelled} />
+        {t.status.cancelled}
         <span className="font-mono">{issues.length}</span>
       </summary>
       <div className="mt-2 flex flex-col gap-2">

@@ -69,7 +69,8 @@ export type Project = {
   repositories: { id: string; name: string }[];
 };
 
-export type Status = "todo" | "in_progress" | "in_review" | "done";
+/** `cancelled` is a closed issue GitHub marks "not planned"; it is never counted as progress. */
+export type Status = "todo" | "in_progress" | "in_review" | "done" | "cancelled";
 export type Category = "todo" | "in_progress" | "done";
 export type Size = "S" | "M" | "L";
 export type Priority = "urgent" | "high" | "normal" | "low";

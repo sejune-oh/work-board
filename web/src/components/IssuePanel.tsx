@@ -38,7 +38,7 @@ export function IssuePanel() {
 
   if (!issueId) return null;
   const shown = data && data.id === issueId ? data : null;
-  const urgent = shown && settings.priorityEnabled && shown.priority === "urgent" && shown.status !== "done";
+  const urgent = shown && settings.priorityEnabled && shown.priority === "urgent" && shown.category !== "done";
 
   return (
     <>
@@ -77,6 +77,7 @@ export function IssuePanel() {
                   <dt className="text-muted">{p.status}</dt>
                   <dd className="flex flex-wrap items-center gap-2">
                     <StatusBadge status={shown.status} />
+                    {shown.status === "cancelled" && <span className="text-small text-muted">{t.cancelledHint}</span>}
                     {urgent && <Flag fill>{t.priority.urgent}</Flag>}
                     {isStale(shown) && <Flag>{t.common.stalledFor(daysSince(shown.updatedAt))}</Flag>}
                   </dd>

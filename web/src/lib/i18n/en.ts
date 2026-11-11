@@ -35,8 +35,8 @@ export const en: Dict = {
   theme: { group: "Theme", light: "Light", dark: "Dark" },
   lang: { group: "Language" },
 
-  status: { todo: "To do", in_progress: "In progress", in_review: "In review", done: "Done" },
-  canceled: "Canceled",
+  status: { todo: "To do", in_progress: "In progress", in_review: "In review", done: "Done", cancelled: "Canceled" },
+  cancelledHint: "Closed on GitHub as not planned. Not counted in progress.",
   issueType: { Epic: "Goal", Feature: "Feature", Task: "Task", Bug: "Bug" },
   priority: { urgent: "Urgent", high: "High", normal: "Normal", low: "Low" },
   size: { S: "Small", M: "Medium", L: "Large" },

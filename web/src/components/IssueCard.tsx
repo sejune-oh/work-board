@@ -54,7 +54,7 @@ export function IssueCard({ issue, showAssignee = true, showStatus = false }: Pr
       >
         {issue.title}
       </p>
-      {showStatus && !canceled && (
+      {showStatus && (
         <div className={`mt-1.5 ${fade}`}>
           <StatusBadge status={issue.status} />
         </div>

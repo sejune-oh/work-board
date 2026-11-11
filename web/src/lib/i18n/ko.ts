@@ -35,8 +35,8 @@ export const ko = {
   theme: { group: "밝기", light: "밝게", dark: "어둡게" },
   lang: { group: "언어" },
 
-  status: { todo: "할 일", in_progress: "진행 중", in_review: "리뷰 중", done: "완료" },
-  canceled: "취소",
+  status: { todo: "할 일", in_progress: "진행 중", in_review: "리뷰 중", done: "완료", cancelled: "취소" },
+  cancelledHint: "GitHub에서 하지 않기로 하고 닫은 일입니다. 진행률에 넣지 않습니다.",
   issueType: { Epic: "큰 목표", Feature: "기능", Task: "작업", Bug: "버그" },
   priority: { urgent: "긴급", high: "높음", normal: "보통", low: "낮음" },
   size: { S: "작음", M: "보통", L: "큼" },

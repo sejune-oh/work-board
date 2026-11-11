@@ -1,7 +1,10 @@
 import type { BoardIssue, Status } from "./types";
 
-// Screens never show Jira vocabulary; these are the words people see.
+/** Board columns. Cancelled work has no column of its own; it folds under done. */
 export const STATUS_ORDER: Status[] = ["todo", "in_progress", "in_review", "done"];
+
+/** Every status a filter can name, in the order chips and menus list them. */
+export const FILTER_STATUSES: Status[] = [...STATUS_ORDER, "cancelled"];
 
 /** The only place status colours are bound to class names (docs/design.md section 6). */
 export const STATUS_DOT: Record<Status, string> = {
@@ -9,13 +12,11 @@ export const STATUS_DOT: Record<Status, string> = {
   in_progress: "bg-status-progress",
   in_review: "bg-status-review",
   done: "bg-status-done",
+  cancelled: "bg-status-cancel",
 };
 
-export const CANCELED_DOT = "bg-status-cancel";
-
-/** The API has no canceled status yet; once it sends one, it shows up as a folded group under 완료. */
-export function isCanceled(issue: { status: string }): boolean {
-  return issue.status === "canceled";
+export function isCanceled(issue: { status: Status }): boolean {
+  return issue.status === "cancelled";
 }
 
 export const STALE_DAYS = 7;
@@ -41,11 +42,8 @@ export function initial(displayName: string): string {
 }
 
 export function groupByStatus(issues: BoardIssue[]): Record<Status, BoardIssue[]> {
-  const groups: Record<Status, BoardIssue[]> = { todo: [], in_progress: [], in_review: [], done: [] };
-  for (const issue of issues) {
-    if (isCanceled(issue)) continue;
-    groups[issue.status].push(issue);
-  }
+  const groups: Record<Status, BoardIssue[]> = { todo: [], in_progress: [], in_review: [], done: [], cancelled: [] };
+  for (const issue of issues) groups[issue.status].push(issue);
   return groups;
 }
 

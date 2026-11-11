@@ -258,7 +258,10 @@ public static class OverviewQueries
                    count(i.id) filter (where st.status = 'in_progress')::int as in_progress,
                    count(i.id) filter (where st.status = 'in_review')::int as in_review,
                    count(i.id) filter (where st.status = 'done')::int as done
-              from (select * from sprints where state = 'active' order by start_date desc, id limit 1) sp
+              from (select * from sprints where state <> 'closed'
+                   and start_date <= (now() at time zone '{TimeZone}')::date
+                   and end_date >= (now() at time zone '{TimeZone}')::date
+                 order by start_date desc, id limit 1) sp
               left join board_fields bf on bf.sprint_id = sp.id
               left join issues i on i.id = bf.issue_id
               left join issue_status st on st.issue_id = i.id

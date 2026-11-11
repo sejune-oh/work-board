@@ -44,6 +44,8 @@ create table idempotency_keys (
   key          text not null,
   member_id    uuid,
   request_hash text not null,
+  -- Owner of a pending reservation; a takeover writes a new one.
+  reservation_id uuid,
   state        text not null default 'completed' check (state in ('pending', 'completed')),
   status_code  int,
   response     jsonb,

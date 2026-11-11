@@ -232,7 +232,7 @@ public class WriteFoundationTests : IClassFixture<WebApplicationFactory<Program>
 
     private Task<IdempotentResponse> ExternalAsync(
         Actor a, string key, string hash, Func<Task<ExternalOutcome>> call) =>
-        Idempotency.RunExternalAsync(a.Db, a.User, key, hash, call, default);
+        Idempotency.RunExternalAsync(a.Db, a.User, key, hash, _ => call(), default);
 
     private static Task<ExternalOutcome> Ok(object body) =>
         Task.FromResult(new ExternalOutcome(new WriteResult(201, body), true));
@@ -335,6 +335,47 @@ public class WriteFoundationTests : IClassFixture<WebApplicationFactory<Program>
         Assert.Equal(1, calls);
         Assert.True(again.Replayed);
         Assert.Equal(502, again.StatusCode);
+    }
+
+    [DbFact]
+    public async Task Stale_owners_late_complete_does_not_touch_the_new_owners_row()
+    {
+        await using var t = await TestTenant.CreateAsync(_factory);
+        var a = await ActorAsync(t);
+
+        await ExternalAsync(a, "k", "hA", async () =>
+        {
+            await t.ExecAsync("update idempotency_keys set created_at = now() - interval '3 minutes' where tenant_id = @tid", new { tid = t.Id });
+            await ExternalAsync(a, "k", "hB", () => Ok(new { owner = "B" }));
+            return await Ok(new { owner = "A" });
+        });
+
+        var row = (await t.QueryAsync("select request_hash, response::text as r from idempotency_keys where tenant_id = @tid", new { tid = t.Id })).Single();
+        Assert.Equal("hB", (string)row.request_hash);
+        Assert.Contains("B", (string)row.r);
+    }
+
+    [DbFact]
+    public async Task Stale_owners_release_does_not_delete_the_new_owners_reservation()
+    {
+        await using var t = await TestTenant.CreateAsync(_factory);
+        var a = await ActorAsync(t);
+        var gate = new TaskCompletionSource();
+        Task<IdempotentResponse>? b = null;
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => ExternalAsync(a, "k", "hA", async () =>
+        {
+            await t.ExecAsync("update idempotency_keys set created_at = now() - interval '3 minutes' where tenant_id = @tid", new { tid = t.Id });
+            b = ExternalAsync(a, "k", "hB", async () => { await gate.Task; return await Ok(new { owner = "B" }); });
+            while (await t.ScalarAsync<int>("select count(*)::int from idempotency_keys where tenant_id = @tid and request_hash = 'hB'", new { tid = t.Id }) == 0)
+                await Task.Delay(20);
+            throw new InvalidOperationException("A failed");
+        }));
+
+        Assert.Equal("pending", await t.ScalarAsync<string>("select state from idempotency_keys where tenant_id = @tid", new { tid = t.Id }));
+        gate.SetResult();
+        Assert.Equal(201, (await b!).StatusCode);
+        Assert.Equal("completed", await t.ScalarAsync<string>("select state from idempotency_keys where tenant_id = @tid", new { tid = t.Id }));
     }
 
     [DbFact]

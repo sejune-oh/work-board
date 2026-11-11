@@ -35,13 +35,16 @@ public sealed record IdempotentResponse(int StatusCode, string? Json, bool Repla
 // Storing rule: a 2xx result is always stored; a non-2xx result is stored only when the call may have had a
 // side effect (a retry must not repeat it), otherwise the reservation is released so a retry runs again.
 // An exception from the call also releases it, so the call must catch failures after the side effect and
-// return them as an outcome.
+// return them as an outcome. The call gets a token that fires after CallTimeout. Each reservation has an
+// owner id, so a call that outlived its reservation cannot complete or release the new owner's row.
 public static class Idempotency
 {
     public const string HeaderName = "Idempotency-Key";
     public const int KeyMaxLength = 200;
     public static readonly TimeSpan Lifetime = TimeSpan.FromHours(24);
     public static readonly TimeSpan PendingTimeout = TimeSpan.FromMinutes(2);
+    // Well under PendingTimeout, so a takeover happens only after the original call can no longer finish normally.
+    public static readonly TimeSpan CallTimeout = TimeSpan.FromSeconds(60);
 
     private sealed record StoredKey(string State, string RequestHash, int? StatusCode, string? Response, bool PendingStale);
 
@@ -87,14 +90,15 @@ public static class Idempotency
 
     public static async Task<IdempotentResponse> RunExternalAsync(
         TenantDb db, ICurrentUser user, string? key, string requestHash,
-        Func<Task<ExternalOutcome>> call, CancellationToken ct)
+        Func<CancellationToken, Task<ExternalOutcome>> call, CancellationToken ct, ILogger? log = null)
     {
         if (string.IsNullOrWhiteSpace(key))
-            return Render((await call()).Result);
+            return Render((await call(ct)).Result);
         if (key.Length > KeyMaxLength)
             return TooLong();
 
         var tenantId = user.Identity.TenantId;
+        var reservationId = Guid.NewGuid();
         var early = await db.WriteAsync<IdempotentResponse?>(async session =>
         {
             await LockAsync(session, tenantId, key);
@@ -104,9 +108,9 @@ public static class Idempotency
 
             await DeleteAsync(session, tenantId, key);
             await session.ExecuteAsync("""
-                insert into idempotency_keys (tenant_id, key, member_id, request_hash, state)
-                values (@tenantId, @key, @memberId, @requestHash, 'pending')
-                """, new { tenantId, key, memberId = user.Identity.Member.Id, requestHash });
+                insert into idempotency_keys (tenant_id, key, member_id, request_hash, state, reservation_id)
+                values (@tenantId, @key, @memberId, @requestHash, 'pending', @reservationId)
+                """, new { tenantId, key, memberId = user.Identity.Member.Id, requestHash, reservationId });
             return null;
         }, ct);
         if (early is not null)
@@ -115,30 +119,45 @@ public static class Idempotency
         ExternalOutcome outcome;
         try
         {
-            outcome = await call();
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            timeout.CancelAfter(CallTimeout);
+            outcome = await call(timeout.Token);
         }
         catch
         {
-            await ReleaseAsync(db, tenantId, key);
+            try
+            {
+                await ReleaseAsync(db, tenantId, key, reservationId);
+            }
+            catch (Exception releaseFailure)
+            {
+                log?.LogWarning(releaseFailure, "Could not release idempotency reservation {Key}", key);
+            }
             throw;
         }
 
         var result = Render(outcome.Result);
         if (result.StatusCode is >= 200 and < 300 || outcome.SideEffectPossible)
-            await db.WriteAsync(session => session.ExecuteAsync("""
+        {
+            var updated = await db.WriteAsync(session => session.ExecuteAsync("""
                 update idempotency_keys
                    set state = 'completed', status_code = @statusCode, response = cast(@response as jsonb)
-                 where tenant_id = @tenantId and key = @key and state = 'pending'
-                """, new { tenantId, key, statusCode = result.StatusCode, response = result.Json }), CancellationToken.None);
+                 where tenant_id = @tenantId and key = @key and state = 'pending' and reservation_id = @reservationId
+                """, new { tenantId, key, reservationId, statusCode = result.StatusCode, response = result.Json }),
+                CancellationToken.None);
+            if (updated == 0)
+                log?.LogWarning("Idempotency reservation {Key} was taken over before its call completed", key);
+        }
         else
-            await ReleaseAsync(db, tenantId, key);
+            await ReleaseAsync(db, tenantId, key, reservationId);
         return result;
     }
 
-    private static Task ReleaseAsync(TenantDb db, Guid tenantId, string key) =>
-        db.WriteAsync(session => session.ExecuteAsync(
-            "delete from idempotency_keys where tenant_id = @tenantId and key = @key and state = 'pending'",
-            new { tenantId, key }), CancellationToken.None);
+    private static Task ReleaseAsync(TenantDb db, Guid tenantId, string key, Guid reservationId) =>
+        db.WriteAsync(session => session.ExecuteAsync("""
+            delete from idempotency_keys
+             where tenant_id = @tenantId and key = @key and state = 'pending' and reservation_id = @reservationId
+            """, new { tenantId, key, reservationId }), CancellationToken.None);
 
     // Null means the request may proceed.
     private static IdempotentResponse? Decide(StoredKey? stored, string requestHash)

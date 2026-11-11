@@ -14,6 +14,7 @@ public static class ApiErrors
     public const string RequestInProgress = "request_in_progress";
     public const string GithubUnavailable = "github_unavailable";
     public const string GithubWriteNotGranted = "github_write_not_granted";
+    public const string AssigneeNotCollaborator = "assignee_not_collaborator";
 
     public static IResult Of(int status, string code) => Results.Json(new ErrorBody(code), statusCode: status);
 

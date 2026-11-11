@@ -8,6 +8,15 @@ namespace WorkBoard.Api.Infrastructure.Sync;
 
 public sealed record MirrorResult(Guid RepositoryId, int Issues, int PullRequests, int Comments);
 
+public enum IssueStateChange
+{
+    Closed,
+    Reopened,
+}
+
+// Applied is false when a newer copy of the issue was already stored and the response was ignored.
+public sealed record MirroredIssue(Guid IssueId, bool Applied);
+
 // Writes GitHub data into one tenant's mirror tables on the workboard_sync role (which bypasses RLS),
 // so every statement filters on tenant_id itself.
 //
@@ -38,7 +47,7 @@ public sealed class MirrorWriter([FromKeyedServices(DataKeys.Sync)] NpgsqlDataSo
         await db.SetTenantAsync();
 
         var repoId = await UpsertRepositoryAsync(db, connectionId, snapshot.Repository);
-        await UpsertUsersAsync(db, snapshot);
+        await UpsertUsersAsync(db, SnapshotUsers(snapshot));
         var milestones = await UpsertMilestonesAsync(db, repoId, snapshot.Milestones);
         var labels = await UpsertLabelsAsync(db, repoId, snapshot.Labels);
         var issues = await UpsertIssuesAsync(db, repoId, snapshot.Issues, milestones);
@@ -51,6 +60,75 @@ public sealed class MirrorWriter([FromKeyedServices(DataKeys.Sync)] NpgsqlDataSo
         await tx.CommitAsync(ct);
         return new MirrorResult(repoId, issues.Count, pullRequests.Count, comments);
     }
+
+    // Mirrors the response of a board write right away. Same upsert and "older is ignored" rule as a sync run, on
+    // one issue. A REST response does not carry the parent issue, so the stored parent link is left alone.
+    // change is set only by the close and reopen calls: exactly that closed or reopened issue_events row is written
+    // in the same transaction, attributed to memberId, whatever the stored state or the response age. Other writes
+    // never record one.
+    public async Task<MirroredIssue?> ApplyWrittenIssueAsync(
+        Guid tenantId, Guid repositoryId, SourceIssue issue, Guid? memberId, IssueStateChange? change, CancellationToken ct)
+    {
+        await using var conn = await sync.OpenConnectionAsync(ct);
+        await using var tx = await conn.BeginTransactionAsync(ct);
+        var db = new Db(conn, tx, tenantId, ct);
+        await db.SetTenantAsync();
+
+        if (await db.Scalar<Guid?>("select id from repositories where tenant_id = @tenantId and id = @repositoryId",
+                new { repositoryId }) is null)
+            return null;
+
+        var previous = await db.Scalar<PreviousState>("""
+            select state as State, state_reason as StateReason from issues where tenant_id = @tenantId and github_issue_id = @githubId
+            """, new { githubId = issue.DatabaseId });
+
+        await UpsertUsersAsync(db, [issue.Author, .. issue.Assignees]);
+        var milestones = await db.Query<(int Number, Guid Id)>(
+            "select number, id from milestones where tenant_id = @tenantId and repository_id = @repositoryId", new { repositoryId });
+        var applied = await UpsertIssuesAsync(db, repositoryId, [issue], milestones.ToDictionary(m => m.Number, m => m.Id), keepParent: true);
+
+        Guid issueId;
+        if (applied.Count == 0)
+            issueId = await db.Scalar<Guid>(
+                "select id from issues where tenant_id = @tenantId and github_issue_id = @githubId", new { githubId = issue.DatabaseId });
+        else
+        {
+            issueId = applied[0].Id;
+            await ReplaceIssueChildrenAsync(db, repositoryId, applied, await LoadLabelIndexAsync(db, repositoryId));
+        }
+
+        if (change is { } c)
+            await db.Exec("""
+                insert into issue_events (tenant_id, issue_id, kind, from_value, to_value, member_id)
+                values (@tenantId, @issueId, @kind, @fromValue, @toValue, @memberId)
+                """, new
+            {
+                issueId,
+                kind = c == IssueStateChange.Closed ? "closed" : "reopened",
+                fromValue = previous?.StateReason,
+                toValue = issue.StateReason,
+                memberId,
+            });
+        await tx.CommitAsync(ct);
+        return new MirroredIssue(issueId, applied.Count > 0);
+    }
+
+    // Returns false when the comment was not written: the issue is not in the mirror yet, or a newer copy is stored.
+    public async Task<bool> ApplyWrittenCommentAsync(
+        Guid tenantId, Guid repositoryId, SourceComment comment, CancellationToken ct)
+    {
+        await using var conn = await sync.OpenConnectionAsync(ct);
+        await using var tx = await conn.BeginTransactionAsync(ct);
+        var db = new Db(conn, tx, tenantId, ct);
+        await db.SetTenantAsync();
+
+        await UpsertUsersAsync(db, [comment.Author]);
+        var written = await UpsertCommentsAsync(db, repositoryId, [comment]);
+        await tx.CommitAsync(ct);
+        return written > 0;
+    }
+
+    private sealed record PreviousState(string State, string? StateReason);
 
     private sealed class Db(NpgsqlConnection conn, NpgsqlTransaction tx, Guid tenantId, CancellationToken ct)
     {
@@ -106,29 +184,30 @@ public sealed class MirrorWriter([FromKeyedServices(DataKeys.Sync)] NpgsqlDataSo
             """, args);
     }
 
-    private static async Task UpsertUsersAsync(Db db, RepositorySnapshot snapshot)
+    private static IEnumerable<SourceUser?> SnapshotUsers(RepositorySnapshot snapshot)
     {
-        var users = new Dictionary<long, SourceUser>();
-        void Add(SourceUser? u)
-        {
-            if (u is { Id: { } id })
-                users[id] = u;
-        }
-
         foreach (var issue in snapshot.Issues)
         {
-            Add(issue.Author);
+            yield return issue.Author;
             foreach (var a in issue.Assignees)
-                Add(a);
+                yield return a;
         }
         foreach (var pr in snapshot.PullRequests)
         {
-            Add(pr.Author);
+            yield return pr.Author;
             foreach (var r in pr.RequestedReviewers)
-                Add(r);
+                yield return r;
         }
         foreach (var c in snapshot.Comments)
-            Add(c.Author);
+            yield return c.Author;
+    }
+
+    private static async Task UpsertUsersAsync(Db db, IEnumerable<SourceUser?> all)
+    {
+        var users = new Dictionary<long, SourceUser>();
+        foreach (var u in all)
+            if (u is { Id: { } id })
+                users[id] = u;
 
         foreach (var (id, u) in users)
             await db.Exec("""
@@ -197,6 +276,11 @@ public sealed class MirrorWriter([FromKeyedServices(DataKeys.Sync)] NpgsqlDataSo
              where tenant_id = @tenantId and repository_id = @repoId and github_label_id is not null and github_label_id <> all(@ids)
             """, new { repoId, ids = withId.Select(l => l.Id!.Value).ToArray() });
 
+        return await LoadLabelIndexAsync(db, repoId);
+    }
+
+    private static async Task<LabelIndex> LoadLabelIndexAsync(Db db, Guid repoId)
+    {
         var index = new LabelIndex();
         var rows = await db.Query<(Guid Id, long? GithubLabelId, string Name)>(
             "select id, github_label_id, name from labels where tenant_id = @tenantId and repository_id = @repoId", new { repoId });
@@ -229,7 +313,7 @@ public sealed class MirrorWriter([FromKeyedServices(DataKeys.Sync)] NpgsqlDataSo
     }
 
     private static async Task<List<(SourceIssue Issue, Guid Id)>> UpsertIssuesAsync(
-        Db db, Guid repoId, IReadOnlyList<SourceIssue> issues, Dictionary<int, Guid> milestones)
+        Db db, Guid repoId, IReadOnlyList<SourceIssue> issues, Dictionary<int, Guid> milestones, bool keepParent = false)
     {
         var applied = new List<(SourceIssue, Guid)>();
         foreach (var i in issues)
@@ -247,14 +331,14 @@ public sealed class MirrorWriter([FromKeyedServices(DataKeys.Sync)] NpgsqlDataSo
                        author_github_id = excluded.author_github_id, github_created_at = excluded.github_created_at,
                        closed_at = excluded.closed_at, github_updated_at = excluded.github_updated_at, html_url = excluded.html_url,
                        github_node_id = excluded.github_node_id, milestone_id = excluded.milestone_id,
-                       parent_github_issue_id = excluded.parent_github_issue_id
+                       parent_github_issue_id = case when @keepParent then issues.parent_github_issue_id else excluded.parent_github_issue_id end
                  where excluded.github_updated_at >= issues.github_updated_at
                 returning id
                 """, new
             {
                 repoId, githubId = i.DatabaseId, number = i.Number, title = Clean(i.Title), body = Clean(i.Body), issueType = i.IssueType,
                 state = i.State, stateReason = i.StateReason, author = i.Author?.Id, createdAt = Utc(i.CreatedAt), closedAt = Utc(i.ClosedAt),
-                updatedAt = Utc(i.UpdatedAt), htmlUrl = i.HtmlUrl, nodeId = i.NodeId, milestoneId, parentGithubId = i.ParentDatabaseId,
+                updatedAt = Utc(i.UpdatedAt), htmlUrl = i.HtmlUrl, nodeId = i.NodeId, milestoneId, parentGithubId = i.ParentDatabaseId, keepParent,
             });
             if (id is { } issueId)
                 applied.Add((i, issueId));

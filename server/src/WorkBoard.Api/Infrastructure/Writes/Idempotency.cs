@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using WorkBoard.Api.Infrastructure.Data;
+using WorkBoard.Api.Infrastructure.GitHub;
 using WorkBoard.Api.Infrastructure.Identity;
 
 namespace WorkBoard.Api.Infrastructure.Writes;
@@ -37,7 +38,8 @@ public sealed record IdempotentResponse(int StatusCode, string? Json, bool Repla
 // SideEffectPossible = false, so callers must catch failures known to happen before anything was sent
 // (validation, missing grant) and return them as outcomes. Any exception from the call means "may have reached
 // GitHub": the reservation stays pending, a retry gets 409 request_in_progress, and only after PendingTimeout
-// does a retry run the call again. A call that outlives CallTimeout returns 504 github_unavailable (not stored);
+// does a retry run the call again. A call that outlives CallTimeout, or a GitHubWriteException with NoResponse
+// (network error or the HttpClient's own timeout after sending), returns 504 github_unavailable (not stored);
 // a caller abort rethrows. The call gets a token that fires after CallTimeout. Each reservation has an owner
 // id, so a call that outlived its reservation cannot complete or release the new owner's row.
 public static class Idempotency
@@ -127,10 +129,13 @@ public static class Idempotency
         {
             outcome = await call(timeout.Token);
         }
-        catch (OperationCanceledException) when (timeout.IsCancellationRequested && !ct.IsCancellationRequested)
+        catch (Exception e) when (
+            (e is OperationCanceledException && timeout.IsCancellationRequested && !ct.IsCancellationRequested)
+            || e is GitHubWriteException { NoResponse: true })
         {
-            // The request may have reached GitHub, so the reservation stays pending: a retry is 409
-            // request_in_progress until PendingTimeout, then runs again.
+            // The request may have reached GitHub (call timeout, or the client's own timeout or a network error
+            // after sending), so the reservation stays pending: a retry is 409 request_in_progress until
+            // PendingTimeout, then runs again.
             return new IdempotentResponse(StatusCodes.Status504GatewayTimeout, ErrorJson(ApiErrors.GithubUnavailable), false);
         }
 

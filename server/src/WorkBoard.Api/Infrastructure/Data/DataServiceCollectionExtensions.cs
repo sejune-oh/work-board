@@ -19,6 +19,7 @@ public static class DataServiceCollectionExtensions
         services.AddScoped<TenantDb>();
         services.AddScoped<IAuditLog, AuditLog>();
         services.AddScoped<IIssueEvents, IssueEvents>();
+        services.AddScoped<IGitHubWriteTargets, GitHubWriteTargets>();
         services.AddScoped<Features.Sprints.SprintWrites>();
         return services;
     }

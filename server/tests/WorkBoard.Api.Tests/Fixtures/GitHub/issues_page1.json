@@ -1,0 +1,10 @@
+{"data":{"rateLimit":{"remaining":4990,"resetAt":"2026-01-01T01:00:00Z"},
+"repository":{"databaseId":1001,"nameWithOwner":"octo-org/hello","url":"https://github.com/octo-org/hello","isArchived":false,
+"issues":{"pageInfo":{"hasNextPage":true,"endCursor":"c1"},"nodes":[
+{"databaseId":5001,"id":"I_kwA1","number":1,"title":"First issue","body":"Body text","state":"CLOSED","stateReason":"NOT_PLANNED",
+ "createdAt":"2026-01-01T00:00:00Z","closedAt":"2026-01-03T00:00:00Z","updatedAt":"2026-01-03T00:00:00Z","url":"https://github.com/octo-org/hello/issues/1",
+ "issueType":{"name":"Bug"},"author":{"login":"octocat","avatarUrl":"https://avatars.example/octocat","databaseId":42,"name":"The Octocat"},
+ "milestone":{"number":3},
+ "labels":{"nodes":[{"id":"LA_1","name":"bug","color":"d73a4a","description":"Something broken"},{"id":"LA_2","name":"unlisted","color":"ffffff","description":null}]},
+ "assignees":{"nodes":[{"databaseId":43,"login":"hubot","name":null,"avatarUrl":"https://avatars.example/hubot"}]},
+ "parent":null}]}}}}

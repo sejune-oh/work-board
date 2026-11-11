@@ -1,0 +1,11 @@
+{"data":{"rateLimit":{"remaining":4970,"resetAt":"2026-01-01T01:00:00Z"},
+"repository":{"databaseId":1001,"nameWithOwner":"octo-org/hello","url":"https://github.com/octo-org/hello","isArchived":false,
+"pullRequests":{"pageInfo":{"hasNextPage":false,"endCursor":null},"nodes":[
+{"databaseId":7002,"id":"PR_2","number":11,"title":"Newer PR","state":"OPEN","isDraft":true,
+ "createdAt":"2026-01-05T00:00:00Z","closedAt":null,"updatedAt":"2026-01-06T00:00:00Z","mergedAt":null,"url":"https://github.com/octo-org/hello/pull/11",
+ "author":{"login":"octocat","avatarUrl":null,"databaseId":42,"name":null},
+ "reviewRequests":{"nodes":[{"requestedReviewer":{"databaseId":43,"login":"hubot","name":null,"avatarUrl":null}},{"requestedReviewer":{}}]},
+ "closingIssuesReferences":{"nodes":[{"databaseId":5002,"number":2,"repository":{"nameWithOwner":"octo-org/hello"}}]}},
+{"databaseId":7001,"id":"PR_1","number":10,"title":"Old merged PR","state":"MERGED","isDraft":false,
+ "createdAt":"2025-12-01T00:00:00Z","closedAt":"2025-12-02T00:00:00Z","updatedAt":"2025-12-02T00:00:00Z","mergedAt":"2025-12-02T00:00:00Z","url":"https://github.com/octo-org/hello/pull/10",
+ "author":null,"reviewRequests":{"nodes":[]},"closingIssuesReferences":{"nodes":[]}}]}}}}

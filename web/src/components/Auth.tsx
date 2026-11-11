@@ -1,10 +1,11 @@
 "use client";
 
-import { Fragment, useEffect, useRef, useState } from "react";
-import { ApiError, setDevIdentity } from "@/lib/api";
+import { Fragment, useEffect, useId, useRef, useState } from "react";
+import { ApiError, apiPost, getDevIdentity, setDevIdentity } from "@/lib/api";
 import { authEnabled, markLeaving, setTenant, signInWithGitHub, signOut } from "@/lib/auth";
 import { useT } from "@/lib/i18n";
 import { useAuthSession, useLogin, useMe } from "@/lib/me";
+import type { CreateTenantResult } from "@/lib/types";
 import { LangToggle } from "./LangToggle";
 import { ThemeToggle } from "./ThemeToggle";
 
@@ -223,16 +224,140 @@ export function SignInScreen({ next, ended }: { next: string; ended: boolean }) 
   );
 }
 
-export function NoMembershipScreen({ onRecheck, busy }: { onRecheck: () => void; busy: boolean }) {
+const NAME_MAX = 80;
+
+type CreateError = "empty" | "tooLong" | "invalid" | "limit" | "failed";
+
+/** Makes `tenantId` the chosen company, which makes the gate check `/api/me` again. */
+function chooseTenant(tenantId: string) {
+  if (authEnabled) {
+    setTenant(tenantId);
+    return;
+  }
+  const identity = getDevIdentity();
+  if (identity) setDevIdentity({ ...identity, tenantId });
+}
+
+/** Company name field and the main button; on success the gate moves the person into the new company. */
+function CreateCompanyForm({ autoFocus = false }: { autoFocus?: boolean }) {
+  const t = useT();
+  const c = t.auth.create;
+  const id = useId();
+  const input = useRef<HTMLInputElement>(null);
+  const sending = useRef(false);
+  const [name, setName] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<CreateError | null>(null);
+
+  useEffect(() => {
+    if (autoFocus) input.current?.focus();
+  }, [autoFocus]);
+
+  const fail = (next: CreateError) => {
+    setError(next);
+    input.current?.focus();
+  };
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (sending.current) return;
+    const trimmed = name.trim();
+    if (!trimmed) return fail("empty");
+    if (trimmed.length > NAME_MAX) return fail("tooLong");
+    sending.current = true;
+    setBusy(true);
+    setError(null);
+    try {
+      const created = await apiPost<CreateTenantResult>("/api/tenants", { name: trimmed });
+      chooseTenant(created.tenant.id);
+    } catch (err) {
+      sending.current = false;
+      setBusy(false);
+      const code = err instanceof ApiError ? err.code : null;
+      fail(code === "invalid_name" ? "invalid" : code === "tenant_limit" ? "limit" : "failed");
+    }
+  };
+
+  const fieldError = error === "empty" || error === "tooLong" || error === "invalid";
+  const hintId = `${id}-hint`;
+  const errorId = `${id}-error`;
+
+  return (
+    <form onSubmit={submit} noValidate>
+      <div className="grid gap-2">
+        <label htmlFor={`${id}-name`} className="text-small font-semibold text-ink">
+          {c.label}
+        </label>
+        <input
+          ref={input}
+          id={`${id}-name`}
+          name="company"
+          autoComplete="organization"
+          value={name}
+          onChange={(e) => {
+            setName(e.target.value);
+            if (fieldError) setError(null);
+          }}
+          placeholder={c.placeholder}
+          aria-invalid={fieldError || undefined}
+          aria-describedby={error ? `${errorId} ${hintId}` : hintId}
+          className={`h-12 w-full min-w-0 rounded-item bg-surface px-4 text-body text-ink placeholder:text-muted focus:shadow-[inset_0_0_0_2px_var(--wb-focus)] focus:outline-none ${
+            fieldError ? "shadow-[inset_0_0_0_1px_var(--wb-ink-soft)]" : "shadow-[inset_0_0_0_1px_var(--wb-rule-strong)]"
+          }`}
+        />
+        {fieldError && (
+          <p id={errorId} className="border-l-2 border-ink-soft pl-3 text-small text-ink">
+            {c[error]}
+          </p>
+        )}
+        <p id={hintId} className="text-small text-muted">
+          {c.hint}
+        </p>
+      </div>
+      {error && !fieldError && (
+        <div id={errorId} className="mt-5">
+          <Notice>{c[error]}</Notice>
+        </div>
+      )}
+      <button type="submit" className={`${PRIMARY} mt-5`} disabled={busy} aria-busy={busy}>
+        {busy ? `${c.sending}…` : c.submit}
+      </button>
+    </form>
+  );
+}
+
+/** "or" between two ways forward, on a hairline. */
+function OrRule() {
   const t = useT();
   return (
-    <GateFrame kicker={t.gate.company.kicker} title={t.auth.noMembership.title} lead={t.auth.noMembership.lead} footer={<SignedInAs />}>
-      <p className="text-body text-ink-soft">{t.auth.noMembership.next}</p>
-      <div className="mt-5">
-        <button type="button" className={PRIMARY} onClick={onRecheck} disabled={busy} aria-busy={busy}>
-          {busy ? `${t.gate.error.retrying}…` : t.auth.noMembership.recheck}
-        </button>
-      </div>
+    <div className="my-5 flex items-center gap-3 text-meta text-muted before:h-px before:flex-1 before:bg-rule after:h-px after:flex-1 after:bg-rule">
+      {t.auth.noMembership.or}
+    </div>
+  );
+}
+
+export function NoMembershipScreen({ onRecheck, busy }: { onRecheck: () => void; busy: boolean }) {
+  const t = useT();
+  const n = t.auth.noMembership;
+  const login = useLogin();
+  return (
+    <GateFrame kicker={t.gate.company.kicker} title={n.title} lead={n.lead} footer={<SignedInAs />}>
+      <CreateCompanyForm />
+      <OrRule />
+      <p className="text-small text-muted">
+        {login ? (
+          <>
+            {n.askAdmin.before}
+            <span className="font-mono text-ink">{login}</span>
+            {n.askAdmin.after}
+          </>
+        ) : (
+          n.askAdminNoLogin
+        )}
+      </p>
+      <button type="button" className="btn mt-4 w-full" onClick={onRecheck} disabled={busy} aria-busy={busy}>
+        {busy ? `${t.gate.error.retrying}…` : n.recheck}
+      </button>
     </GateFrame>
   );
 }
@@ -251,6 +376,7 @@ function tenantOptions(error: ApiError): TenantOption[] {
 export function TenantChoiceScreen({ error }: { error: ApiError }) {
   const t = useT();
   const options = tenantOptions(error);
+  const [creating, setCreating] = useState(false);
   return (
     <GateFrame kicker={t.gate.company.kicker} title={t.auth.tenant.title} lead={t.auth.tenant.lead} footer={<SignedInAs />}>
       {options.length > 0 ? (
@@ -276,6 +402,15 @@ export function TenantChoiceScreen({ error }: { error: ApiError }) {
       ) : (
         <p className="text-ui text-ink">{t.auth.tenant.noList}</p>
       )}
+      <div className="mt-6 border-t border-rule pt-5">
+        {creating ? (
+          <CreateCompanyForm autoFocus />
+        ) : (
+          <button type="button" className="link cursor-pointer text-small" onClick={() => setCreating(true)}>
+            {t.auth.create.newCompany}
+          </button>
+        )}
+      </div>
     </GateFrame>
   );
 }

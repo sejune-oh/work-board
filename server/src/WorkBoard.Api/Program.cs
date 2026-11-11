@@ -11,6 +11,7 @@ using WorkBoard.Api.Features.Projects;
 using WorkBoard.Api.Features.Search;
 using WorkBoard.Api.Features.Tenants;
 using WorkBoard.Api.Infrastructure.Data;
+using WorkBoard.Api.Infrastructure.Data.Migrations;
 using WorkBoard.Api.Infrastructure.GitHub;
 using WorkBoard.Api.Infrastructure.Identity;
 
@@ -32,6 +33,24 @@ builder.Services.AddCors(options => options.AddDefaultPolicy(policy => policy
 
 var app = builder.Build();
 
+// `dotnet run -- migrate` applies migrations and exits; Development also migrates (and seeds a new DB) at startup.
+var migrateOnly = args.Contains("migrate");
+if (migrateOnly || app.Environment.IsDevelopment())
+{
+    try
+    {
+        await MigrationRunner.RunAsync(app.Configuration, seedFreshDatabase: app.Environment.IsDevelopment(),
+            app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("Migrations"));
+    }
+    catch (MigrationException e)
+    {
+        app.Logger.LogCritical("{Message}", e.Message);
+        return 1;
+    }
+    if (migrateOnly)
+        return 0;
+}
+
 app.UseCors();
 
 var open = app.MapGroup("/api");
@@ -51,5 +70,6 @@ authed.MapMeetingNotes();
 authed.MapSearch();
 
 app.Run();
+return 0;
 
 public partial class Program;

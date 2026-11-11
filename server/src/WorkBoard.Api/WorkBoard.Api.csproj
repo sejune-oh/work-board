@@ -13,6 +13,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="../../../db/migrations/*.sql" LogicalName="db/migrations/%(Filename)%(Extension)" />
+    <EmbeddedResource Include="../../../db/seed/*.sql" LogicalName="db/seed/%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Content Update="appsettings.Local.json" CopyToOutputDirectory="Never" CopyToPublishDirectory="Never" />
   </ItemGroup>
 

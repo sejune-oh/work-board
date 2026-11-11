@@ -170,7 +170,8 @@ Names are unique per tenant, case-insensitive.
   source is `400 invalid_request`. A target that has ended is `409 sprint_ended`. With nothing unfinished it returns `carryOverId: null` and records nothing.
 - `POST /api/sprints/{id}/carry-over/{carryOverId}/undo` moves the same issues back, only if every one is still in the target
   sprint, none has an `issue_events` row newer than the carry-over, none is now `done`/`cancelled`, and none was deleted:
-  otherwise `409 conflict` with `issueIds` listing the blocking issues, and a second undo is `409 already_undone`. Records `carried_over` events in reverse.
+  otherwise `409 conflict` with `issueIds` listing the blocking issues, and a second undo is `409 already_undone`. Strict rule: an older carry-over cannot be undone once a later carry-over
+  or undo touched the same issues. Records `carried_over` events in reverse.
 - `GET /api/backlog`: open issues whose status is not `done`/`cancelled` and that are in no sprint. Optional `projectId`,
   `person` (alias `assignee`), `status` (comma list of `todo`, `in_progress`, `in_review`, else `400 invalid_status`),
   `page` (1..10000) and `pageSize` (1..200, default 50), else `400 invalid_request`. Sort like the issue list.

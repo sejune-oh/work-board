@@ -326,6 +326,7 @@ public class SprintsTests(WebApplicationFactory<Program> factory) : IClassFixtur
         var undo = await SendAsync(t, HttpMethod.Post, $"/api/sprints/{s1}/carry-over/{Id(carried, "carryOverId")}/undo");
 
         Assert.Equal(HttpStatusCode.Conflict, undo.Status);
+        Assert.Equal([b], undo.Body.GetProperty("issueIds").EnumerateArray().Select(x => Guid.Parse(x.GetString()!)));
         Assert.Equal(s2, await t.ScalarAsync<Guid>("select sprint_id from board_fields where issue_id = @a", new { a }));
     }
 

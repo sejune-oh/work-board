@@ -230,9 +230,6 @@ public sealed class SprintWrites(ICurrentUser user, IAuditLog audit, IIssueEvent
         var issueIds = (await s.QueryAsync<Guid>(
             "select issue_id from sprint_carry_over_issues where carry_over_id = @carryOverId order by issue_id",
             new { carryOverId })).ToArray();
-        var rows = await LockIssuesAsync(s, issueIds);
-        if (rows is null)
-            return Error(StatusCodes.Status409Conflict, ApiErrors.Conflict);
 
         // Undo only when nothing touched the issues since: still in the target sprint, no later event
         // (this carry-over's own events share its transaction time), not finished.
@@ -247,8 +244,10 @@ public sealed class SprintWrites(ICurrentUser user, IAuditLog audit, IIssueEvent
                     or exists (select 1 from issue_events e where e.issue_id = i.id and e.at > @createdAt))
              order by i.id
             """, new { issueIds, toId = carry.ToSprintId, createdAt = carry.CreatedAt })).ToArray();
-        if (blocking.Length > 0)
-            return new WriteResult(StatusCodes.Status409Conflict, new { error = ApiErrors.Conflict, issueIds = blocking });
+        var existing = (await s.QueryAsync<Guid>("select id from issues where id = any(@issueIds)", new { issueIds })).ToHashSet();
+        var blockedIds = blocking.Concat(issueIds.Where(id => !existing.Contains(id))).Distinct().Order().ToArray();
+        if (blockedIds.Length > 0)
+            return new WriteResult(StatusCodes.Status409Conflict, new { error = ApiErrors.Conflict, issueIds = blockedIds });
 
         var from = (await FindSprintAsync(s, carry.FromSprintId))!;
         var to = (await FindSprintAsync(s, carry.ToSprintId))!;

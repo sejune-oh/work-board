@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
 using WorkBoard.Api.Features.Members;
 using WorkBoard.Api.Infrastructure.Data;
+using WorkBoard.Api.Infrastructure.GitHub;
 using WorkBoard.Api.Infrastructure.Identity;
 using WorkBoard.Api.Infrastructure.Writes;
 using WorkBoard.Api.Tests.Fakes;
@@ -400,6 +401,22 @@ public class WriteFoundationTests : IClassFixture<WebApplicationFactory<Program>
 
         Assert.Equal(504, timedOut.StatusCode);
         Assert.Contains("github_unavailable", timedOut.Json);
+        Assert.Equal("pending", await t.ScalarAsync<string>("select state from idempotency_keys where tenant_id = @tid", new { tid = t.Id }));
+        Assert.Contains("request_in_progress", retry.Json);
+    }
+
+    [DbFact]
+    public async Task Github_write_with_no_response_returns_504_and_keeps_the_reservation_pending()
+    {
+        await using var t = await TestTenant.CreateAsync(_factory);
+        var a = await ActorAsync(t);
+
+        var failed = await ExternalAsync(a, "k", "h", () => throw new GitHubWriteException(
+            GitHubWriteErrorKind.Unavailable, "GitHub request failed.", noResponse: true));
+        var retry = await ExternalAsync(a, "k", "h", () => throw new InvalidOperationException("must not run"));
+
+        Assert.Equal(504, failed.StatusCode);
+        Assert.Contains("github_unavailable", failed.Json);
         Assert.Equal("pending", await t.ScalarAsync<string>("select state from idempotency_keys where tenant_id = @tid", new { tid = t.Id }));
         Assert.Contains("request_in_progress", retry.Json);
     }

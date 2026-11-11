@@ -38,6 +38,8 @@ export type GithubConnection = {
   accountId: number;
   accountLogin: string;
   accountType: "organization" | "user";
+  /** GitHub App installation; null while the connection uses a token. */
+  installationId: number | null;
   repositorySelection: "all" | "selected" | null;
   createdAt: string;
   disconnectedAt: string | null;

@@ -93,6 +93,7 @@ public class ConnectGithubTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.Equal(accountId, body.GetProperty("accountId").GetInt64());
         Assert.Equal("user", body.GetProperty("accountType").GetString());
         Assert.Equal("selected", body.GetProperty("repositorySelection").GetString());
+        Assert.Equal(installationId, body.GetProperty("installationId").GetInt64());
         var stored = await tenant.ScalarAsync<long>(
             "select installation_id from github_connections where tenant_id = @tid and account_id = @accountId",
             new { tid = tenant.Id, accountId });

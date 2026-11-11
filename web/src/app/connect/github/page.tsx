@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { GitHubMark } from "@/components/Auth";
 import { ConnectionRow, githubInstallUrl } from "@/components/Connections";
 import { PageHeader } from "@/components/ui";
-import { ApiError, apiPost } from "@/lib/api";
+import { ApiError, apiGet, apiPost } from "@/lib/api";
 import { type Dict, useT } from "@/lib/i18n";
 import type { ConnectGithubError, ConnectGithubRequest, GithubConnection } from "@/lib/types";
 
@@ -27,10 +27,22 @@ const pending = new Map<string, Promise<GithubConnection>>();
 function connect(body: ConnectGithubRequest): Promise<GithubConnection> {
   let p = pending.get(body.code);
   if (!p) {
-    p = apiPost<GithubConnection>("/api/connections/github", body);
+    p = apiPost<GithubConnection>("/api/connections/github", body).catch((e: unknown) => alreadyConnected(e, body));
     pending.set(body.code, p);
   }
   return p;
+}
+
+/**
+ * A reload or Back after success sends the spent code again and GitHub rejects it. If this installation is
+ * already connected, that earlier success is the answer.
+ */
+async function alreadyConnected(e: unknown, body: ConnectGithubRequest): Promise<GithubConnection> {
+  if (!(e instanceof ApiError) || e.code !== "invalid_code") throw e;
+  const list = await apiGet<GithubConnection[]>("/api/connections").catch(() => null);
+  const found = list?.find((c) => c.installationId === body.installationId && c.disconnectedAt === null);
+  if (!found) throw e;
+  return found;
 }
 
 /** Codes with their own copy; `unauthenticated` is left to the sign-in gate. */

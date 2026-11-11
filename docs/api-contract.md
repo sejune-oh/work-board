@@ -206,7 +206,7 @@ type Me = {
 };
 
 type GithubConnection = {
-  id: string; accountId: number; accountLogin: string; accountType: "organization" | "user";
+  id: string; accountId: number; accountLogin: string; accountType: "organization" | "user"; installationId: number | null;
   repositorySelection: "all" | "selected" | null; createdAt: string; disconnectedAt: string | null;
 };
 

@@ -13,7 +13,7 @@ public sealed record ConnectGithubRequest(string? Code, long? InstallationId);
 public static class ConnectGithub
 {
     private const string Columns =
-        "id, account_id, account_login, account_type, repository_selection, created_at, disconnected_at";
+        "id, account_id, account_login, account_type, installation_id, repository_selection, created_at, disconnected_at";
 
     public static void MapConnectGithub(this RouteGroupBuilder api) =>
         api.MapPost("/connections/github", HandleAsync);

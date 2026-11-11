@@ -23,17 +23,21 @@ public class ConnectGithubTests : IClassFixture<WebApplicationFactory<Program>>
         public List<long> Installations { get; set; } = [];
         public GitHubInstallation? Installation { get; set; }
         public bool CodeValid { get; set; } = true;
+        public bool InstallationsRejected { get; set; }
+        public Exception? Throw { get; set; }
 
         public Task<string?> ExchangeCodeAsync(string code, CancellationToken ct) =>
-            Task.FromResult(CodeValid && code == Code ? "user-token" : null);
+            Throw is { } e ? Task.FromException<string?>(e) : Task.FromResult(CodeValid && code == Code ? "user-token" : null);
 
         public Task<GitHubUser?> GetUserAsync(string userToken, CancellationToken ct) => Task.FromResult(User);
 
-        public Task<IReadOnlyList<long>> ListUserInstallationIdsAsync(string userToken, CancellationToken ct) =>
-            Task.FromResult<IReadOnlyList<long>>(Installations);
+        public Task<IReadOnlyList<long>?> ListUserInstallationIdsAsync(string userToken, CancellationToken ct) =>
+            Task.FromResult<IReadOnlyList<long>?>(InstallationsRejected ? null : Installations);
+
+        public Exception? ThrowOnInstallation { get; set; }
 
         public Task<GitHubInstallation?> GetInstallationAsync(long installationId, CancellationToken ct) =>
-            Task.FromResult(Installation);
+            ThrowOnInstallation is { } e ? Task.FromException<GitHubInstallation?>(e) : Task.FromResult(Installation);
     }
 
     private readonly WebApplicationFactory<Program> _factory;
@@ -257,6 +261,93 @@ public class ConnectGithubTests : IClassFixture<WebApplicationFactory<Program>>
             ValidateAudience = false,
         });
         Assert.True(result.IsValid);
+    }
+
+    public static TheoryData<string> GitHubFailures => ["unreachable", "timeout", "not-json"];
+
+    [DbTheory]
+    [MemberData(nameof(GitHubFailures))]
+    public async Task GitHub_failures_are_502(string failure)
+    {
+        await using var tenant = await TestTenant.CreateAsync(_factory);
+        var (login, fake, installationId, _) = await AdminAsync(tenant);
+        fake.Throw = failure switch
+        {
+            "unreachable" => new HttpRequestException("down"),
+            "timeout" => new TaskCanceledException("timed out"),
+            _ => new JsonException("html page"),
+        };
+
+        var response = await PostAsync(Client(fake, login), installationId);
+
+        Assert.Equal(HttpStatusCode.BadGateway, response.StatusCode);
+        Assert.Equal("github_unavailable", await ErrorAsync(response));
+    }
+
+    [DbFact]
+    public async Task Unreadable_private_key_is_503_not_configured()
+    {
+        await using var tenant = await TestTenant.CreateAsync(_factory);
+        var (login, fake, installationId, _) = await AdminAsync(tenant);
+        fake.ThrowOnInstallation = new GitHubAppKeyException("bad key", new IOException("missing"));
+
+        var response = await PostAsync(Client(fake, login), installationId);
+
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+        Assert.Equal("github_app_not_configured", await ErrorAsync(response));
+    }
+
+    [DbFact]
+    public async Task Rejected_installation_list_is_invalid_code()
+    {
+        await using var tenant = await TestTenant.CreateAsync(_factory);
+        var (login, fake, installationId, _) = await AdminAsync(tenant);
+        fake.InstallationsRejected = true;
+
+        var response = await PostAsync(Client(fake, login), installationId);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal("invalid_code", await ErrorAsync(response));
+    }
+
+    [DbFact]
+    public async Task Missing_installation_id_is_invalid_request()
+    {
+        await using var tenant = await TestTenant.CreateAsync(_factory);
+        var (login, fake, _, _) = await AdminAsync(tenant);
+
+        var response = await Client(fake, login).PostAsJsonAsync("/api/connections/github", new { code = Code });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal("invalid_request", await ErrorAsync(response));
+    }
+
+    [Theory]
+    [InlineData("does-not-exist.pem", null)]
+    [InlineData("not-a-key.pem", "hello")]
+    public void Private_key_that_cannot_be_read_raises_a_key_error(string file, string? content)
+    {
+        var dir = Directory.CreateTempSubdirectory().FullName;
+        if (content is not null)
+            File.WriteAllText(Path.Combine(dir, file), content);
+        var key = new GitHubAppKey(
+            Microsoft.Extensions.Options.Options.Create(new GitHubAppOptions { PrivateKeyPath = file }),
+            new Microsoft.Extensions.Hosting.Internal.HostingEnvironment { ContentRootPath = dir });
+
+        Assert.Throws<GitHubAppKeyException>(() => key.Get());
+    }
+
+    [Fact]
+    public void Private_key_is_read_from_a_pem_file()
+    {
+        var dir = Directory.CreateTempSubdirectory().FullName;
+        using var rsa = RSA.Create(2048);
+        File.WriteAllText(Path.Combine(dir, "app.pem"), rsa.ExportRSAPrivateKeyPem());
+        var key = new GitHubAppKey(
+            Microsoft.Extensions.Options.Options.Create(new GitHubAppOptions { PrivateKeyPath = "app.pem" }),
+            new Microsoft.Extensions.Hosting.Internal.HostingEnvironment { ContentRootPath = dir });
+
+        Assert.Same(key.Get(), key.Get());
     }
 }
 

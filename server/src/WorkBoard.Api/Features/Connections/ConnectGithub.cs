@@ -45,6 +45,8 @@ public static class ConnectGithub
                 return Error(StatusCodes.Status403Forbidden, "not_your_account");
 
             var owned = await github.ListUserInstallationIdsAsync(token, ct);
+            if (owned is null)
+                return Error(StatusCodes.Status400BadRequest, "invalid_code");
             if (!owned.Contains(installationId))
                 return Error(StatusCodes.Status403Forbidden, "not_your_installation");
 
@@ -62,8 +64,14 @@ public static class ConnectGithub
                 ? Error(StatusCodes.Status409Conflict, "account_connected")
                 : Results.Json(saved.Connection, statusCode: saved.Created ? StatusCodes.Status201Created : StatusCodes.Status200OK);
         }
-        catch (HttpRequestException)
+        catch (GitHubAppKeyException)
         {
+            return Error(StatusCodes.Status503ServiceUnavailable, "github_app_not_configured");
+        }
+        catch (Exception e) when (e is HttpRequestException or JsonException
+                                  || (e is TaskCanceledException && !ct.IsCancellationRequested))
+        {
+            // Unreachable, timed out (HttpClient reports its timeout as a cancellation) or answered with a non-JSON page.
             return Error(StatusCodes.Status502BadGateway, "github_unavailable");
         }
     }

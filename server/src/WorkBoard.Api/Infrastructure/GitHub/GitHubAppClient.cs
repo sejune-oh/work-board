@@ -6,20 +6,12 @@ using Microsoft.Extensions.Options;
 
 namespace WorkBoard.Api.Infrastructure.GitHub;
 
-public sealed class GitHubAppClient(HttpClient http, IOptions<GitHubAppOptions> options, IHostEnvironment env) : IGitHubAppClient
+public sealed class GitHubAppClient(HttpClient http, IOptions<GitHubAppOptions> options, GitHubAppKey key) : IGitHubAppClient
 {
     private const string ApiBase = "https://api.github.com";
     private const string TokenUrl = "https://github.com/login/oauth/access_token";
     private const int PageSize = 100;
     private const int MaxPages = 10;
-
-    private readonly Lazy<RSA> _privateKey = new(() =>
-    {
-        var path = Path.GetFullPath(options.Value.PrivateKeyPath!, env.ContentRootPath);
-        var rsa = RSA.Create();
-        rsa.ImportFromPem(File.ReadAllText(path));
-        return rsa;
-    });
 
     public async Task<string?> ExchangeCodeAsync(string code, CancellationToken ct)
     {
@@ -52,12 +44,14 @@ public sealed class GitHubAppClient(HttpClient http, IOptions<GitHubAppOptions> 
         return user is null ? null : new GitHubUser(user.Id, user.Login);
     }
 
-    public async Task<IReadOnlyList<long>> ListUserInstallationIdsAsync(string userToken, CancellationToken ct)
+    public async Task<IReadOnlyList<long>?> ListUserInstallationIdsAsync(string userToken, CancellationToken ct)
     {
         var ids = new List<long>();
         for (var page = 1; page <= MaxPages; page++)
         {
             using var response = await GetAsync($"{ApiBase}/user/installations?per_page={PageSize}&page={page}", userToken, ct);
+            if (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
+                return null;
             response.EnsureSuccessStatusCode();
             var body = await response.Content.ReadFromJsonAsync<InstallationsResponse>(ct);
             var items = body?.Installations ?? [];
@@ -70,7 +64,7 @@ public sealed class GitHubAppClient(HttpClient http, IOptions<GitHubAppOptions> 
 
     public async Task<GitHubInstallation?> GetInstallationAsync(long installationId, CancellationToken ct)
     {
-        var jwt = GitHubAppJwt.Create(options.Value.AppId, _privateKey.Value, DateTimeOffset.UtcNow);
+        var jwt = GitHubAppJwt.Create(options.Value.AppId, key.Get(), DateTimeOffset.UtcNow);
         using var response = await GetAsync($"{ApiBase}/app/installations/{installationId}", jwt, ct);
         if (response.StatusCode == HttpStatusCode.NotFound)
             return null;

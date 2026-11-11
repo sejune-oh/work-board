@@ -9,7 +9,7 @@ import { Avatar, Dot, Flag, PageHeader } from "@/components/ui";
 import { useApi } from "@/lib/api";
 import { applyFilters, hasFilters, issuesQuery, readFilters } from "@/lib/filters";
 import { useFormat, useT } from "@/lib/i18n";
-import { STATUS_DOT, STATUS_ORDER, groupByStatus, isCanceled, isCrowded } from "@/lib/labels";
+import { STATUS_DOT, STATUS_ORDER, groupByStatus, isCrowded } from "@/lib/labels";
 import { useMe } from "@/lib/me";
 import type { BoardIssue, Member, Status } from "@/lib/types";
 
@@ -90,8 +90,8 @@ export default function PeopleBoardPage() {
         <div className="reveal mt-2 flex flex-col gap-10 [animation-delay:30ms]">
           {rows.map((row) => {
             const groups = groupByStatus(row.issues);
-            const canceled = row.issues.filter(isCanceled);
-            // Canceled work folds under done, so done counts as filled when only canceled issues are there.
+            const canceled = statuses.includes("cancelled") ? [] : groups.cancelled;
+            // Cancelled work folds under done, so done counts as filled when only cancelled issues are there.
             const filled = (s: Status) => groups[s].length > 0 || (s === "done" && canceled.length > 0);
             const active = activeCount(row);
             const isCrowdedRow = crowded.includes(row);

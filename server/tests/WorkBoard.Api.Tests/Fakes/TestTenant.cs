@@ -58,6 +58,12 @@ public sealed class TestTenant : IAsyncDisposable
         return (await conn.QuerySingleAsync<T>(sql, param));
     }
 
+    public async Task<List<dynamic>> QueryAsync(string sql, object? param = null)
+    {
+        await using var conn = await _sync.OpenConnectionAsync();
+        return (await conn.QueryAsync(sql, param)).ToList();
+    }
+
     public async Task<(string Login, long UserId)> AddMemberAsync(string name, long? existingUserId = null)
     {
         var userId = existingUserId ?? Interlocked.Increment(ref _seq);

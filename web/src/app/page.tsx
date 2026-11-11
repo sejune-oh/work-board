@@ -5,10 +5,10 @@ import { Fragment } from "react";
 import { Empty, ErrorBox, Loading } from "@/components/Feedback";
 import { useIssuePanel } from "@/components/useIssuePanel";
 import { ROW_ATTR } from "@/components/useShortcuts";
-import { Avatar, Card, Dot, Flag, Kbd, ProgressBar, StatusBadge, progressLine } from "@/components/ui";
-import { useApi } from "@/lib/api";
+import { Avatar, Card, Dot, ExternalIcon, Flag, Kbd, MilestoneIcon, ProgressBar, StatusBadge, progressLine } from "@/components/ui";
+import { MILESTONES_PATH, useApi } from "@/lib/api";
 import { useFormat, useT } from "@/lib/i18n";
-import { STATUS_DOT, daysSince, percent } from "@/lib/labels";
+import { STATUS_DOT, daysSince, percent, safeHttpUrl } from "@/lib/labels";
 import { useMe, useSettings } from "@/lib/me";
 import {
   type Clause,
@@ -19,7 +19,7 @@ import {
   oldestWaitDays,
   sprintCalendar,
 } from "@/lib/overview";
-import type { ActivityKind, Overview, OverviewIssueRef, Status } from "@/lib/types";
+import type { ActivityKind, Milestone, Overview, OverviewIssueRef, Status } from "@/lib/types";
 
 type O = Overview | null;
 
@@ -598,13 +598,107 @@ function Projects({ o }: { o: O }) {
 
       {settings.sprintsEnabled && o.sprint && <Sprint sprint={o.sprint} />}
 
-      {o.milestones === null && (
-        <p className="mx-5 mb-5 mt-1 rounded-item border border-dashed border-rule-strong px-4 py-3 text-small text-muted">
-          <b className="mr-1.5 font-semibold text-ink-soft">{pj.milestones}</b>
-          {pj.milestonesHint}
-        </p>
-      )}
+      <Milestones />
     </>,
+  );
+}
+
+const MILESTONES_SHOWN = 4;
+
+/** Open milestones with done / all (cancelled left out by the API). Before any are imported, a hint instead. */
+function Milestones() {
+  const { data, error } = useApi<Milestone[]>(MILESTONES_PATH);
+  const t = useT();
+  const pj = t.overview.projects;
+  const fmt = useFormat();
+  if (!data && !error) return null;
+
+  if (!data)
+    return (
+      <p role="alert" className="mx-5 mb-5 mt-1 border-l-2 border-ink-soft px-3 py-1 text-small text-ink">
+        <b className="mr-1.5 font-semibold">{pj.milestones}</b>
+        {pj.milestonesError}
+      </p>
+    );
+
+  if (data.length === 0)
+    return (
+      <p className="mx-5 mb-5 mt-1 rounded-item border border-dashed border-rule-strong px-4 py-3 text-small text-muted">
+        <b className="mr-1.5 font-semibold text-ink-soft">{pj.milestones}</b>
+        {pj.milestonesHint}
+      </p>
+    );
+
+  const open = data.filter((m) => m.state === "open");
+  const closed = data.length - open.length;
+  const now = Date.now();
+
+  return (
+    <div className="border-t border-rule px-5 pb-5 pt-4">
+      <h3 className="mb-1 flex items-center gap-2 text-small font-semibold text-ink-soft">
+        <MilestoneIcon />
+        {pj.milestonesOpen}
+        <span className="font-mono text-meta font-normal text-muted">{open.length}</span>
+      </h3>
+      {open.length === 0 && <p className="py-2 text-small text-muted">{pj.milestonesAllClosed}</p>}
+      <ul>
+        {open.slice(0, MILESTONES_SHOWN).map((m) => {
+          const pct = percent(m.doneCount, m.issueCount);
+          const overdue = m.dueOn !== null && Date.parse(m.dueOn) < now;
+          const url = safeHttpUrl(m.htmlUrl);
+          const title = (
+            <>
+              <span className="truncate text-ui font-medium">{m.title}</span>
+              <span className="shrink-0 font-mono text-meta text-muted">{m.repository.name}</span>
+            </>
+          );
+          return (
+            <li key={m.id} className="relative py-3 after:absolute after:inset-x-0 after:top-0 after:h-px after:bg-rule first:after:hidden">
+              <div className="mb-2 flex min-w-0 items-center gap-2">
+                {url ? (
+                  <a
+                    href={url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title={t.github.newTab}
+                    className="group flex min-w-0 items-center gap-2 hover:text-ink"
+                  >
+                    {title}
+                    <span className="text-muted group-hover:text-ink">
+                      <ExternalIcon size={12} />
+                    </span>
+                  </a>
+                ) : (
+                  <span className="flex min-w-0 items-center gap-2">{title}</span>
+                )}
+                <span className="ml-auto shrink-0 font-mono text-small font-medium">{pct}%</span>
+              </div>
+              {m.issueCount > 0 && (
+                <div className="bar" role="img" aria-label={pj.milestonesAria(m.title, m.doneCount, m.issueCount)}>
+                  {m.doneCount > 0 && <span className="bg-status-done" style={{ width: `${pct}%` }} />}
+                </div>
+              )}
+              <div className="mt-2 flex flex-wrap justify-between gap-x-3 gap-y-0.5 text-small text-muted">
+                {m.issueCount === 0 ? (
+                  <span>{t.progress.empty}</span>
+                ) : (
+                  <span>
+                    {pj.done}{" "}
+                    <b className="font-mono font-medium text-ink-soft">
+                      {m.doneCount}/{m.issueCount}
+                    </b>
+                  </span>
+                )}
+                <span className={`ml-auto ${overdue ? "font-medium text-ink-soft" : ""}`}>
+                  {m.dueOn ? (overdue ? pj.overdue : pj.due)(fmt.date(m.dueOn)) : pj.noDue}
+                </span>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+      {closed > 0 && <p className="mt-1 text-small text-muted">{pj.milestonesMore(closed)}</p>}
+    </div>
   );
 }
 

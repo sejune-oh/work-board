@@ -35,11 +35,42 @@ export const ko = {
   theme: { group: "밝기", light: "밝게", dark: "어둡게" },
   lang: { group: "언어" },
 
-  status: { todo: "할 일", in_progress: "진행 중", in_review: "리뷰 중", done: "완료" },
-  canceled: "취소",
+  status: { todo: "할 일", in_progress: "진행 중", in_review: "리뷰 중", done: "완료", cancelled: "취소" },
+  cancelledHint: "GitHub에서 하지 않기로 하고 닫은 일입니다. 진행률에 넣지 않습니다.",
   issueType: { Epic: "큰 목표", Feature: "기능", Task: "작업", Bug: "버그" },
   priority: { urgent: "긴급", high: "높음", normal: "보통", low: "낮음" },
   size: { S: "작음", M: "보통", L: "큼" },
+
+  github: {
+    open: "GitHub에서 보기",
+    openRef: (ref: string) => `${ref} GitHub에서 보기, 새 탭`,
+    newTab: "새 탭에서 열립니다",
+  },
+
+  issueMeta: {
+    labels: "라벨",
+    moreLabels: (n: number) => `+${n}`,
+    moreLabelsTitle: (names: string) => `다른 라벨: ${names}`,
+    milestone: "마일스톤",
+  },
+
+  sync: {
+    syncedAgo: (when: string) => `마지막 동기화 ${when}`,
+    never: "아직 동기화 전",
+    running: "동기화하는 중",
+    failed: "동기화 실패",
+    failedSince: (when: string) => `동기화 실패 · 마지막 성공 ${when}`,
+    unknownReason: "이유를 알 수 없습니다",
+    notConnected: "GitHub 연결 전",
+    connect: "설정에서 연결",
+    runNow: "지금 동기화",
+    started: "동기화를 시작했습니다",
+    alreadyRunning: "이미 동기화하는 중입니다",
+    notConfigured: "GitHub 앱 설정이 없어 동기화할 수 없습니다",
+    notConnectedError: "GitHub 연결이 없어 동기화할 수 없습니다",
+    adminOnly: "관리자만 동기화할 수 있습니다",
+    runFailed: "동기화를 시작하지 못했습니다",
+  },
 
   time: {
     today: "오늘",
@@ -205,6 +236,9 @@ export const ko = {
     prState: { open: "열림", closed: "닫힘", merged: "병합됨" },
     reviewRequested: " · 리뷰 요청",
     draft: " · 초안",
+    labels: "라벨",
+    milestone: "마일스톤",
+    openPr: (n: number) => `PR #${n} GitHub에서 보기, 새 탭`,
   },
 
   overview: {
@@ -301,6 +335,14 @@ export const ko = {
       noMeeting: "회의 없음",
       milestones: "마일스톤",
       milestonesHint: "GitHub 마일스톤을 가져오면 마감일과 진행률이 여기에 보입니다.",
+      milestonesOpen: "열린 마일스톤",
+      milestonesAria: (title: string, done: number, total: number) => `${title}: ${total}건 중 ${done}건 완료`,
+      due: (date: string) => `${date} 마감`,
+      overdue: (date: string) => `${date} 마감 지남`,
+      noDue: "마감일 없음",
+      milestonesMore: (n: number) => `닫힌 마일스톤 ${n}개는 GitHub에서 볼 수 있습니다.`,
+      milestonesAllClosed: "열린 마일스톤이 없습니다.",
+      milestonesError: "마일스톤을 불러오지 못했습니다. 잠시 뒤 새로 고침해 보세요.",
     },
     sprint: {
       daysLeft: (() => "일 남음") as (n: number) => string,

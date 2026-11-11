@@ -27,7 +27,7 @@ public static class IssueDetailQueries
             """, new { id });
 
         var pullRequests = await s.QueryAsync<PullRequestRow>("""
-            select p.id, p.number, p.title, p.state, p.draft, p.review_requested
+            select p.id, p.number, p.title, p.state, p.draft, p.review_requested, p.html_url
               from issue_pull_requests ipr
               join pull_requests p on p.id = ipr.pull_request_id
              where ipr.issue_id = @id
@@ -55,7 +55,7 @@ public static class IssueDetailQueries
             Parent = parent is null ? null : new ParentRef(parent.Id, parent.Number, parent.Title),
             Children = children.Select(c => new ChildIssue(c.Id, c.RepositoryName, c.Number, c.Title, c.Status)).ToList(),
             PullRequests = pullRequests
-                .Select(p => new PullRequestDto(p.Id, p.Number, p.Title, p.State, p.Draft, p.ReviewRequested))
+                .Select(p => new PullRequestDto(p.Id, p.Number, p.Title, p.State, p.Draft, p.ReviewRequested, p.HtmlUrl))
                 .ToList(),
             Comments = comments
                 .Select(c => new CommentDto(c.Id, new CommentAuthor(c.GithubLogin, c.DisplayName), c.Body, c.CreatedAt))
@@ -88,6 +88,7 @@ public static class IssueDetailQueries
         public string State { get; set; } = "";
         public bool Draft { get; set; }
         public bool ReviewRequested { get; set; }
+        public string? HtmlUrl { get; set; }
     }
 
     private sealed class CommentRow

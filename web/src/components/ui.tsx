@@ -1,8 +1,8 @@
 "use client";
 
 import { type Dict, useFormat, useT } from "@/lib/i18n";
-import { STATUS_DOT, initial, percent } from "@/lib/labels";
-import type { Status, StatusCounts } from "@/lib/types";
+import { STATUS_DOT, initial, labelStyle, percent, safeHttpUrl } from "@/lib/labels";
+import type { IssueLabel, Status, StatusCounts } from "@/lib/types";
 
 type Person = { displayName: string | null; githubLogin: string | null };
 
@@ -142,6 +142,88 @@ export function MonoRef({ repo, number }: { repo: string; number: number }) {
   return (
     <span className="whitespace-nowrap font-mono text-meta">
       {repo} #{number}
+    </span>
+  );
+}
+
+export function ExternalIcon({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden className="shrink-0">
+      <path d="M9.5 2.5h4v4M13.5 2.5 7.5 8.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M11.5 9.5v3a1 1 0 0 1-1 1h-7a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1h3" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+/** Link to the original on GitHub, always in a new tab. Renders nothing unless `href` is http(s). */
+export function GitHubLink({
+  href,
+  label,
+  className = "",
+  children,
+}: {
+  href: string;
+  label: string;
+  className?: string;
+  children?: React.ReactNode;
+}) {
+  const t = useT();
+  const safe = safeHttpUrl(href);
+  if (!safe) return null;
+  return (
+    <a href={safe} target="_blank" rel="noopener noreferrer" aria-label={label} title={children ? t.github.newTab : label} className={className}>
+      {children}
+      <ExternalIcon />
+    </a>
+  );
+}
+
+/** GitHub labels in their own colours; past `max`, a `+n` chip names the rest in its tooltip. */
+export function LabelChips({ labels, max = 3 }: { labels: IssueLabel[]; max?: number }) {
+  const t = useT();
+  if (labels.length === 0) return null;
+  const shown = labels.slice(0, max);
+  const rest = labels.slice(max);
+  const chip = "inline-flex h-5 max-w-[10rem] items-center truncate rounded-full px-2 text-meta font-medium";
+  return (
+    <ul className="flex min-w-0 flex-wrap items-center gap-1" aria-label={t.issueMeta.labels}>
+      {shown.map((l) => {
+        const style = labelStyle(l.color);
+        return (
+          <li
+            key={l.id}
+            className={`${chip} shadow-[inset_0_0_0_1px_var(--wb-ring)] ${style ? "" : "bg-sunken text-ink-soft"}`}
+            style={style ?? undefined}
+            title={l.name}
+          >
+            <span className="truncate">{l.name}</span>
+          </li>
+        );
+      })}
+      {rest.length > 0 && (
+        <li className={`${chip} font-mono text-muted`} title={t.issueMeta.moreLabelsTitle(rest.map((l) => l.name).join(", "))}>
+          {t.issueMeta.moreLabels(rest.length)}
+        </li>
+      )}
+    </ul>
+  );
+}
+
+export function MilestoneIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden className="shrink-0">
+      <path d="M8 2.5 13.5 8 8 13.5 2.5 8z" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+export function MilestoneTag({ title }: { title: string }) {
+  const t = useT();
+  return (
+    <span className="inline-flex min-w-0 items-center gap-1 text-meta text-muted" title={`${t.issueMeta.milestone}: ${title}`}>
+      <MilestoneIcon />
+      <span className="sr-only">{t.issueMeta.milestone}</span>
+      <span className="truncate">{title}</span>
     </span>
   );
 }

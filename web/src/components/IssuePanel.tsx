@@ -4,11 +4,11 @@ import Link from "next/link";
 import { useEffect, useRef } from "react";
 import { useApi } from "@/lib/api";
 import { useFormat, useT } from "@/lib/i18n";
-import { daysSince, isStale } from "@/lib/labels";
+import { daysSince, isStale, safeHttpUrl } from "@/lib/labels";
 import { useSettings } from "@/lib/me";
 import type { IssueDetail } from "@/lib/types";
 import { ErrorBox, Loading } from "./Feedback";
-import { Avatar, Count, Flag, Kbd, StatusBadge } from "./ui";
+import { Avatar, Count, ExternalIcon, Flag, GitHubLink, Kbd, LabelChips, MilestoneIcon, StatusBadge } from "./ui";
 import { useIssuePanel } from "./useIssuePanel";
 
 /** Everything about one issue in one place: PRs, sub-issues, comments and the meetings it came from. */
@@ -38,7 +38,7 @@ export function IssuePanel() {
 
   if (!issueId) return null;
   const shown = data && data.id === issueId ? data : null;
-  const urgent = shown && settings.priorityEnabled && shown.priority === "urgent" && shown.status !== "done";
+  const urgent = shown && settings.priorityEnabled && shown.priority === "urgent" && shown.category !== "done";
 
   return (
     <>
@@ -48,8 +48,17 @@ export function IssuePanel() {
         aria-label={p.aria}
         role="dialog"
       >
-        <div className="sticky top-0 z-10 flex h-14 shrink-0 items-center justify-between gap-3 border-b border-rule bg-surface px-6">
-          <span className="font-mono text-meta text-muted">{shown ? `${shown.repository.name} #${shown.number}` : p.issue}</span>
+        <div className="sticky top-0 z-10 flex h-14 shrink-0 items-center justify-between gap-2 border-b border-rule bg-surface px-6">
+          <span className="min-w-0 truncate font-mono text-meta text-muted">{shown ? `${shown.repository.name} #${shown.number}` : p.issue}</span>
+          {shown?.htmlUrl && (
+            <GitHubLink
+              href={shown.htmlUrl}
+              label={t.github.openRef(`${shown.repository.name} #${shown.number}`)}
+              className="btn ml-auto h-8 gap-1.5 px-2.5 text-meta font-medium text-ink-soft hover:text-ink"
+            >
+              {t.github.open}
+            </GitHubLink>
+          )}
           <button
             ref={closeRef}
             type="button"
@@ -77,6 +86,7 @@ export function IssuePanel() {
                   <dt className="text-muted">{p.status}</dt>
                   <dd className="flex flex-wrap items-center gap-2">
                     <StatusBadge status={shown.status} />
+                    {shown.status === "cancelled" && <span className="text-small text-muted">{t.cancelledHint}</span>}
                     {urgent && <Flag fill>{t.priority.urgent}</Flag>}
                     {isStale(shown) && <Flag>{t.common.stalledFor(daysSince(shown.updatedAt))}</Flag>}
                   </dd>
@@ -99,6 +109,26 @@ export function IssuePanel() {
                     <>
                       <dt className="text-muted">{p.type}</dt>
                       <dd>{fmt.issueType(shown.issueType)}</dd>
+                    </>
+                  )}
+                  {shown.milestone && (
+                    <>
+                      <dt className="text-muted">{p.milestone}</dt>
+                      <dd className="gap-1.5">
+                        <span className="text-muted">
+                          <MilestoneIcon />
+                        </span>
+                        {shown.milestone.title}
+                        {shown.milestone.dueOn && <span className="text-small text-muted">· {t.overview.projects.due(fmt.date(shown.milestone.dueOn))}</span>}
+                      </dd>
+                    </>
+                  )}
+                  {shown.labels.length > 0 && (
+                    <>
+                      <dt className="text-muted">{p.labels}</dt>
+                      <dd>
+                        <LabelChips labels={shown.labels} max={20} />
+                      </dd>
                     </>
                   )}
                   {settings.sprintsEnabled && shown.sprint && (
@@ -127,11 +157,30 @@ export function IssuePanel() {
               {shown.body && <p className="whitespace-pre-wrap text-body text-ink-soft">{shown.body}</p>}
 
               <Section title={p.pullRequests} count={shown.pullRequests.length}>
-                {shown.pullRequests.map((pr) => (
+                {shown.pullRequests.map((pr) => ({ pr, url: safeHttpUrl(pr.htmlUrl) })).map(({ pr, url }) => (
                   <li key={pr.id} className="flex justify-between gap-3 py-2 text-ui">
-                    <span className="truncate">
-                      <span className="font-mono text-meta text-muted">#{pr.number}</span> {pr.title}
-                    </span>
+                    {url ? (
+                      <a
+                        href={url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label={`${p.openPr(pr.number)}: ${pr.title}`}
+                        title={t.github.newTab}
+                        className="group inline-flex min-w-0 items-center gap-1.5 hover:text-ink"
+                      >
+                        <span className="truncate">
+                          <span className="font-mono text-meta text-muted">#{pr.number}</span>{" "}
+                          <span className="underline decoration-rule-strong underline-offset-[3px] group-hover:decoration-ink-soft">{pr.title}</span>
+                        </span>
+                        <span className="text-muted">
+                          <ExternalIcon size={12} />
+                        </span>
+                      </a>
+                    ) : (
+                      <span className="truncate">
+                        <span className="font-mono text-meta text-muted">#{pr.number}</span> {pr.title}
+                      </span>
+                    )}
                     <span className="shrink-0 text-small text-muted">
                       {p.prState[pr.state]}
                       {pr.reviewRequested && pr.state === "open" ? p.reviewRequested : ""}

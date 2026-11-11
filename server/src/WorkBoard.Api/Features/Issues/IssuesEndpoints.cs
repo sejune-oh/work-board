@@ -7,7 +7,7 @@ public static class IssuesEndpoints
 {
     private const int DefaultDoneWithinDays = 7;
     private const int MaxDoneWithinDays = 365;
-    private static readonly HashSet<string> ValidStatuses = ["todo", "in_progress", "in_review", "done"];
+    private static readonly HashSet<string> ValidStatuses = ["todo", "in_progress", "in_review", "done", "cancelled"];
 
     public static void MapIssues(this RouteGroupBuilder api)
     {

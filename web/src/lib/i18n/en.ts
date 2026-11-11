@@ -35,11 +35,42 @@ export const en: Dict = {
   theme: { group: "Theme", light: "Light", dark: "Dark" },
   lang: { group: "Language" },
 
-  status: { todo: "To do", in_progress: "In progress", in_review: "In review", done: "Done" },
-  canceled: "Canceled",
+  status: { todo: "To do", in_progress: "In progress", in_review: "In review", done: "Done", cancelled: "Canceled" },
+  cancelledHint: "Closed on GitHub as not planned. Not counted in progress.",
   issueType: { Epic: "Goal", Feature: "Feature", Task: "Task", Bug: "Bug" },
   priority: { urgent: "Urgent", high: "High", normal: "Normal", low: "Low" },
   size: { S: "Small", M: "Medium", L: "Large" },
+
+  github: {
+    open: "Open on GitHub",
+    openRef: (ref) => `Open ${ref} on GitHub, new tab`,
+    newTab: "Opens in a new tab",
+  },
+
+  issueMeta: {
+    labels: "Labels",
+    moreLabels: (n) => `+${n}`,
+    moreLabelsTitle: (names) => `More labels: ${names}`,
+    milestone: "Milestone",
+  },
+
+  sync: {
+    syncedAgo: (when) => `Synced ${when}`,
+    never: "Not synced yet",
+    running: "Syncing",
+    failed: "Sync failed",
+    failedSince: (when) => `Sync failed · last success ${when}`,
+    unknownReason: "reason unknown",
+    notConnected: "GitHub not connected",
+    connect: "Connect in settings",
+    runNow: "Sync now",
+    started: "Sync started",
+    alreadyRunning: "A sync is already running",
+    notConfigured: "Sync is unavailable: the GitHub app is not set up",
+    notConnectedError: "Sync is unavailable: GitHub is not connected",
+    adminOnly: "Only admins can sync",
+    runFailed: "Could not start the sync",
+  },
 
   time: {
     today: "today",
@@ -202,6 +233,9 @@ export const en: Dict = {
     prState: { open: "Open", closed: "Closed", merged: "Merged" },
     reviewRequested: " · review requested",
     draft: " · draft",
+    labels: "Labels",
+    milestone: "Milestone",
+    openPr: (n) => `Open PR #${n} on GitHub, new tab`,
   },
 
   overview: {
@@ -302,6 +336,14 @@ export const en: Dict = {
       noMeeting: "No meetings",
       milestones: "Milestones",
       milestonesHint: "Import GitHub milestones to see due dates and progress here.",
+      milestonesOpen: "Open milestones",
+      milestonesAria: (title, done, total) => `${title}: ${done} of ${issues(total)} done`,
+      due: (date) => `Due ${date}`,
+      overdue: (date) => `Past due ${date}`,
+      noDue: "No due date",
+      milestonesMore: (n) => `${n} closed ${n === 1 ? "milestone is" : "milestones are"} on GitHub.`,
+      milestonesAllClosed: "No open milestones.",
+      milestonesError: "Couldn't load milestones. Try refreshing in a moment.",
     },
     sprint: {
       daysLeft: (n: number) => (n === 1 ? " day left" : " days left"),

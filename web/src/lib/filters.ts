@@ -1,4 +1,4 @@
-import { STATUS_ORDER, isStale } from "./labels";
+import { FILTER_STATUSES, isStale } from "./labels";
 import type { BoardIssue, Status } from "./types";
 
 /** Board filters carried in the URL so the overview can link straight into a filtered board. */
@@ -22,10 +22,10 @@ export function readFilters(params: Params): BoardFilters {
   const statuses = (params.get("status") ?? "")
     .split(",")
     .map((s) => s.trim())
-    .filter((s): s is Status => (STATUS_ORDER as string[]).includes(s));
+    .filter((s): s is Status => (FILTER_STATUSES as string[]).includes(s));
   const stale = params.get("stale");
   return {
-    statuses: STATUS_ORDER.filter((s) => statuses.includes(s)),
+    statuses: FILTER_STATUSES.filter((s) => statuses.includes(s)),
     stale: stale === "1" || stale === "true",
     person: params.get("person") || null,
     sprint: params.get("sprint") || null,

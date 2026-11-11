@@ -12,6 +12,9 @@ public sealed class GitHubAppOptions
     public string? PrivateKeyPath { get; set; }
     public string? Slug { get; set; }
 
+    // Enough to mint installation tokens and read data; the connect flow also needs the client secret.
+    public bool CanReadInstallations => AppId > 0 && !string.IsNullOrWhiteSpace(PrivateKeyPath);
+
     public bool Configured =>
         AppId > 0
         && !string.IsNullOrWhiteSpace(ClientId)

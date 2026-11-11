@@ -72,3 +72,15 @@
 - `GitHubSource`는 transient 타입드 클라이언트입니다. 스코프마다 받아 쓰고 싱글톤에 들고 있지 않습니다.
 - `closingIssuesReferences`는 기본 브랜치로 향하는 PR에만 채워집니다. `dev`로 가는 PR은 비어 오므로, 레코드의 `Body`에서 `Closes/Fixes/Resolves #N`도 직접 읽어야 합니다.
 - GraphQL 중첩 노드 오류(권한 없는 부모 이슈 등)는 무시하고 나머지 데이터를 씁니다. 저장소 루트 오류와 `RATE_LIMITED`만 예외로 올립니다.
+
+## 미러 쓰기 규칙
+
+`MirrorWriter`(`Infrastructure/Sync/`)가 `RepositorySnapshot`을 `workboard_sync` 역할로 테넌트 테이블에 씁니다. 저장소 하나가 트랜잭션 하나입니다.
+
+- GitHub id로 upsert합니다. 저장된 `github_updated_at`보다 오래된 이슈, PR, 댓글은 자식 행(라벨, 담당자, PR 링크)과 함께 무시합니다(같은 시각은 다시 씀). 같은 스냅샷을 두 번 적용해도 결과가 같습니다.
+- 마일스톤과 라벨은 전체 목록이므로 목록에 없는 행은 삭제합니다. 라벨 이름 교환은 이름 유일성을 커밋 시점에 검사해 허용합니다.
+- 이슈와 PR, 댓글, 저장소는 GitHub에서 사라져도 삭제하지 않습니다(삭제·이전된 항목 정리는 이후 과제).
+- 부모 이슈는 두 번째 단계에서 연결합니다. 부모의 GitHub id를 `issues.parent_github_issue_id`에 두므로, 부모 저장소가 나중에 동기화돼도 다음 실행에서 이어집니다.
+- `issue_pull_requests`: `closingIssuesReferences`(GitHub id 기준)와 PR 본문의 `Closes|Fixes|Resolves #N`(같은 저장소, 대소문자 무시, close/closed/fix/fixed/resolve/resolved 포함)을 합쳐 PR마다 통째로 교체합니다. 이슈가 아직 없으면 그 링크는 PR이 다시 갱신될 때 생깁니다.
+- 댓글은 이슈 번호가 이슈 행에 대응하는 것만 씁니다(PR 댓글 제외).
+- 다른 테넌트의 행은 읽지도 쓰지도 않습니다. 모든 문장이 `tenant_id`로 거릅니다.

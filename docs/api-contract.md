@@ -55,6 +55,7 @@ first calls `select set_config('app.tenant_id', @tenantId, true)`. RLS policies 
 | GET | `/api/overview` | dev user | `Overview` |
 | GET | `/api/issues` | dev user | `BoardIssue[]` |
 | GET | `/api/issues/{id}` | dev user | `IssueDetail` or 404 |
+| GET | `/api/milestones` | dev user | `Milestone[]`, open first, then `dueOn` ascending (nulls last) |
 | GET | `/api/meeting-notes` | dev user | `MeetingNoteSummary[]` |
 | GET | `/api/meeting-notes/{id}` | dev user | `MeetingNote` or 404 |
 | GET | `/api/search?q=` | dev user | `SearchResult` |
@@ -87,7 +88,7 @@ Settings `GitHub:App:AppId`, `ClientId`, `ClientSecret`, `PrivateKeyPath`, `Slug
 | `projectId` | only issues in repositories of this project |
 | `person` | only issues assigned to this GitHub login |
 | `assignee` | alias of `person`; if both are given, `person` wins |
-| `status` | comma list of `todo`, `in_progress`, `in_review`, `done` (derived status). Any other value, or an empty list → `400 {"error": "invalid_status"}` |
+| `status` | comma list of `todo`, `in_progress`, `in_review`, `done`, `cancelled` (derived status). Any other value, or an empty list → `400 {"error": "invalid_status"}` |
 | `stale` | `true` keeps only open issues whose `updatedAt` is 7 or more days old. `false` or absent: no filter |
 | `sprint` | only issues in this sprint (uuid) |
 | `doneSince` | `week` keeps only issues closed since Monday 00:00 in Asia/Seoul (same boundary as the overview's `doneThisWeek`); open issues are dropped and `doneWithinDays` is ignored. Any other value → `400 {"error": "invalid_doneSince"}` |
@@ -96,6 +97,22 @@ Settings `GitHub:App:AppId`, `ClientId`, `ClientSecret`, `PrivateKeyPath`, `Slug
 
 Filters combine with AND. Without `scope=all`, `status=done` therefore returns only issues closed within
 `doneWithinDays`. Open issues are always included unless a filter excludes them. Sort: `updatedAt` descending.
+
+Derived status, first matching rule wins (view `issue_status`):
+
+1. closed with reason `not_planned` -> `cancelled`
+2. closed -> `done`
+3. board override (`status_override`) -> that value
+4. a linked pull request is merged while the issue is open -> `in_review`
+5. a linked pull request is open and not a draft -> `in_review`
+6. a linked pull request is open and a draft -> `in_progress`
+7. otherwise `todo`
+
+`cancelled` has category `done` but is excluded from every progress count (overview projects, sprint, people,
+`doneThisWeek`, urgent attention and action-item lists) and from milestone counts.
+
+`GET /api/milestones` counts exclude `cancelled` issues in `issueCount`; `doneCount` counts status `done`.
+`color` of a label is 6 hex characters without `#`, as GitHub sends it.
 
 `GET /api/meeting-notes` accepts optional `projectId`. Sort: `heldAt` descending.
 
@@ -130,6 +147,28 @@ tenant transaction (no cache). Rules:
   `actionItems` covers notes held in the last 14 days whose item has no issue or an unfinished one.
 - `activity`: last 3 days, newest first, max 12. A PR event kind is inferred from its current state (merged,
   open with review requested, other open); closed-unmerged PRs are skipped. `actor` is null when the author is not a member.
+
+## Sync
+
+A background service syncs every tenant with an active connection that has an `installation_id` each
+`Sync:IntervalMinutes` (default 10; `Sync:Enabled=false` turns the loop off, manual runs still work). A run lists the
+installation's repositories, upserts them (`sync_enabled` defaults to true) and reads each enabled repository with
+`since = last_synced_at - 2 minutes` (full read on the first run). One run per tenant at a time. Each run writes one
+`sync_runs` row per connection; GitHub errors and a missing App key are recorded there, never thrown. A repository
+that fails does not stop the others, except on `RateLimited` and `Unauthorized`, which end the run.
+
+`GET /api/sync/status` (any member) -> `200`:
+```
+{ "connected": true, "running": false, "lastSyncedAt": "ISO" | null, "lastResult": "ok" | "failed" | null,
+  "lastError": "short text" | null, "rateLimitRemaining": 4990 | null, "nextRunAt": "ISO" | null }
+```
+`connected` is false when the tenant has no active connection with an installation; the other fields are then null/false.
+`lastSyncedAt` is the time of the most recent successful repository sync (not the last attempt); `lastResult`, `lastError` and `rateLimitRemaining` come from the most
+recent finished run. `nextRunAt` is null while the periodic loop is off.
+
+`POST /api/sync/run` (admin only) starts a run in the background -> `202 { "started": true }`. Errors, checked in this
+order: `403 { "error": "admin_only" }`, `503 { "error": "github_app_not_configured" }`, `409 { "error": "not_connected" }`,
+`409 { "error": "sync_running" }`.
 
 ## Shapes
 
@@ -212,7 +251,7 @@ type GithubConnection = {
 
 type Project = { id: string; name: string; color: string | null; repositories: { id: string; name: string }[] };
 
-type Status = "todo" | "in_progress" | "in_review" | "done";
+type Status = "todo" | "in_progress" | "in_review" | "done" | "cancelled";
 type Category = "todo" | "in_progress" | "done";
 
 type BoardIssue = {
@@ -234,6 +273,16 @@ type BoardIssue = {
   priority: "urgent" | "high" | "normal" | "low" | null;
   updatedAt: string;         // github_updated_at
   closedAt: string | null;
+  htmlUrl: string | null;
+  labels: { id: string; name: string; color: string | null }[];   // sorted by name
+  milestone: { id: string; title: string; dueOn: string | null } | null;
+};
+
+type Milestone = {
+  id: string; repository: { id: string; name: string }; number: number; title: string;
+  state: "open" | "closed"; dueOn: string | null; htmlUrl: string | null;
+  issueCount: number;   // excludes cancelled issues
+  doneCount: number;    // issues with status done
 };
 
 type IssueDetail = BoardIssue & {
@@ -241,7 +290,7 @@ type IssueDetail = BoardIssue & {
   parent: { id: string; number: number; title: string } | null;
   children: { id: string; repositoryName: string; number: number; title: string; status: Status }[];
   pullRequests: { id: string; number: number; title: string; state: "open" | "closed" | "merged";
-                  draft: boolean; reviewRequested: boolean }[];
+                  draft: boolean; reviewRequested: boolean; htmlUrl: string | null }[];
   comments: { id: string; author: { githubLogin: string | null; displayName: string | null };
               body: string; createdAt: string }[];   // oldest first
   meetingNotes: { id: string; title: string; heldAt: string }[];  // notes with an action item linked to this issue

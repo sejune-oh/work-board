@@ -6,7 +6,7 @@
 
 | 폴더 | 내용 | 주소 |
 | --- | --- | --- |
-| `db/` | Postgres 17 스키마(`001_schema.sql`)와 샘플 데이터(`002_seed.sql`) | `localhost:5434` |
+| `db/` | Postgres 17 마이그레이션(`db/migrations/`)과 샘플 데이터(`db/seed/seed.sql`) | `localhost:5434` |
 | `server/` | C# (.NET 10) API | `http://localhost:5080` |
 | `web/` | Next.js 정적 사이트 | `http://localhost:3000` |
 | `docs/api-contract.md` | API 형식. 프론트와 백엔드는 이 문서를 기준으로 맞춥니다 | |
@@ -22,6 +22,7 @@
 docker compose up -d
 
 # 2. API (프로젝트 폴더에서 실행해야 appsettings.Development.json을 읽습니다)
+#    Development에서는 시작할 때 마이그레이션을 적용하고, 빈 DB면 샘플 데이터도 넣습니다
 cd server/src/WorkBoard.Api && dotnet run
 
 # 3. 화면
@@ -32,7 +33,7 @@ cd server && WORKBOARD_TEST_DB=1 dotnet test
 ```
 
 DB 포트는 다른 프로젝트와 겹치지 않도록 5434를 씁니다.
-`docker-compose.yml`, `db/init/001_schema.sql`, `appsettings.Development.json`의 비밀번호는 로컬 개발 전용 값입니다. 배포 환경에 그대로 쓰지 마세요. `X-Dev-User` 헤더 인증도 Development 환경에서만 켜집니다.
+`docker-compose.yml`, `db/migrations/0001_baseline.sql`, `appsettings.Development.json`의 비밀번호는 로컬 개발 전용 값입니다. 배포 환경에 그대로 쓰지 마세요. `X-Dev-User` 헤더 인증도 Development 환경에서만 켜집니다.
 
 ## 로그인 설정 (API)
 
@@ -67,4 +68,18 @@ cp appsettings.Local.example.json appsettings.Local.json   # 값을 채운 뒤 A
 
 샘플 사용자: `haneul-dev`(acme-health 관리자), `other-org-dev`(globex-labs). 두 번째 사용자로 바꾸면 첫 번째 회사의 데이터가 하나도 보이지 않아야 합니다.
 
-DB를 처음 상태로 되돌리기: `docker compose down -v && docker compose up -d`
+## DB 마이그레이션
+
+스키마는 `db/migrations/NNNN_이름.sql`에 번호 순서로 쌓입니다. 파일 하나가 트랜잭션 하나이고, 적용 기록은 `schema_migrations` 테이블에 남습니다. 이미 적용한 파일은 고치지 않고(내용이 바뀌면 거부됩니다) 새 번호 파일을 추가합니다. 실패하면 그 파일만 롤백하고 이유를 출력한 채 종료합니다.
+
+- 적용에는 스키마 소유자 연결(`ConnectionStrings:Migrate`)을 씁니다. 로컬 기본값은 `appsettings.Development.json`의 `postgres` 계정입니다. `workboard_app`/`workboard_sync`로는 적용할 수 없습니다.
+- Development의 `dotnet run`은 시작할 때 자동으로 적용합니다. 그 밖의 환경은 배포 때 직접 실행합니다.
+
+```bash
+cd server/src/WorkBoard.Api
+dotnet run -- migrate        # 적용하고 종료. 환경 변수: ConnectionStrings__Migrate=...
+```
+
+- 새 DB: 비어 있는 DB에 적용하면 0001부터 전부 적용하고, 개발 환경에서는 샘플 데이터도 넣습니다.
+- 기존 DB 업그레이드(init 스크립트로 만든 로컬 DB): 데이터는 그대로 두고 `dotnet run -- migrate`만 실행합니다. 기록이 없는 DB에 0001 테이블이 이미 있으면 0001은 실행하지 않고 "적용됨"으로만 기록하고, 0002부터 적용합니다.
+- 처음 상태로 되돌리기: `docker compose down -v && docker compose up -d` 뒤에 API를 한 번 실행합니다(마이그레이션과 샘플 데이터).

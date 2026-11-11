@@ -232,7 +232,12 @@ public class WriteFoundationTests : IClassFixture<WebApplicationFactory<Program>
 
     private Task<IdempotentResponse> ExternalAsync(
         Actor a, string key, string hash, Func<Task<ExternalOutcome>> call) =>
-        Idempotency.RunExternalAsync(a.Db, a.User, key, hash, _ => call(), default);
+        ExternalAsync(a, key, hash, _ => call());
+
+    private Task<IdempotentResponse> ExternalAsync(
+        Actor a, string key, string hash, Func<CancellationToken, Task<ExternalOutcome>> call,
+        CancellationToken ct = default, TimeSpan? timeout = null) =>
+        Idempotency.RunExternalAsync(a.Db, a.User, key, hash, call, ct, callTimeout: timeout);
 
     private static Task<ExternalOutcome> Ok(object body) =>
         Task.FromResult(new ExternalOutcome(new WriteResult(201, body), true));
@@ -305,13 +310,11 @@ public class WriteFoundationTests : IClassFixture<WebApplicationFactory<Program>
     }
 
     [DbFact]
-    public async Task Failure_before_the_external_call_takes_effect_allows_a_retry()
+    public async Task Pre_send_failure_outcome_releases_the_key_and_allows_a_retry()
     {
         await using var t = await TestTenant.CreateAsync(_factory);
         var a = await ActorAsync(t);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            ExternalAsync(a, "k", "h", () => throw new InvalidOperationException("boom")));
         var noEffect = await ExternalAsync(a, "k", "h",
             () => Task.FromResult(new ExternalOutcome(new WriteResult(502), false)));
         var retried = await ExternalAsync(a, "k", "h", () => Ok(new { }));
@@ -367,8 +370,12 @@ public class WriteFoundationTests : IClassFixture<WebApplicationFactory<Program>
         {
             await t.ExecAsync("update idempotency_keys set created_at = now() - interval '3 minutes' where tenant_id = @tid", new { tid = t.Id });
             b = ExternalAsync(a, "k", "hB", async () => { await gate.Task; return await Ok(new { owner = "B" }); });
+            var deadline = DateTime.UtcNow.AddSeconds(10);
             while (await t.ScalarAsync<int>("select count(*)::int from idempotency_keys where tenant_id = @tid and request_hash = 'hB'", new { tid = t.Id }) == 0)
+            {
+                Assert.True(DateTime.UtcNow < deadline, "B never reserved the key");
                 await Task.Delay(20);
+            }
             throw new InvalidOperationException("A failed");
         }));
 
@@ -376,6 +383,44 @@ public class WriteFoundationTests : IClassFixture<WebApplicationFactory<Program>
         gate.SetResult();
         Assert.Equal(201, (await b!).StatusCode);
         Assert.Equal("completed", await t.ScalarAsync<string>("select state from idempotency_keys where tenant_id = @tid", new { tid = t.Id }));
+    }
+
+    [DbFact]
+    public async Task Call_timeout_returns_504_and_keeps_the_reservation_pending()
+    {
+        await using var t = await TestTenant.CreateAsync(_factory);
+        var a = await ActorAsync(t);
+
+        var timedOut = await ExternalAsync(a, "k", "h", async ct =>
+        {
+            await Task.Delay(Timeout.Infinite, ct);
+            return await Ok(new { });
+        }, timeout: TimeSpan.FromMilliseconds(100));
+        var retry = await ExternalAsync(a, "k", "h", () => throw new InvalidOperationException("must not run"));
+
+        Assert.Equal(504, timedOut.StatusCode);
+        Assert.Contains("github_unavailable", timedOut.Json);
+        Assert.Equal("pending", await t.ScalarAsync<string>("select state from idempotency_keys where tenant_id = @tid", new { tid = t.Id }));
+        Assert.Contains("request_in_progress", retry.Json);
+    }
+
+    [DbFact]
+    public async Task Caller_abort_and_exceptions_keep_the_reservation_pending()
+    {
+        await using var t = await TestTenant.CreateAsync(_factory);
+        var a = await ActorAsync(t);
+        using var abort = new CancellationTokenSource();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => ExternalAsync(a, "abort", "h", async ct =>
+        {
+            abort.Cancel();
+            await Task.Delay(Timeout.Infinite, ct);
+            return await Ok(new { });
+        }, abort.Token));
+        await Assert.ThrowsAsync<HttpRequestException>(() =>
+            ExternalAsync(a, "http", "h", () => throw new HttpRequestException("reset")));
+
+        Assert.Equal(2, await t.ScalarAsync<int>("select count(*)::int from idempotency_keys where tenant_id = @tid and state = 'pending'", new { tid = t.Id }));
     }
 
     [DbFact]

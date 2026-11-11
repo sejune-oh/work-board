@@ -44,9 +44,11 @@ Idempotency: a write may send `Idempotency-Key: <1..200 chars>`. The key is scop
 same request (same member, method, path with query and body) within 24 hours returns the stored status and body
 without running again; a different request with the same key is `409 idempotency_key_reused`. Keys older than
 24 hours are ignored and replaced on next use. Only 2xx responses are stored, except for writes that call GitHub: those reserve the key before the call and also
-store a non-2xx response when GitHub may already have applied the change, so a retry never repeats it. If the
-server dies after the GitHub call but before the response is stored, a retry after the 2 minute pending timeout
-can repeat the GitHub side effect. A key longer than 200 characters is
+store a non-2xx response when GitHub may already have applied the change, so a retry never repeats it. Only a
+failure known to happen before anything was sent releases the key. If the GitHub call times out (60 seconds,
+`504 github_unavailable`), is aborted by the client, or the server dies, the key stays reserved: a retry gets
+`409 request_in_progress` and after the 2 minute pending timeout it runs again, which can repeat the GitHub
+side effect. A key longer than 200 characters is
 `400 invalid_request`. Without the header the write just runs.
 
 Every write also records who did it in `audit_log` and, for board-field changes, structured rows in

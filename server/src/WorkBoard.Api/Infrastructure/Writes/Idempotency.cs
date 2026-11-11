@@ -32,11 +32,14 @@ public sealed record IdempotentResponse(int StatusCode, string? Json, bool Repla
 // RunExternalAsync: writes that call GitHub. Phase 1 reserves the key as 'pending' in its own committed
 // transaction, the external call runs with no transaction or lock held, phase 2 stores the response.
 // A repeat while pending is 409 request_in_progress; a pending row older than PendingTimeout is taken over.
-// Storing rule: a 2xx result is always stored; a non-2xx result is stored only when the call may have had a
-// side effect (a retry must not repeat it), otherwise the reservation is released so a retry runs again.
-// An exception from the call also releases it, so the call must catch failures after the side effect and
-// return them as an outcome. The call gets a token that fires after CallTimeout. Each reservation has an
-// owner id, so a call that outlived its reservation cannot complete or release the new owner's row.
+// Storing rule: a 2xx result is always stored; a non-2xx outcome is stored when the call may have had a side
+// effect (a retry must not repeat it). The reservation is released only for an outcome with
+// SideEffectPossible = false, so callers must catch failures known to happen before anything was sent
+// (validation, missing grant) and return them as outcomes. Any exception from the call means "may have reached
+// GitHub": the reservation stays pending, a retry gets 409 request_in_progress, and only after PendingTimeout
+// does a retry run the call again. A call that outlives CallTimeout returns 504 github_unavailable (not stored);
+// a caller abort rethrows. The call gets a token that fires after CallTimeout. Each reservation has an owner
+// id, so a call that outlived its reservation cannot complete or release the new owner's row.
 public static class Idempotency
 {
     public const string HeaderName = "Idempotency-Key";
@@ -90,7 +93,8 @@ public static class Idempotency
 
     public static async Task<IdempotentResponse> RunExternalAsync(
         TenantDb db, ICurrentUser user, string? key, string requestHash,
-        Func<CancellationToken, Task<ExternalOutcome>> call, CancellationToken ct, ILogger? log = null)
+        Func<CancellationToken, Task<ExternalOutcome>> call, CancellationToken ct, ILogger? log = null,
+        TimeSpan? callTimeout = null)
     {
         if (string.IsNullOrWhiteSpace(key))
             return Render((await call(ct)).Result);
@@ -117,23 +121,17 @@ public static class Idempotency
             return early;
 
         ExternalOutcome outcome;
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        timeout.CancelAfter(callTimeout ?? CallTimeout);
         try
         {
-            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
-            timeout.CancelAfter(CallTimeout);
             outcome = await call(timeout.Token);
         }
-        catch
+        catch (OperationCanceledException) when (timeout.IsCancellationRequested && !ct.IsCancellationRequested)
         {
-            try
-            {
-                await ReleaseAsync(db, tenantId, key, reservationId);
-            }
-            catch (Exception releaseFailure)
-            {
-                log?.LogWarning(releaseFailure, "Could not release idempotency reservation {Key}", key);
-            }
-            throw;
+            // The request may have reached GitHub, so the reservation stays pending: a retry is 409
+            // request_in_progress until PendingTimeout, then runs again.
+            return new IdempotentResponse(StatusCodes.Status504GatewayTimeout, ErrorJson(ApiErrors.GithubUnavailable), false);
         }
 
         var result = Render(outcome.Result);

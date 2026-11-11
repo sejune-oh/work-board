@@ -22,7 +22,8 @@ create table issue_events (
   issue_id   uuid not null,
   kind       text not null check (kind in (
                'sprint_added', 'sprint_removed', 'status_set', 'status_cleared',
-               'priority_set', 'size_set', 'carried_over')),
+               'priority_set', 'size_set', 'carried_over', 'closed', 'reopened')),
+  -- closed / reopened carry the GitHub state_reason (completed, not_planned, reopened) where known.
   from_value text,
   to_value   text,
   sprint_id  uuid,
@@ -33,18 +34,21 @@ create table issue_events (
   foreign key (tenant_id, member_id) references members (tenant_id, id) on delete set null (member_id)
 );
 create index issue_events_sprint_at on issue_events (tenant_id, sprint_id, at);
-create index issue_events_issue_at on issue_events (issue_id, at);
+create index issue_events_issue_at on issue_events (tenant_id, issue_id, at);
 
--- Stored response of a write that carried an Idempotency-Key header. Rows older than 24 hours are
--- treated as absent and replaced when the same key is used again.
+-- A write that carried an Idempotency-Key header. state 'completed' holds the stored response; 'pending'
+-- reserves the key while an external (GitHub) call is in flight and has no status yet. Rows older than
+-- 24 hours are treated as absent and replaced when the same key is used again.
 create table idempotency_keys (
   tenant_id    uuid not null references tenants(id) on delete cascade,
   key          text not null,
   member_id    uuid,
   request_hash text not null,
-  status_code  int  not null,
+  state        text not null default 'completed' check (state in ('pending', 'completed')),
+  status_code  int,
   response     jsonb,
   created_at   timestamptz not null default now(),
+  check (state = 'pending' or status_code is not null),
   primary key (tenant_id, key),
   foreign key (tenant_id, member_id) references members (tenant_id, id) on delete set null (member_id)
 );
@@ -63,4 +67,4 @@ end $$;
 
 grant select, insert, update, delete on audit_log, issue_events, idempotency_keys to workboard_sync;
 grant select, insert on audit_log, issue_events to workboard_app;
-grant select, insert, delete on idempotency_keys to workboard_app;
+grant select, insert, update, delete on idempotency_keys to workboard_app;

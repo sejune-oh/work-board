@@ -11,6 +11,7 @@ public static class ApiErrors
     public const string AdminOnly = "admin_only";
     public const string Conflict = "conflict";
     public const string IdempotencyKeyReused = "idempotency_key_reused";
+    public const string RequestInProgress = "request_in_progress";
     public const string GithubUnavailable = "github_unavailable";
     public const string GithubWriteNotGranted = "github_write_not_granted";
 

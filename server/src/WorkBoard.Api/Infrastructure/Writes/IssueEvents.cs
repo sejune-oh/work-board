@@ -12,8 +12,11 @@ public static class IssueEventKind
     public const string PrioritySet = "priority_set";
     public const string SizeSet = "size_set";
     public const string CarriedOver = "carried_over";
+    public const string Closed = "closed";
+    public const string Reopened = "reopened";
 }
 
+// For Closed and Reopened, FromValue and ToValue carry the GitHub state_reason where known.
 public sealed record IssueEvent(Guid IssueId, string Kind, string? FromValue = null, string? ToValue = null, Guid? SprintId = null);
 
 public interface IIssueEvents

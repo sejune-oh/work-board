@@ -122,7 +122,6 @@ public class WriteFoundationTests : IClassFixture<WebApplicationFactory<Program>
     [InlineData("delete from audit_log")]
     [InlineData("update issue_events set kind = 'size_set'")]
     [InlineData("delete from issue_events")]
-    [InlineData("update idempotency_keys set status_code = 500")]
     public async Task App_role_cannot_rewrite_history(string sql)
     {
         await using var t = await TestTenant.CreateAsync(_factory);
@@ -229,6 +228,145 @@ public class WriteFoundationTests : IClassFixture<WebApplicationFactory<Program>
         }, default));
 
         Assert.Equal(0, await t.ScalarAsync<int>("select count(*)::int from idempotency_keys where tenant_id = @tid", new { tid = t.Id }));
+    }
+
+    private Task<IdempotentResponse> ExternalAsync(
+        Actor a, string key, string hash, Func<Task<ExternalOutcome>> call) =>
+        Idempotency.RunExternalAsync(a.Db, a.User, key, hash, call, default);
+
+    private static Task<ExternalOutcome> Ok(object body) =>
+        Task.FromResult(new ExternalOutcome(new WriteResult(201, body), true));
+
+    [DbFact]
+    public async Task External_write_replays_after_completion()
+    {
+        await using var t = await TestTenant.CreateAsync(_factory);
+        var a = await ActorAsync(t);
+        var calls = 0;
+
+        var first = await ExternalAsync(a, "k", "h", () => { calls++; return Ok(new { n = 1 }); });
+        var second = await ExternalAsync(a, "k", "h", () => { calls++; return Ok(new { n = 2 }); });
+
+        Assert.Equal(1, calls);
+        Assert.True(second.Replayed);
+        Assert.Equal(first.Json, second.Json!.Replace(" ", ""));
+        Assert.Equal("completed", await t.ScalarAsync<string>("select state from idempotency_keys where tenant_id = @tid", new { tid = t.Id }));
+    }
+
+    [DbFact]
+    public async Task External_write_in_flight_is_409_request_in_progress_and_holds_no_transaction()
+    {
+        await using var t = await TestTenant.CreateAsync(_factory);
+        var a = await ActorAsync(t);
+        IdempotentResponse? during = null;
+        string? stateDuring = null;
+
+        await ExternalAsync(a, "k", "h", async () =>
+        {
+            stateDuring = await t.ScalarAsync<string>("select state from idempotency_keys where tenant_id = @tid", new { tid = t.Id });
+            during = await ExternalAsync(a, "k", "h", () => throw new InvalidOperationException("must not run"));
+            return (await Ok(new { }));
+        });
+
+        Assert.Equal("pending", stateDuring);
+        Assert.Equal(409, during!.StatusCode);
+        Assert.Contains("request_in_progress", during.Json);
+    }
+
+    [DbFact]
+    public async Task Stale_pending_reservation_is_taken_over()
+    {
+        await using var t = await TestTenant.CreateAsync(_factory);
+        var a = await ActorAsync(t);
+        await t.ExecAsync("""
+            insert into idempotency_keys (tenant_id, key, member_id, request_hash, state, created_at)
+            values (@tid, 'k', @m, 'old', 'pending', now() - interval '3 minutes')
+            """, new { tid = t.Id, m = a.MemberId });
+        var calls = 0;
+
+        var result = await ExternalAsync(a, "k", "h", () => { calls++; return Ok(new { }); });
+
+        Assert.Equal(1, calls);
+        Assert.Equal(201, result.StatusCode);
+        Assert.Equal("h", await t.ScalarAsync<string>("select request_hash from idempotency_keys where tenant_id = @tid", new { tid = t.Id }));
+    }
+
+    [DbFact]
+    public async Task External_write_with_a_different_request_is_409_reused()
+    {
+        await using var t = await TestTenant.CreateAsync(_factory);
+        var a = await ActorAsync(t);
+        await ExternalAsync(a, "k", "h1", () => Ok(new { }));
+
+        var second = await ExternalAsync(a, "k", "h2", () => throw new InvalidOperationException("must not run"));
+
+        Assert.Equal(409, second.StatusCode);
+        Assert.Contains("idempotency_key_reused", second.Json);
+    }
+
+    [DbFact]
+    public async Task Failure_before_the_external_call_takes_effect_allows_a_retry()
+    {
+        await using var t = await TestTenant.CreateAsync(_factory);
+        var a = await ActorAsync(t);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            ExternalAsync(a, "k", "h", () => throw new InvalidOperationException("boom")));
+        var noEffect = await ExternalAsync(a, "k", "h",
+            () => Task.FromResult(new ExternalOutcome(new WriteResult(502), false)));
+        var retried = await ExternalAsync(a, "k", "h", () => Ok(new { }));
+
+        Assert.Equal(502, noEffect.StatusCode);
+        Assert.False(retried.Replayed);
+        Assert.Equal(201, retried.StatusCode);
+    }
+
+    [DbFact]
+    public async Task Non_2xx_after_a_possible_side_effect_is_stored_and_replayed()
+    {
+        await using var t = await TestTenant.CreateAsync(_factory);
+        var a = await ActorAsync(t);
+        var calls = 0;
+        Task<ExternalOutcome> Call() { calls++; return Task.FromResult(new ExternalOutcome(new WriteResult(502, new { error = "github_unavailable" }), true)); }
+
+        await ExternalAsync(a, "k", "h", Call);
+        var again = await ExternalAsync(a, "k", "h", Call);
+
+        Assert.Equal(1, calls);
+        Assert.True(again.Replayed);
+        Assert.Equal(502, again.StatusCode);
+    }
+
+    [DbFact]
+    public async Task Pending_key_blocks_the_db_only_mode_too()
+    {
+        await using var t = await TestTenant.CreateAsync(_factory);
+        var a = await ActorAsync(t);
+        await t.ExecAsync("""
+            insert into idempotency_keys (tenant_id, key, member_id, request_hash, state)
+            values (@tid, 'k', @m, 'h', 'pending')
+            """, new { tid = t.Id, m = a.MemberId });
+
+        var result = await RunKeyAsync(a, "k", "h", () => Task.FromResult(new WriteResult(200)));
+
+        Assert.Contains("request_in_progress", result.Json);
+    }
+
+    [DbFact]
+    public async Task Closed_and_reopened_events_are_accepted()
+    {
+        await using var t = await TestTenant.CreateAsync(_factory);
+        var a = await ActorAsync(t);
+
+        await a.Db.WriteAsync(async s =>
+        {
+            var events = new IssueEvents(a.User);
+            await events.RecordAsync(s, new IssueEvent(a.Issue, IssueEventKind.Closed, "open", "completed"));
+            await events.RecordAsync(s, new IssueEvent(a.Issue, IssueEventKind.Reopened, "completed", "reopened"));
+            return 0;
+        }, default);
+
+        Assert.Equal(2, await t.ScalarAsync<int>("select count(*)::int from issue_events where tenant_id = @tid", new { tid = t.Id }));
     }
 
     [Fact]

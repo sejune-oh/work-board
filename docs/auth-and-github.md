@@ -10,7 +10,7 @@
 | 사람 식별 | GitHub 사용자 id. 서버가 `auth.identities`에서 읽음. `user_metadata`는 사용자가 바꿀 수 있어 쓰지 않음 |
 | 저장소 연결 | GitHub App 설치. 조직과 개인 계정 모두 |
 | 회사와 연결 | 회사 1 : 연결 N (`github_connections`). 같은 GitHub 계정은 한 회사에만 |
-| 권한 | 읽기 전용(metadata, issues, pull requests, 조직 구성원 읽기)으로 시작. 쓰기 권한은 그 기능이 생길 때 추가 |
+| 권한 | 읽기 전용(metadata, issues, pull requests, 조직 구성원 읽기)으로 시작. 보드에서 이슈를 쓰는 기능(#59)부터 Issues는 읽기와 쓰기 |
 | 데이터 읽기 | 서버가 App 개인 키로 발급한 설치 토큰만 사용. 사용자 토큰으로 데이터를 읽지 않음 |
 | 지금(M1) | 개인 토큰(fine-grained, 이 저장소 한정)으로 동기화. `IGitHubSource` 뒤에 두고 M3에서 설치 토큰으로 교체 |
 
@@ -84,3 +84,22 @@
 - `issue_pull_requests`: `closingIssuesReferences`(GitHub id 기준)와 PR 본문의 `Closes|Fixes|Resolves #N`(같은 저장소, 대소문자 무시, close/closed/fix/fixed/resolve/resolved 포함)을 합쳐 PR마다 통째로 교체합니다. 이슈가 아직 없으면 그 링크는 PR이 다시 갱신될 때 생깁니다.
 - 댓글은 이슈 번호가 이슈 행에 대응하는 것만 씁니다(PR 댓글 제외).
 - 다른 테넌트의 행은 읽지도 쓰지도 않습니다. 모든 문장이 `tenant_id`로 거릅니다.
+
+## GitHub 쓰기
+
+`IGitHubWriter`(`Infrastructure/GitHub/`)가 설치 토큰으로 이슈를 만들고, 담당자를 바꾸고, 댓글을 달고, 닫고(`completed` | `not_planned`), 다시 엽니다. GitHub에는 App 봇이 쓴 것으로 보이므로 실제 사람은 본문과 댓글 끝의 한 줄(`\n\n---\n_작성: @<login> (work-board)_`)과 `audit_log`에 남깁니다.
+
+- 응답은 읽기와 같은 `SourceIssue`, `SourceComment`로 돌려줍니다. 호출한 쪽이 `MirrorWriter.ApplyWrittenIssueAsync` / `ApplyWrittenCommentAsync`로 바로 넘기면 다음 동기화를 기다리지 않고 보드에 보입니다. 저장된 `github_updated_at`보다 오래된 응답은 무시하고(자식 행과 이벤트 포함), 응답에 없는 부모 이슈 연결은 건드리지 않습니다.
+- 저장된 상태와 응답의 상태가 다르면 같은 트랜잭션에서 `issue_events`에 `closed`(to_value = state_reason) 또는 `reopened`를 남깁니다.
+- 대상 저장소는 `IGitHubWriteTargets.ResolveAsync`로 확인합니다. 호출자 회사의 저장소이고, 연결이 끊기지 않았고, App 설치 id가 있어야 합니다. 아니면 null(`404 not_found`로 답함).
+- 실패는 `GitHubWriteException`: 403 → `github_write_not_granted`, 422 → `assignee_not_collaborator` 또는 `invalid_request`, 404 → `not_found`, 5xx와 속도 제한 → 502 `github_unavailable`, 응답 없음(네트워크, 30초 타임아웃) → 504 `github_unavailable`. `GitHubWriteErrors.ToResult/ToOutcome`이 응답으로 바꿉니다. 메시지에는 상태 코드만 들어가고 토큰과 응답 내용은 없습니다. 응답 없음 예외는 `Idempotency.RunExternalAsync`에 그대로 던지면 키를 예약 상태로 두고 504를 돌려줍니다.
+- 담당자: GitHub는 push 권한이 없는 사용자를 조용히 빼는 경우가 있으므로, 호출한 쪽이 응답의 `Assignees`가 요청과 같은지 확인합니다.
+
+### App 소유자가 할 일: Issues 쓰기 권한
+
+권한을 올려도 설치가 승인하기 전에는 쓰기 호출이 `403`(`github_write_not_granted`)입니다.
+
+1. GitHub → Settings → Developer settings → GitHub Apps → work-board App → **Permissions & events**
+2. Repository permissions의 **Issues**를 `Read-only`에서 **Read and write**로 바꾸고 **Save changes**
+3. 설치한 계정(개인이면 본인, 조직이면 조직 소유자)에게 권한 변경 요청이 갑니다. Settings → Applications → Installed GitHub Apps → work-board(또는 조직의 Installed GitHub Apps) 화면 위의 안내에서 **Review request** → **Accept new permissions**
+4. 승인 뒤 설치 토큰은 새 권한으로 발급됩니다. 캐시된 토큰이 있으면 최대 1시간 안에 바뀌고, 서버를 다시 띄우면 바로 바뀝니다.

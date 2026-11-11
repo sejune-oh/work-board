@@ -37,15 +37,19 @@ Write endpoints (`POST`, `PATCH`, `PUT`, `DELETE`) use these standard codes, alw
 | 409 | `conflict` | the change clashes with the current state |
 | 409 | `request_in_progress` | a request with the same `Idempotency-Key` is still running (writes that call GitHub only; a stuck one is retried after 2 minutes) |
 | 409 | `idempotency_key_reused` | the `Idempotency-Key` was already used for a different request |
-| 502 | `github_unavailable` | GitHub could not be reached or returned an error |
-| 403 | `github_write_not_granted` | the GitHub App lacks the permission the write needs |
+| 502 | `github_unavailable` | GitHub returned a 5xx or hit its rate limit, or the App token could not be obtained |
+| 504 | `github_unavailable` | the GitHub call got no answer: network error, the client's own 30 second timeout, or the 60 second call limit |
+| 403 | `github_write_not_granted` | the GitHub App lacks the permission the write needs (GitHub answered 403) |
+| 422 | `assignee_not_collaborator` | GitHub rejected an assignee who cannot be assigned in that repository |
+| 422 | `invalid_request` | GitHub rejected the request as invalid (a write that calls GitHub only; 400 is for the board's own validation) |
 
 Idempotency: a write may send `Idempotency-Key: <1..200 chars>`. The key is scoped to the tenant. Repeating the
 same request (same member, method, path with query and body) within 24 hours returns the stored status and body
 without running again; a different request with the same key is `409 idempotency_key_reused`. Keys older than
 24 hours are ignored and replaced on next use. Only 2xx responses are stored, except for writes that call GitHub: those reserve the key before the call and also
 store a non-2xx response when GitHub may already have applied the change, so a retry never repeats it. Only a
-failure known to happen before anything was sent releases the key. If the GitHub call times out (60 seconds,
+failure known to happen before anything was sent releases the key. If the GitHub call times out (60 seconds, or the HTTP
+client's own 30 second timeout), fails with a network error after the request was sent (all
 `504 github_unavailable`), is aborted by the client, or the server dies, the key stays reserved: a retry gets
 `409 request_in_progress` and after the 2 minute pending timeout it runs again, which can repeat the GitHub
 side effect. A key longer than 200 characters is

@@ -131,6 +131,28 @@ tenant transaction (no cache). Rules:
 - `activity`: last 3 days, newest first, max 12. A PR event kind is inferred from its current state (merged,
   open with review requested, other open); closed-unmerged PRs are skipped. `actor` is null when the author is not a member.
 
+## Sync
+
+A background service syncs every tenant with an active connection that has an `installation_id` each
+`Sync:IntervalMinutes` (default 10; `Sync:Enabled=false` turns the loop off, manual runs still work). A run lists the
+installation's repositories, upserts them (`sync_enabled` defaults to true) and reads each enabled repository with
+`since = last_synced_at - 2 minutes` (full read on the first run). One run per tenant at a time. Each run writes one
+`sync_runs` row per connection; GitHub errors and a missing App key are recorded there, never thrown. A repository
+that fails does not stop the others, except on `RateLimited` and `Unauthorized`, which end the run.
+
+`GET /api/sync/status` (any member) -> `200`:
+```
+{ "connected": true, "running": false, "lastSyncedAt": "ISO" | null, "lastResult": "ok" | "failed" | null,
+  "lastError": "short text" | null, "rateLimitRemaining": 4990 | null, "nextRunAt": "ISO" | null }
+```
+`connected` is false when the tenant has no active connection with an installation; the other fields are then null/false.
+`lastSyncedAt` is the latest repository sync time; `lastResult`, `lastError` and `rateLimitRemaining` come from the most
+recent finished run. `nextRunAt` is null while the periodic loop is off.
+
+`POST /api/sync/run` (admin only) starts a run in the background -> `202 { "started": true }`. Errors, checked in this
+order: `403 { "error": "admin_only" }`, `503 { "error": "github_app_not_configured" }`, `409 { "error": "not_connected" }`,
+`409 { "error": "sync_running" }`.
+
 ## Shapes
 
 ```ts

@@ -282,6 +282,75 @@ public class GitHubSourceTests
     }
 
     [Fact]
+    public async Task Nested_graphql_errors_with_partial_data_are_ignored()
+    {
+        var (source, _, _) = Create(r =>
+        {
+            if (r.Uri.AbsolutePath != "/graphql" || !r.Body.Contains("pullRequests("))
+                return Route(r);
+            var json = Fixture("prs.json").TrimEnd()[..^1] +
+                ""","errors":[{"type":"FORBIDDEN","message":"hidden","path":["repository","pullRequests","nodes",0,"closingIssuesReferences","nodes",0]}]}""";
+            return Ok(json);
+        });
+
+        var snap = await source.ReadRepositoryAsync(9, "octo-org", "hello", null, CancellationToken.None);
+
+        Assert.Equal([10, 11], snap.PullRequests.Select(p => p.Number));
+    }
+
+    [Fact]
+    public async Task Repository_level_not_found_still_throws()
+    {
+        var (source, _, _) = Create(r => r.Uri.AbsolutePath == "/graphql"
+            ? Ok("""{"data":{"repository":null},"errors":[{"type":"NOT_FOUND","message":"x","path":["repository"]}]}""")
+            : Route(r));
+
+        var e = await Assert.ThrowsAsync<GitHubSourceException>(
+            () => source.ReadRepositoryAsync(9, "octo-org", "gone", null, CancellationToken.None));
+
+        Assert.Equal(GitHubSourceErrorKind.NotFound, e.Kind);
+    }
+
+    [Fact]
+    public async Task Rate_limited_graphql_error_falls_back_to_the_reset_header()
+    {
+        var (source, _, _) = Create(r =>
+        {
+            if (r.Uri.AbsolutePath != "/graphql")
+                return Route(r);
+            var response = Ok("""{"data":{"repository":{"databaseId":1,"nameWithOwner":"a/b","isArchived":false}},"errors":[{"type":"RATE_LIMITED","message":"x"}]}""");
+            response.Headers.Add("x-ratelimit-reset", "1767229200");
+            return response;
+        });
+
+        var e = await Assert.ThrowsAsync<GitHubSourceException>(
+            () => source.ReadRepositoryAsync(9, "octo-org", "hello", null, CancellationToken.None));
+
+        Assert.Equal(GitHubSourceErrorKind.RateLimited, e.Kind);
+        Assert.Equal(DateTimeOffset.FromUnixTimeSeconds(1767229200), e.RetryAt);
+    }
+
+    [Fact]
+    public async Task Null_nested_nodes_are_tolerated()
+    {
+        var (source, _, _) = Create(r =>
+        {
+            if (r.Uri.AbsolutePath != "/graphql" || !r.Body.Contains("pullRequests("))
+                return r.Uri.AbsolutePath == "/graphql" && r.Body.Contains("issues(")
+                    ? Ok("""{"data":{"repository":{"databaseId":1,"nameWithOwner":"a/b","isArchived":false,"issues":{"pageInfo":{"hasNextPage":false},"nodes":[null,{"databaseId":1,"id":"i","number":1,"title":"t","state":"OPEN","createdAt":"2026-01-01T00:00:00Z","updatedAt":"2026-01-01T00:00:00Z","url":"u","issueType":null,"author":null,"milestone":null,"labels":{"nodes":[null]},"assignees":{"nodes":[null,{}]},"parent":null}]}}}}""")
+                    : Route(r);
+            return Ok("""{"data":{"repository":{"databaseId":1,"nameWithOwner":"a/b","isArchived":false,"pullRequests":{"pageInfo":{"hasNextPage":false},"nodes":[null,{"databaseId":2,"id":"p","number":2,"title":"t","state":"OPEN","isDraft":false,"createdAt":"2026-01-01T00:00:00Z","updatedAt":"2026-01-01T00:00:00Z","url":"u","author":null,"reviewRequests":{"nodes":[null,{"requestedReviewer":null}]},"closingIssuesReferences":{"nodes":[null]}}]}}}}""");
+        });
+
+        var snap = await source.ReadRepositoryAsync(9, "octo-org", "hello", null, CancellationToken.None);
+
+        Assert.Equal(1, Assert.Single(snap.Issues).Number);
+        Assert.Empty(snap.Issues[0].Assignees);
+        Assert.Empty(snap.PullRequests[0].RequestedReviewers);
+        Assert.Empty(snap.PullRequests[0].ClosingIssues);
+    }
+
+    [Fact]
     public async Task Missing_repository_in_graphql_data_is_not_found()
     {
         var (source, _, _) = Create(r => r.Uri.AbsolutePath == "/graphql" ? Ok("""{"data":{"repository":null}}""") : Route(r));
@@ -411,5 +480,43 @@ public class GitHubSourceTests
 
         Assert.Equal(GitHubSourceErrorKind.NotFound, e.Kind);
         Assert.DoesNotContain("eyJ", e.Message);
+    }
+
+    [Fact]
+    public async Task Token_network_failure_is_typed()
+    {
+        using var f = new TokenFixture(_ => throw new HttpRequestException("socket"));
+
+        var e = await Assert.ThrowsAsync<GitHubSourceException>(() => f.Tokens.GetAsync(7, CancellationToken.None));
+
+        Assert.Equal(GitHubSourceErrorKind.Unexpected, e.Kind);
+    }
+
+    [Fact]
+    public async Task Token_malformed_json_is_typed()
+    {
+        using var f = new TokenFixture(_ => Ok("not json"));
+
+        var e = await Assert.ThrowsAsync<GitHubSourceException>(() => f.Tokens.GetAsync(7, CancellationToken.None));
+
+        Assert.Equal(GitHubSourceErrorKind.Unexpected, e.Kind);
+    }
+
+    [Fact]
+    public async Task Token_timeout_is_typed_not_cancellation()
+    {
+        using var f = new TokenFixture(_ => throw new TaskCanceledException("timeout"));
+
+        await Assert.ThrowsAsync<GitHubSourceException>(() => f.Tokens.GetAsync(7, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task Token_caller_cancellation_propagates()
+    {
+        using var f = new TokenFixture();
+        using var cts = new CancellationTokenSource();
+        await cts.CancelAsync();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => f.Tokens.GetAsync(7, cts.Token));
     }
 }

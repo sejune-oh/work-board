@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Net.Http.Headers;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Options;
 
@@ -67,9 +68,28 @@ public sealed class GitHubInstallationTokens(
         request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.github+json"));
         request.Headers.Add("X-GitHub-Api-Version", "2022-11-28");
 
-        using var response = await httpFactory.CreateClient(HttpClientName).SendAsync(request, ct);
-        GitHubHttp.EnsureSuccess(response);
-        var body = await response.Content.ReadFromJsonAsync<TokenResponse>(ct);
+        try
+        {
+            using var response = await httpFactory.CreateClient(HttpClientName).SendAsync(request, ct);
+            GitHubHttp.EnsureSuccess(response);
+            return Parse(await response.Content.ReadFromJsonAsync<TokenResponse>(ct));
+        }
+        catch (HttpRequestException e)
+        {
+            throw new GitHubSourceException(GitHubSourceErrorKind.Unexpected, "GitHub token request failed.", inner: e);
+        }
+        catch (JsonException e)
+        {
+            throw new GitHubSourceException(GitHubSourceErrorKind.Unexpected, "GitHub returned malformed JSON.", inner: e);
+        }
+        catch (TaskCanceledException e) when (!ct.IsCancellationRequested)
+        {
+            throw new GitHubSourceException(GitHubSourceErrorKind.Unexpected, "GitHub token request timed out.", inner: e);
+        }
+    }
+
+    private static (string Token, DateTimeOffset ExpiresAt) Parse(TokenResponse? body)
+    {
         if (string.IsNullOrEmpty(body?.Token) || body.ExpiresAt is null)
             throw new GitHubSourceException(GitHubSourceErrorKind.Unexpected, "GitHub returned no installation token.");
         return (body.Token, body.ExpiresAt.Value);

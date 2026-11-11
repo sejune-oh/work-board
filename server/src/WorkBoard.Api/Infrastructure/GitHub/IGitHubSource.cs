@@ -65,6 +65,7 @@ public sealed record SourcePullRequest(
     string NodeId,
     int Number,
     string Title,
+    string? Body,
     string State,
     bool Draft,
     SourceUser? Author,

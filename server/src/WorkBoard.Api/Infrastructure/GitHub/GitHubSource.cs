@@ -45,7 +45,7 @@ public sealed class GitHubSource(HttpClient http, IGitHubInstallationTokens toke
             pullRequests(first: 100, after: $cursor, orderBy: {field: UPDATED_AT, direction: DESC}) {
               pageInfo { hasNextPage endCursor }
               nodes {
-                databaseId id number title state isDraft createdAt closedAt updatedAt mergedAt url
+                databaseId id number title body state isDraft createdAt closedAt updatedAt mergedAt url
                 {{Author}}
                 reviewRequests(first: 20) { nodes { requestedReviewer { ... on User { databaseId login name avatarUrl } } } }
                 closingIssuesReferences(first: 20) { nodes { databaseId number repository { nameWithOwner } } }
@@ -229,23 +229,32 @@ public sealed class GitHubSource(HttpClient http, IGitHubInstallationTokens toke
         }, ct);
         var envelope = await ReadBodyAsync<GqlEnvelope<T>>(response, ct);
 
-        if (envelope.Errors is { Count: > 0 } errors)
+        if (envelope.Errors is { Count: > 0 } all)
         {
-            if (errors.Any(e => e.Type == "RATE_LIMITED"))
-                throw new GitHubSourceException(GitHubSourceErrorKind.RateLimited, "GitHub rate limit reached.",
-                    envelope.Data?.RateLimit?.ResetAt);
-            if (errors.Any(e => e.Type == "NOT_FOUND"))
-                throw new GitHubSourceException(GitHubSourceErrorKind.NotFound, "Repository not found or not accessible.");
-            if (errors.Any(e => e.Type == "FORBIDDEN"))
-                throw new GitHubSourceException(GitHubSourceErrorKind.Forbidden, "GitHub denied access.");
-            throw new GitHubSourceException(GitHubSourceErrorKind.GraphQl,
-                "GitHub GraphQL error: " + string.Join("; ", errors.Select(e => e.Message).Take(3)));
+            // Errors on nested nodes (e.g. a parent issue the installation cannot see) come with partial data.
+            var errors = envelope.Data?.Repository is null ? all : all.Where(IsFatal).ToList();
+            if (errors.Count > 0)
+            {
+                if (errors.Any(e => e.Type == "RATE_LIMITED"))
+                    throw new GitHubSourceException(GitHubSourceErrorKind.RateLimited, "GitHub rate limit reached.",
+                        envelope.Data?.RateLimit?.ResetAt ?? GitHubHttp.ReadRateLimit(response)?.ResetAt);
+                if (errors.Any(e => e.Type == "NOT_FOUND"))
+                    throw new GitHubSourceException(GitHubSourceErrorKind.NotFound, "Repository not found or not accessible.");
+                if (errors.Any(e => e.Type == "FORBIDDEN"))
+                    throw new GitHubSourceException(GitHubSourceErrorKind.Forbidden, "GitHub denied access.");
+                throw new GitHubSourceException(GitHubSourceErrorKind.GraphQl,
+                    "GitHub GraphQL error: " + string.Join("; ", errors.Select(e => e.Message).Take(3)));
+            }
         }
 
         var data = envelope.Data ?? throw Unexpected();
         var gql = data.RateLimit is null ? null : new RateLimitInfo(data.RateLimit.Remaining, data.RateLimit.ResetAt);
         return (data, gql ?? GitHubHttp.ReadRateLimit(response));
     }
+
+    private static bool IsFatal(GqlError e) =>
+        e.Type == "RATE_LIMITED"
+        || e.Path is not { Count: > 1 };
 
     private static async Task<T> ReadBodyAsync<T>(HttpResponseMessage response, CancellationToken ct)
     {
@@ -290,7 +299,7 @@ public sealed class GitHubSource(HttpClient http, IGitHubInstallationTokens toke
     {
         var reviewers = (n.ReviewRequests?.Nodes ?? [])
             .Select(r => ToUser(r?.RequestedReviewer)).OfType<SourceUser>().ToList();
-        return new SourcePullRequest(n.DatabaseId, n.Id, n.Number, n.Title, n.State.ToLowerInvariant(), n.IsDraft,
+        return new SourcePullRequest(n.DatabaseId, n.Id, n.Number, n.Title, n.Body, n.State.ToLowerInvariant(), n.IsDraft,
             ToUser(n.Author), n.CreatedAt, n.UpdatedAt, n.MergedAt, n.ClosedAt, n.Url,
             (n.ReviewRequests?.Nodes?.Count ?? 0) > 0, reviewers,
             (n.ClosingIssuesReferences?.Nodes ?? []).Where(i => i is not null)
@@ -307,11 +316,12 @@ public sealed class GitHubSource(HttpClient http, IGitHubInstallationTokens toke
     private interface GqlData
     {
         GqlRateLimit? RateLimit { get; }
+        GqlRepository? Repository { get; }
     }
 
     private sealed record GqlEnvelope<T>(T? Data, List<GqlError>? Errors);
 
-    private sealed record GqlError(string? Type, string? Message);
+    private sealed record GqlError(string? Type, string? Message, List<JsonElement>? Path);
 
     private sealed record GqlRateLimit(int Remaining, DateTimeOffset ResetAt);
 
@@ -352,7 +362,7 @@ public sealed class GitHubSource(HttpClient http, IGitHubInstallationTokens toke
     private sealed record GqlRepoName(string NameWithOwner);
 
     private sealed record GqlPullRequest(
-        long DatabaseId, string Id, int Number, string Title, string State, bool IsDraft,
+        long DatabaseId, string Id, int Number, string Title, string? Body, string State, bool IsDraft,
         DateTimeOffset CreatedAt, DateTimeOffset? ClosedAt, DateTimeOffset UpdatedAt, DateTimeOffset? MergedAt, string Url,
         GqlUser? Author, NodeList<GqlReviewRequest>? ReviewRequests, NodeList<GqlClosingIssue>? ClosingIssuesReferences);
 

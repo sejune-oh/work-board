@@ -36,7 +36,7 @@ public static class OverviewQueries
                    count(*) filter (where i.state = 'open' and st.status = 'in_review')::int as in_review,
                    count(*) filter (where i.state = 'open'
                                       and i.github_updated_at < now() - make_interval(days => @staleDays))::int as stale,
-                   count(*) filter (where i.state = 'closed' and i.closed_at >= {WeekStartSql})::int as done_this_week
+                   count(*) filter (where st.status = 'done' and i.closed_at >= {WeekStartSql})::int as done_this_week
               from issues i
               join issue_status st on st.issue_id = i.id
             """, new { staleDays = StaleDays }))!;
@@ -56,7 +56,7 @@ public static class OverviewQueries
                   from issues i
                   join issue_status st on st.issue_id = i.id
                   join board_fields bf on bf.issue_id = i.id
-                 where bf.priority = 'urgent' and st.status <> 'done'
+                 where bf.priority = 'urgent' and st.status not in ('done', 'cancelled')
                  order by i.github_updated_at, i.id
                 """)
             : [];
@@ -167,7 +167,7 @@ public static class OverviewQueries
                    count(i.id) filter (where i.state = 'open' and st.status = 'todo')::int as todo,
                    count(i.id) filter (where i.state = 'open' and st.status = 'in_progress')::int as in_progress,
                    count(i.id) filter (where i.state = 'open' and st.status = 'in_review')::int as in_review,
-                   count(i.id) filter (where i.state = 'closed' and i.closed_at >= {WeekStartSql})::int as done_this_week,
+                   count(i.id) filter (where st.status = 'done' and i.closed_at >= {WeekStartSql})::int as done_this_week,
                    greatest(max(i.github_updated_at),
                             (select max(c.github_created_at) from comments c
                               where c.author_github_id = m.github_user_id)) as last_activity_at
@@ -285,7 +285,7 @@ public static class OverviewQueries
               left join repositories r on r.id = i.repository_id
               left join issue_status st on st.issue_id = i.id
              where n.held_at >= now() - make_interval(days => @days)
-               and (a.issue_id is null or st.status <> 'done')
+               and (a.issue_id is null or st.status not in ('done', 'cancelled'))
              order by n.held_at desc, a.created_at, a.id
             """, new { days = ActionItemDays });
 

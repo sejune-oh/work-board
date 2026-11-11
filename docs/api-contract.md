@@ -87,7 +87,7 @@ Settings `GitHub:App:AppId`, `ClientId`, `ClientSecret`, `PrivateKeyPath`, `Slug
 | `projectId` | only issues in repositories of this project |
 | `person` | only issues assigned to this GitHub login |
 | `assignee` | alias of `person`; if both are given, `person` wins |
-| `status` | comma list of `todo`, `in_progress`, `in_review`, `done` (derived status). Any other value, or an empty list → `400 {"error": "invalid_status"}` |
+| `status` | comma list of `todo`, `in_progress`, `in_review`, `done`, `cancelled` (derived status). Any other value, or an empty list → `400 {"error": "invalid_status"}` |
 | `stale` | `true` keeps only open issues whose `updatedAt` is 7 or more days old. `false` or absent: no filter |
 | `sprint` | only issues in this sprint (uuid) |
 | `doneSince` | `week` keeps only issues closed since Monday 00:00 in Asia/Seoul (same boundary as the overview's `doneThisWeek`); open issues are dropped and `doneWithinDays` is ignored. Any other value → `400 {"error": "invalid_doneSince"}` |
@@ -96,6 +96,19 @@ Settings `GitHub:App:AppId`, `ClientId`, `ClientSecret`, `PrivateKeyPath`, `Slug
 
 Filters combine with AND. Without `scope=all`, `status=done` therefore returns only issues closed within
 `doneWithinDays`. Open issues are always included unless a filter excludes them. Sort: `updatedAt` descending.
+
+Derived status, first matching rule wins (view `issue_status`):
+
+1. closed with reason `not_planned` -> `cancelled`
+2. closed -> `done`
+3. board override (`status_override`) -> that value
+4. a linked pull request is merged while the issue is open -> `in_review`
+5. a linked pull request is open and not a draft -> `in_review`
+6. a linked pull request is open and a draft -> `in_progress`
+7. otherwise `todo`
+
+`cancelled` has category `done` but is excluded from every progress count (overview projects, sprint, people,
+`doneThisWeek`, urgent attention and action-item lists) and from milestone counts.
 
 `GET /api/meeting-notes` accepts optional `projectId`. Sort: `heldAt` descending.
 
@@ -234,7 +247,7 @@ type GithubConnection = {
 
 type Project = { id: string; name: string; color: string | null; repositories: { id: string; name: string }[] };
 
-type Status = "todo" | "in_progress" | "in_review" | "done";
+type Status = "todo" | "in_progress" | "in_review" | "done" | "cancelled";
 type Category = "todo" | "in_progress" | "done";
 
 type BoardIssue = {

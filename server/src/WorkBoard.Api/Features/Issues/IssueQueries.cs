@@ -19,7 +19,7 @@ public static class IssueQueries
     {
         var issues = await FetchAsync(s, $$"""
             (i.state = 'open' or @allClosed or @doneThisWeek or i.closed_at >= now() - make_interval(days => @doneWithinDays))
-            and (not @doneThisWeek or (i.state = 'closed' and i.closed_at >= {{Overview.OverviewQueries.WeekStartSql}}))
+            and (not @doneThisWeek or (st.status = 'done' and i.closed_at >= {{Overview.OverviewQueries.WeekStartSql}}))
             and (@statuses::text[] is null or st.status = any(@statuses::text[]))
             and (not @stale or (i.state = 'open'
                    and i.github_updated_at < now() - make_interval(days => @staleDays)))

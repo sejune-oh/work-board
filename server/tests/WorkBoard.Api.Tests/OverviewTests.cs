@@ -324,6 +324,32 @@ public class OverviewTests(WebApplicationFactory<Program> factory) : IClassFixtu
     }
 
     [DbFact]
+    public async Task Sprint_follows_dates_not_the_stored_state()
+    {
+        await using var t = await TestTenant.CreateAsync(factory);
+        const string insert = "insert into sprints (tenant_id, name, start_date, end_date, state) values (@tid, @name, current_date + @s, current_date + @e, @state)";
+        await t.ExecAsync(insert, new { tid = t.Id, name = "planned but running", s = -2, e = 3, state = "planned" });
+        await t.ExecAsync(insert, new { tid = t.Id, name = "active but over", s = -20, e = -10, state = "active" });
+        await t.ExecAsync(insert, new { tid = t.Id, name = "closed running", s = -1, e = 9, state = "closed" });
+
+        Assert.Equal("planned but running", (await t.OverviewAsync()).GetProperty("sprint").GetProperty("name").GetString());
+
+        await t.ExecAsync("update sprints set state = 'closed' where name = 'planned but running'");
+        Assert.Equal(JsonValueKind.Null, (await t.OverviewAsync()).GetProperty("sprint").ValueKind);
+    }
+
+    [DbFact]
+    public async Task Overlapping_sprints_pick_the_latest_start()
+    {
+        await using var t = await TestTenant.CreateAsync(factory);
+        const string insert = "insert into sprints (tenant_id, name, start_date, end_date) values (@tid, @name, current_date + @s, current_date + @e)";
+        await t.ExecAsync(insert, new { tid = t.Id, name = "earlier", s = -10, e = 5 });
+        await t.ExecAsync(insert, new { tid = t.Id, name = "later", s = -1, e = 14 });
+
+        Assert.Equal("later", (await t.OverviewAsync()).GetProperty("sprint").GetProperty("name").GetString());
+    }
+
+    [DbFact]
     public async Task Milestones_are_null_until_sync_provides_them()
     {
         await using var t = await TestTenant.CreateAsync(factory);

@@ -13,8 +13,44 @@ public sealed record IssueFilter(
     bool AllClosed = false,
     bool DoneThisWeek = false);
 
+public sealed record BacklogFilter(Guid? ProjectId, string? Person, IReadOnlyList<string>? Statuses, int Page, int PageSize);
+
 public static class IssueQueries
 {
+    // Unfinished issues that belong to no sprint.
+    private const string BacklogWhere = """
+        i.state = 'open' and st.status not in ('done', 'cancelled') and bf.sprint_id is null
+        and (@statuses::text[] is null or st.status = any(@statuses::text[]))
+        and (@projectId::uuid is null or exists (
+               select 1 from project_repositories pr
+                where pr.repository_id = i.repository_id and pr.project_id = @projectId::uuid))
+        and (@assignee::text is null or exists (
+               select 1 from issue_assignees ia
+                 join members am on am.github_user_id = ia.github_user_id
+                where ia.issue_id = i.id and am.github_login = @assignee::text))
+        """;
+
+    public static async Task<Sprints.BacklogPage> BacklogAsync(TenantSession s, BacklogFilter filter)
+    {
+        var param = new
+        {
+            filter.ProjectId,
+            assignee = filter.Person,
+            statuses = filter.Statuses?.ToArray(),
+            limit = filter.PageSize,
+            offset = (filter.Page - 1) * filter.PageSize,
+        };
+        var total = await s.QuerySingleOrDefaultAsync<int>($"""
+            select count(*)::int
+              from issues i
+              join issue_status st on st.issue_id = i.id
+              left join board_fields bf on bf.issue_id = i.id
+             where {BacklogWhere}
+            """, param);
+        var items = await FetchAsync(s, BacklogWhere, param, "limit @limit offset @offset");
+        return new Sprints.BacklogPage(items, total, filter.Page, filter.PageSize);
+    }
+
     public static async Task<List<BoardIssue>> ListAsync(TenantSession s, IssueFilter filter)
     {
         var issues = await FetchAsync(s, $$"""
@@ -49,7 +85,7 @@ public static class IssueQueries
     public static async Task<BoardIssue?> GetAsync(TenantSession s, Guid id) =>
         (await FetchAsync(s, "i.id = @id", new { id })).SingleOrDefault();
 
-    private static async Task<List<BoardIssue>> FetchAsync(TenantSession s, string where, object param)
+    private static async Task<List<BoardIssue>> FetchAsync(TenantSession s, string where, object param, string tail = "")
     {
         var rows = await s.QueryAsync<IssueRow>($"""
             select i.id, i.repository_id, r.name as repository_name, i.number, i.title, i.issue_type, i.state,
@@ -69,6 +105,7 @@ public static class IssueQueries
               left join milestones ms on ms.id = i.milestone_id
              where {where}
              order by i.github_updated_at desc, i.id
+             {tail}
             """, param);
         if (rows.Count == 0)
             return [];

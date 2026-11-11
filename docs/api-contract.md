@@ -87,6 +87,14 @@ first calls `select set_config('app.tenant_id', @tenantId, true)`. RLS policies 
 | GET | `/api/overview` | dev user | `Overview` |
 | GET | `/api/issues` | dev user | `BoardIssue[]` |
 | GET | `/api/issues/{id}` | dev user | `IssueDetail` or 404 |
+| GET | `/api/sprints` | dev user | `SprintList` |
+| POST | `/api/sprints` | dev user | `201 Sprint` |
+| PATCH | `/api/sprints/{id}` | dev user | `Sprint` |
+| POST | `/api/sprints/{id}/issues` | dev user | `SprintIssuesResult` |
+| DELETE | `/api/sprints/{id}/issues` | dev user | `SprintIssuesResult` |
+| POST | `/api/sprints/{id}/carry-over` | dev user | `CarryOverResult` |
+| POST | `/api/sprints/{id}/carry-over/{carryOverId}/undo` | dev user | `CarryOverResult` |
+| GET | `/api/backlog` | dev user | `BacklogPage` |
 | GET | `/api/milestones` | dev user | `Milestone[]`, open first, then `dueOn` ascending (nulls last) |
 | GET | `/api/meeting-notes` | dev user | `MeetingNoteSummary[]` |
 | GET | `/api/meeting-notes/{id}` | dev user | `MeetingNote` or 404 |
@@ -143,6 +151,35 @@ Derived status, first matching rule wins (view `issue_status`):
 `cancelled` has category `done` but is excluded from every progress count (overview projects, sprint, people,
 `doneThisWeek`, urgent attention and action-item lists) and from milestone counts.
 
+Sprints (UI word: 주기) and the backlog (대기 목록) exist only when the tenant has `sprintsEnabled`. When it is off,
+`GET /api/sprints` and `GET /api/backlog` return empty results and every sprint write is `409 sprints_disabled`.
+Any member may write. All sprint writes accept `Idempotency-Key`, take a JSON body (except undo), and record
+`issue_events` (`sprint_added`, `sprint_removed`, `carried_over`) plus an `audit_log` row in the same transaction.
+Event values hold sprint names; `sprint_id` is the sprint the issue was added to, removed from, or carried to.
+A sprint is `active` when today (Asia/Seoul) is within its dates, `planned` before, `closed` after its end date (or when stored as `closed`; no endpoint sets that).
+Names are unique per tenant, case-insensitive.
+
+- `GET /api/sprints` returns `current` (active, newest start first), `upcoming` (by start) and `past` (latest 10 by end date).
+- `POST /api/sprints` body `{name, startDate, endDate}` (`yyyy-MM-dd`, name 1..80 printable characters, end not before start).
+  Errors: `400 invalid_request`, `400 invalid_dates`, `409 name_taken`.
+- `PATCH /api/sprints/{id}` body `{name?, startDate?, endDate?, updatedAt}`: at least one change; `updatedAt` must equal the
+  sprint's current value, else `409 conflict` (reload and retry). Also `400 invalid_dates`, `409 name_taken`, `404 not_found`.
+- `POST /api/sprints/{id}/issues` body `{issueIds}` (1..200 ids, duplicates ignored) adds the issues; an issue in another sprint
+  moves (a `sprint_removed` then a `sprint_added` event); one already in this sprint is `unchanged`. Adding to a sprint
+  that has ended (or is closed) is `409 sprint_ended`; removing from one is allowed.
+  `DELETE` with the same body removes them; issues not in this sprint are `unchanged`. If any id is not an issue of the
+  caller's tenant, or the sprint is not, the whole request is `404 not_found` and nothing changes.
+- `POST /api/sprints/{id}/carry-over` body `{toSprintId}` moves every issue of the sprint whose status is not `done` or
+  `cancelled` to the target in one transaction (`carried_over` event per issue) and stores who did it. `toSprintId` equal to the
+  source is `400 invalid_request`. A target that has ended is `409 sprint_ended`. With nothing unfinished it returns `carryOverId: null` and records nothing.
+- `POST /api/sprints/{id}/carry-over/{carryOverId}/undo` moves the same issues back, only if every one is still in the target
+  sprint, none has an `issue_events` row newer than the carry-over, none is now `done`/`cancelled`, and none was deleted:
+  otherwise `409 conflict` with `issueIds` listing the blocking issues, and a second undo is `409 already_undone`. Strict rule: an older carry-over cannot be undone once a later carry-over
+  or undo touched the same issues. Records `carried_over` events in reverse.
+- `GET /api/backlog`: open issues whose status is not `done`/`cancelled` and that are in no sprint. Optional `projectId`,
+  `person` (alias `assignee`), `status` (comma list of `todo`, `in_progress`, `in_review`, else `400 invalid_status`),
+  `page` (1..10000) and `pageSize` (1..200, default 50), else `400 invalid_request`. Sort like the issue list.
+
 `GET /api/milestones` counts exclude `cancelled` issues in `issueCount`; `doneCount` counts status `done`.
 `color` of a label is 6 hex characters without `#`, as GitHub sends it.
 
@@ -172,7 +209,8 @@ tenant transaction (no cache). Rules:
   the two middle values). People are ordered by open issue count, then login.
 - `projects[].byStatus` counts all issues of the project's repositories, closed ones included, with no time window.
   An issue in two projects counts in both.
-- `sprint` is the active sprint with the latest start date, or `null` when sprints are disabled or none is active.
+- `sprint` is the sprint, not stored as `closed`, whose dates contain today (Asia/Seoul); with overlapping sprints the one with
+  the latest start date (then id). `null` when sprints are disabled or none is active. The stored `state` is ignored except `closed`.
   `startDate`/`endDate` are `yyyy-MM-dd`; `daysLeft` counts from today in Asia/Seoul and is never negative.
 - `milestones` is always `null` until sync provides milestones.
 - `attention.actionItemsWithoutIssue` covers every meeting action item without an issue (no date window);
@@ -257,6 +295,21 @@ type Overview = {
     snippet: string | null;             // first 80 chars of a comment
   }[];
 };
+```
+
+```ts
+type Sprint = {
+  id: string; name: string; startDate: string; endDate: string;   // yyyy-MM-dd
+  state: "planned" | "active" | "closed";
+  issueCount: number; doneCount: number; unfinishedCount: number; // cancelled issues are not counted
+  createdBy: string | null; createdAt: string; updatedAt: string; // updatedAt goes back in PATCH
+};
+type SprintList = { current: Sprint[]; upcoming: Sprint[]; past: Sprint[] };
+type SprintIssuesResult = { sprint: Sprint; added: number; moved: number; removed: number; unchanged: number };
+type CarryOverResult = {
+  carryOverId: string | null; fromSprint: Sprint; toSprint: Sprint; movedCount: number; issueIds: string[];
+};
+type BacklogPage = { items: BoardIssue[]; total: number; page: number; pageSize: number };
 ```
 
 ```ts

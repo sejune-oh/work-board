@@ -78,7 +78,7 @@ public static class TenantsEndpoints
     }
 
     // Rejects control and invisible format characters (zero-width, bidi overrides) and broken surrogates.
-    private static bool IsPrintable(string name)
+    internal static bool IsPrintable(string name)
     {
         for (var i = 0; i < name.Length;)
         {

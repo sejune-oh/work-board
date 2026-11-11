@@ -55,6 +55,7 @@ first calls `select set_config('app.tenant_id', @tenantId, true)`. RLS policies 
 | GET | `/api/overview` | dev user | `Overview` |
 | GET | `/api/issues` | dev user | `BoardIssue[]` |
 | GET | `/api/issues/{id}` | dev user | `IssueDetail` or 404 |
+| GET | `/api/milestones` | dev user | `Milestone[]`, open first, then `dueOn` ascending (nulls last) |
 | GET | `/api/meeting-notes` | dev user | `MeetingNoteSummary[]` |
 | GET | `/api/meeting-notes/{id}` | dev user | `MeetingNote` or 404 |
 | GET | `/api/search?q=` | dev user | `SearchResult` |
@@ -109,6 +110,9 @@ Derived status, first matching rule wins (view `issue_status`):
 
 `cancelled` has category `done` but is excluded from every progress count (overview projects, sprint, people,
 `doneThisWeek`, urgent attention and action-item lists) and from milestone counts.
+
+`GET /api/milestones` counts exclude `cancelled` issues in `issueCount`; `doneCount` counts status `done`.
+`color` of a label is 6 hex characters without `#`, as GitHub sends it.
 
 `GET /api/meeting-notes` accepts optional `projectId`. Sort: `heldAt` descending.
 
@@ -269,6 +273,16 @@ type BoardIssue = {
   priority: "urgent" | "high" | "normal" | "low" | null;
   updatedAt: string;         // github_updated_at
   closedAt: string | null;
+  htmlUrl: string | null;
+  labels: { id: string; name: string; color: string | null }[];   // sorted by name
+  milestone: { id: string; title: string; dueOn: string | null } | null;
+};
+
+type Milestone = {
+  id: string; repository: { id: string; name: string }; number: number; title: string;
+  state: "open" | "closed"; dueOn: string | null; htmlUrl: string | null;
+  issueCount: number;   // excludes cancelled issues
+  doneCount: number;    // issues with status done
 };
 
 type IssueDetail = BoardIssue & {
@@ -276,7 +290,7 @@ type IssueDetail = BoardIssue & {
   parent: { id: string; number: number; title: string } | null;
   children: { id: string; repositoryName: string; number: number; title: string; status: Status }[];
   pullRequests: { id: string; number: number; title: string; state: "open" | "closed" | "merged";
-                  draft: boolean; reviewRequested: boolean }[];
+                  draft: boolean; reviewRequested: boolean; htmlUrl: string | null }[];
   comments: { id: string; author: { githubLogin: string | null; displayName: string | null };
               body: string; createdAt: string }[];   // oldest first
   meetingNotes: { id: string; title: string; heldAt: string }[];  // notes with an action item linked to this issue

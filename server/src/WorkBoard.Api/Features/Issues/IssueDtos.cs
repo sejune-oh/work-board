@@ -6,6 +6,10 @@ public sealed record AssigneeDto(long GithubUserId, string GithubLogin, string? 
 
 public sealed record SprintRef(Guid Id, string Name);
 
+public sealed record LabelDto(Guid Id, string Name, string? Color);
+
+public sealed record MilestoneRef(Guid Id, string Title, DateTime? DueOn);
+
 public record BoardIssue(
     Guid Id,
     RepositoryRef Repository,
@@ -24,13 +28,16 @@ public record BoardIssue(
     string? Size,
     string? Priority,
     DateTime UpdatedAt,
-    DateTime? ClosedAt);
+    DateTime? ClosedAt,
+    string? HtmlUrl,
+    IReadOnlyList<LabelDto> Labels,
+    MilestoneRef? Milestone);
 
 public sealed record ParentRef(Guid Id, int Number, string Title);
 
 public sealed record ChildIssue(Guid Id, string RepositoryName, int Number, string Title, string Status);
 
-public sealed record PullRequestDto(Guid Id, int Number, string Title, string State, bool Draft, bool ReviewRequested);
+public sealed record PullRequestDto(Guid Id, int Number, string Title, string State, bool Draft, bool ReviewRequested, string? HtmlUrl);
 
 public sealed record CommentAuthor(string? GithubLogin, string? DisplayName);
 

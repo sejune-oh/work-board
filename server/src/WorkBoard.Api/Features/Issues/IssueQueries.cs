@@ -59,12 +59,14 @@ public static class IssueQueries
                      where ipr.issue_id = i.id and p.state = 'open')::int as open_pull_request_count,
                    (select count(*) from comments c where c.issue_id = i.id)::int as comment_count,
                    i.parent_issue_id, bf.sprint_id, sp.name as sprint_name, bf.size, bf.priority,
-                   i.github_updated_at as updated_at, i.closed_at
+                   i.github_updated_at as updated_at, i.closed_at, i.html_url,
+                   i.milestone_id, ms.title as milestone_title, ms.due_on as milestone_due_on
               from issues i
               join repositories r on r.id = i.repository_id
               join issue_status st on st.issue_id = i.id
               left join board_fields bf on bf.issue_id = i.id
               left join sprints sp on sp.id = bf.sprint_id
+              left join milestones ms on ms.id = i.milestone_id
              where {where}
              order by i.github_updated_at desc, i.id
             """, param);
@@ -87,6 +89,14 @@ public static class IssueQueries
              order by pr.project_id
             """, new { ids })).ToLookup(p => p.IssueId, p => p.ProjectId);
 
+        var labels = (await s.QueryAsync<LabelRow>("""
+            select il.issue_id, l.id, l.name, l.color
+              from issue_labels il
+              join labels l on l.id = il.label_id
+             where il.issue_id = any(@ids)
+             order by l.name, l.id
+            """, new { ids })).ToLookup(l => l.IssueId);
+
         return rows.Select(r => new BoardIssue(
             r.Id,
             new RepositoryRef(r.RepositoryId, r.RepositoryName),
@@ -107,7 +117,10 @@ public static class IssueQueries
             r.Size,
             r.Priority,
             r.UpdatedAt,
-            r.ClosedAt)).ToList();
+            r.ClosedAt,
+            r.HtmlUrl,
+            labels[r.Id].Select(l => new LabelDto(l.Id, l.Name, l.Color)).ToList(),
+            r.MilestoneId is { } milestoneId ? new MilestoneRef(milestoneId, r.MilestoneTitle ?? "", r.MilestoneDueOn) : null)).ToList();
     }
 
     private sealed class IssueRow
@@ -130,6 +143,18 @@ public static class IssueQueries
         public string? Priority { get; set; }
         public DateTime UpdatedAt { get; set; }
         public DateTime? ClosedAt { get; set; }
+        public string? HtmlUrl { get; set; }
+        public Guid? MilestoneId { get; set; }
+        public string? MilestoneTitle { get; set; }
+        public DateTime? MilestoneDueOn { get; set; }
+    }
+
+    private sealed class LabelRow
+    {
+        public Guid IssueId { get; set; }
+        public Guid Id { get; set; }
+        public string Name { get; set; } = "";
+        public string? Color { get; set; }
     }
 
     private sealed class AssigneeRow

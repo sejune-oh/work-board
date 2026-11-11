@@ -53,3 +53,13 @@
 - Supabase 프로젝트의 JWT 서명 방식(JWKS 비대칭 키인지 공유 키인지): 프로젝트를 만들 때 확인하고 #32에 기록
 - `setup_action=request`와 승인 후 동작: 실제 App으로 시험(#34)
 - 로그인 앱과 데이터 앱을 GitHub App 하나로 합칠 수 있는지: Supabase 문서는 OAuth App만 안내하므로 지금은 나눔
+
+## 설치 토큰으로 읽기
+
+`IGitHubSource`(`Infrastructure/GitHub/`)가 설치 토큰으로 GitHub을 읽습니다. DB에는 쓰지 않고 `Source*` 레코드만 돌려주며, 필드는 `issues`, `pull_requests`, `milestones`, `labels`, `comments` 컬럼에 대응합니다.
+
+- 토큰: App JWT로 `POST /app/installations/{id}/access_tokens`를 호출해 받고, 설치 id별로 메모리에만 캐시합니다. 만료 5분 전에 새로 받으며 로그와 DB에 남기지 않습니다. 401을 받으면 캐시를 버리고 한 번 다시 시도합니다.
+- 저장소 목록: `ListRepositoriesAsync` (`GET /installation/repositories`, 페이지 순회)
+- 저장소 읽기: `ReadRepositoryAsync(installationId, owner, name, since)`. `since`가 null이면 전체입니다. 이슈, PR, 댓글은 `updatedAt` 오름차순이며 `since` 이후 것만 담깁니다. 마일스톤과 라벨은 항상 전체 목록입니다.
+- GraphQL: 이슈(하위 이슈 부모, 이슈 유형, 라벨, 담당자), PR(리뷰 요청, `closingIssuesReferences`). GraphQL에 DB id가 없는 마일스톤, 라벨, 댓글은 REST로 읽습니다.
+- 속도 제한: 결과의 `RateLimit`(남은 횟수, 초기화 시각). 실패는 `GitHubSourceException`의 `Kind`(Unauthorized, Forbidden, NotFound, RateLimited, GraphQl, Unexpected)로 구분합니다.

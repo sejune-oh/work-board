@@ -1,0 +1,7 @@
+{"data":{"rateLimit":{"remaining":4980,"resetAt":"2026-01-01T01:00:00Z"},
+"repository":{"databaseId":1001,"nameWithOwner":"octo-org/hello","url":"https://github.com/octo-org/hello","isArchived":false,
+"issues":{"pageInfo":{"hasNextPage":false,"endCursor":"c2"},"nodes":[
+{"databaseId":5002,"id":"I_kwA2","number":2,"title":"Sub issue","body":null,"state":"OPEN","stateReason":null,
+ "createdAt":"2026-01-02T00:00:00Z","closedAt":null,"updatedAt":"2026-01-04T00:00:00Z","url":"https://github.com/octo-org/hello/issues/2",
+ "issueType":null,"author":null,"milestone":null,"labels":{"nodes":[]},"assignees":{"nodes":[]},
+ "parent":{"databaseId":5001,"number":1}}]}}}}

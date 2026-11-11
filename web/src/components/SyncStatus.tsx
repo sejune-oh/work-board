@@ -12,7 +12,7 @@ const RUNNING_POLL_MS = 5_000;
 const NOTICE_MS = 6_000;
 
 /**
- * "Synced 3 min ago" for the top bar, refreshed every minute (every 5 s while a sync runs).
+ * "Synced 3 min ago" for the top bar, refreshed every minute (every 5 s while a sync runs) while the tab is visible.
  * Members see nothing until GitHub is connected; admins get a link to settings and a "sync now" button.
  */
 export function SyncStatus({ className = "" }: { className?: string }) {
@@ -26,8 +26,17 @@ export function SyncStatus({ className = "" }: { className?: string }) {
   const running = data?.running === true || starting;
 
   useEffect(() => {
-    const id = setInterval(reload, running ? RUNNING_POLL_MS : IDLE_POLL_MS);
-    return () => clearInterval(id);
+    const id = setInterval(() => {
+      if (!document.hidden) reload();
+    }, running ? RUNNING_POLL_MS : IDLE_POLL_MS);
+    const onVisible = () => {
+      if (!document.hidden) reload();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, [reload, running]);
 
   useEffect(() => {
@@ -77,8 +86,9 @@ export function SyncStatus({ className = "" }: { className?: string }) {
   let title: string | undefined;
   if (data.running) label = s.running;
   else if (failed) {
-    label = s.failed;
-    title = data.lastSyncedAt ? s.failedTitle(fmt.relativeTime(data.lastSyncedAt), reason) : reason;
+    // lastSyncedAt is the last successful sync, not the failed attempt.
+    label = data.lastSyncedAt ? s.failedSince(fmt.relativeTime(data.lastSyncedAt)) : s.failed;
+    title = reason;
   } else if (data.lastSyncedAt) label = s.syncedAgo(fmt.relativeTime(data.lastSyncedAt));
   else label = s.never;
 

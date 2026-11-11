@@ -59,7 +59,7 @@ export const en: Dict = {
     never: "Not synced yet",
     running: "Syncing",
     failed: "Sync failed",
-    failedTitle: (when, reason) => `Sync failed ${when}: ${reason}`,
+    failedSince: (when) => `Sync failed · last success ${when}`,
     unknownReason: "reason unknown",
     notConnected: "GitHub not connected",
     connect: "Connect in settings",
@@ -343,6 +343,7 @@ export const en: Dict = {
       noDue: "No due date",
       milestonesMore: (n) => `${n} closed ${n === 1 ? "milestone is" : "milestones are"} on GitHub.`,
       milestonesAllClosed: "No open milestones.",
+      milestonesError: "Couldn't load milestones. Try refreshing in a moment.",
     },
     sprint: {
       daysLeft: (n: number) => (n === 1 ? " day left" : " days left"),

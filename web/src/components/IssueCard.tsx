@@ -1,7 +1,7 @@
 "use client";
 
 import { useFormat, useT } from "@/lib/i18n";
-import { STALE_DAYS, daysSince, isCanceled, isStale } from "@/lib/labels";
+import { STALE_DAYS, daysSince, isCanceled, isStale, safeHttpUrl } from "@/lib/labels";
 import { useSettings } from "@/lib/me";
 import type { BoardIssue } from "@/lib/types";
 import { Flag, GitHubLink, LabelChips, MilestoneTag, StatusBadge } from "./ui";
@@ -28,6 +28,7 @@ export function IssueCard({ issue, showAssignee = true, showStatus = false }: Pr
   const unassigned = issue.state === "open" && issue.assignees.length === 0;
   const fade = stale ? "opacity-55" : "";
   const ref = `${issue.repository.name} #${issue.number}`;
+  const githubUrl = safeHttpUrl(issue.htmlUrl);
   const hasMeta = issue.labels.length > 0 || issue.milestone !== null;
 
   // The GitHub link sits beside the card button, not inside it, so the card stays one click target.
@@ -41,7 +42,7 @@ export function IssueCard({ issue, showAssignee = true, showStatus = false }: Pr
         done ? "shadow-[0_0_0_1px_var(--wb-ring)]" : "bg-surface shadow-elev-1"
       } ${urgent && issue.status === "todo" ? "gutter" : ""}`}
     >
-      <div className={`flex min-h-[22px] items-center gap-2 text-meta text-muted ${issue.htmlUrl ? "pr-7" : ""} ${fade}`}>
+      <div className={`flex min-h-[22px] items-center gap-2 text-meta text-muted ${githubUrl ? "pr-7" : ""} ${fade}`}>
         <span className="truncate">
           <span className="font-mono">{ref}</span>
           {issue.issueType && ` · ${fmt.issueType(issue.issueType)}`}
@@ -94,9 +95,9 @@ export function IssueCard({ issue, showAssignee = true, showStatus = false }: Pr
         </span>
       </div>
     </button>
-    {issue.htmlUrl && (
+    {githubUrl && (
       <GitHubLink
-        href={issue.htmlUrl}
+        href={githubUrl}
         label={t.github.openRef(ref)}
         className="absolute right-2.5 top-2.5 grid h-7 w-7 place-items-center rounded-control text-muted transition-colors duration-[120ms] ease-tool hover:bg-hover hover:text-ink"
       />

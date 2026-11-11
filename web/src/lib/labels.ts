@@ -88,3 +88,14 @@ export function labelStyle(color: string | null): { background: string; color: s
   const withDark = (l + 0.05) / (luminance(LABEL_DARK_TEXT) + 0.05);
   return { background: `#${color}`, color: `#${withDark >= withLight ? LABEL_DARK_TEXT : LABEL_LIGHT_TEXT}` };
 }
+
+/** The URL if it is an absolute http(s) URL, else `null`, so data from the API never becomes a `javascript:` link. */
+export function safeHttpUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === "https:" || parsed.protocol === "http:" ? parsed.href : null;
+  } catch {
+    return null;
+  }
+}

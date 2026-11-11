@@ -8,7 +8,7 @@ import { ROW_ATTR } from "@/components/useShortcuts";
 import { Avatar, Card, Dot, ExternalIcon, Flag, Kbd, MilestoneIcon, ProgressBar, StatusBadge, progressLine } from "@/components/ui";
 import { MILESTONES_PATH, useApi } from "@/lib/api";
 import { useFormat, useT } from "@/lib/i18n";
-import { STATUS_DOT, daysSince, percent } from "@/lib/labels";
+import { STATUS_DOT, daysSince, percent, safeHttpUrl } from "@/lib/labels";
 import { useMe, useSettings } from "@/lib/me";
 import {
   type Clause,
@@ -613,7 +613,15 @@ function Milestones() {
   const fmt = useFormat();
   if (!data && !error) return null;
 
-  if (!data || data.length === 0)
+  if (!data)
+    return (
+      <p role="alert" className="mx-5 mb-5 mt-1 border-l-2 border-ink-soft px-3 py-1 text-small text-ink">
+        <b className="mr-1.5 font-semibold">{pj.milestones}</b>
+        {pj.milestonesError}
+      </p>
+    );
+
+  if (data.length === 0)
     return (
       <p className="mx-5 mb-5 mt-1 rounded-item border border-dashed border-rule-strong px-4 py-3 text-small text-muted">
         <b className="mr-1.5 font-semibold text-ink-soft">{pj.milestones}</b>
@@ -637,6 +645,7 @@ function Milestones() {
         {open.slice(0, MILESTONES_SHOWN).map((m) => {
           const pct = percent(m.doneCount, m.issueCount);
           const overdue = m.dueOn !== null && Date.parse(m.dueOn) < now;
+          const url = safeHttpUrl(m.htmlUrl);
           const title = (
             <>
               <span className="truncate text-ui font-medium">{m.title}</span>
@@ -646,9 +655,9 @@ function Milestones() {
           return (
             <li key={m.id} className="relative py-3 after:absolute after:inset-x-0 after:top-0 after:h-px after:bg-rule first:after:hidden">
               <div className="mb-2 flex min-w-0 items-center gap-2">
-                {m.htmlUrl ? (
+                {url ? (
                   <a
-                    href={m.htmlUrl}
+                    href={url}
                     target="_blank"
                     rel="noopener noreferrer"
                     title={t.github.newTab}

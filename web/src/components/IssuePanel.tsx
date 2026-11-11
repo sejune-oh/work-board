@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef } from "react";
 import { useApi } from "@/lib/api";
 import { useFormat, useT } from "@/lib/i18n";
-import { daysSince, isStale } from "@/lib/labels";
+import { daysSince, isStale, safeHttpUrl } from "@/lib/labels";
 import { useSettings } from "@/lib/me";
 import type { IssueDetail } from "@/lib/types";
 import { ErrorBox, Loading } from "./Feedback";
@@ -157,11 +157,11 @@ export function IssuePanel() {
               {shown.body && <p className="whitespace-pre-wrap text-body text-ink-soft">{shown.body}</p>}
 
               <Section title={p.pullRequests} count={shown.pullRequests.length}>
-                {shown.pullRequests.map((pr) => (
+                {shown.pullRequests.map((pr) => ({ pr, url: safeHttpUrl(pr.htmlUrl) })).map(({ pr, url }) => (
                   <li key={pr.id} className="flex justify-between gap-3 py-2 text-ui">
-                    {pr.htmlUrl ? (
+                    {url ? (
                       <a
-                        href={pr.htmlUrl}
+                        href={url}
                         target="_blank"
                         rel="noopener noreferrer"
                         aria-label={`${p.openPr(pr.number)}: ${pr.title}`}

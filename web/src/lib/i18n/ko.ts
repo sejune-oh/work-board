@@ -59,7 +59,7 @@ export const ko = {
     never: "아직 동기화 전",
     running: "동기화하는 중",
     failed: "동기화 실패",
-    failedTitle: (when: string, reason: string) => `${when} 동기화 실패: ${reason}`,
+    failedSince: (when: string) => `동기화 실패 · 마지막 성공 ${when}`,
     unknownReason: "이유를 알 수 없습니다",
     notConnected: "GitHub 연결 전",
     connect: "설정에서 연결",
@@ -342,6 +342,7 @@ export const ko = {
       noDue: "마감일 없음",
       milestonesMore: (n: number) => `닫힌 마일스톤 ${n}개는 GitHub에서 볼 수 있습니다.`,
       milestonesAllClosed: "열린 마일스톤이 없습니다.",
+      milestonesError: "마일스톤을 불러오지 못했습니다. 잠시 뒤 새로 고침해 보세요.",
     },
     sprint: {
       daysLeft: (() => "일 남음") as (n: number) => string,

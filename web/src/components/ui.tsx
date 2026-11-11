@@ -1,7 +1,7 @@
 "use client";
 
 import { type Dict, useFormat, useT } from "@/lib/i18n";
-import { STATUS_DOT, initial, labelStyle, percent } from "@/lib/labels";
+import { STATUS_DOT, initial, labelStyle, percent, safeHttpUrl } from "@/lib/labels";
 import type { IssueLabel, Status, StatusCounts } from "@/lib/types";
 
 type Person = { displayName: string | null; githubLogin: string | null };
@@ -155,7 +155,7 @@ export function ExternalIcon({ size = 14 }: { size?: number }) {
   );
 }
 
-/** Link to the original on GitHub, always in a new tab. */
+/** Link to the original on GitHub, always in a new tab. Renders nothing unless `href` is http(s). */
 export function GitHubLink({
   href,
   label,
@@ -168,8 +168,10 @@ export function GitHubLink({
   children?: React.ReactNode;
 }) {
   const t = useT();
+  const safe = safeHttpUrl(href);
+  if (!safe) return null;
   return (
-    <a href={href} target="_blank" rel="noopener noreferrer" aria-label={label} title={children ? t.github.newTab : label} className={className}>
+    <a href={safe} target="_blank" rel="noopener noreferrer" aria-label={label} title={children ? t.github.newTab : label} className={className}>
       {children}
       <ExternalIcon />
     </a>

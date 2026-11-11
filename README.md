@@ -53,6 +53,18 @@ cp appsettings.Local.example.json appsettings.Local.json   # 값을 채운 뒤 A
 
 웹은 빌드 시점 공개 값 `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`를 씁니다.
 
+## GitHub App 설정 (API)
+
+저장소 연결(`POST /api/connections/github`)에 씁니다. 같은 `appsettings.Local.json`의 `GitHub:App` 항목이고, 배포 환경에서는 `GitHub__App__*` 환경 변수입니다. 비어 있으면 그 엔드포인트만 `503 github_app_not_configured`를 돌려주고 나머지는 동작합니다.
+
+| 이름 | 내용 |
+| --- | --- |
+| `GitHub__App__AppId` | App ID(숫자). App JWT의 발급자 |
+| `GitHub__App__ClientId` | App의 Client ID |
+| `GitHub__App__ClientSecret` | App의 Client secret. 설치 후 받은 `code`를 사용자 토큰으로 바꿀 때만 사용 |
+| `GitHub__App__PrivateKeyPath` | 내려받은 `.pem` 경로. 절대 경로 또는 API 폴더 기준 상대 경로. `*.pem`은 `.gitignore`에 있음 |
+| `GitHub__App__Slug` | App 주소의 이름. API는 쓰지 않고 화면의 설치 링크용 |
+
 샘플 사용자: `haneul-dev`(acme-health 관리자), `other-org-dev`(globex-labs). 두 번째 사용자로 바꾸면 첫 번째 회사의 데이터가 하나도 보이지 않아야 합니다.
 
 DB를 처음 상태로 되돌리기: `docker compose down -v && docker compose up -d`

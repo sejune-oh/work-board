@@ -11,6 +11,7 @@ using WorkBoard.Api.Features.Projects;
 using WorkBoard.Api.Features.Search;
 using WorkBoard.Api.Features.Tenants;
 using WorkBoard.Api.Infrastructure.Data;
+using WorkBoard.Api.Infrastructure.GitHub;
 using WorkBoard.Api.Infrastructure.Identity;
 
 DefaultTypeMap.MatchNamesWithUnderscores = true;
@@ -23,6 +24,7 @@ if (builder.Environment.IsDevelopment())
 
 builder.Services.AddWorkBoardData(builder.Configuration);
 builder.Services.AddWorkBoardAuth(builder.Configuration);
+builder.Services.AddGitHubApp(builder.Configuration);
 builder.Services.AddCors(options => options.AddDefaultPolicy(policy => policy
     .WithOrigins("http://localhost:3000")
     .AllowAnyHeader()

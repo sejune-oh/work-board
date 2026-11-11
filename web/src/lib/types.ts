@@ -43,6 +43,23 @@ export type GithubConnection = {
   disconnectedAt: string | null;
 };
 
+export type ConnectGithubRequest = {
+  code: string;
+  installationId: number;
+};
+
+export type ConnectGithubError =
+  | "invalid_request"
+  | "invalid_code"
+  | "unauthenticated"
+  | "admin_only"
+  | "not_your_account"
+  | "not_your_installation"
+  | "account_connected"
+  | "organization_not_supported"
+  | "github_unavailable"
+  | "github_app_not_configured";
+
 export type Project = {
   id: string;
   name: string;

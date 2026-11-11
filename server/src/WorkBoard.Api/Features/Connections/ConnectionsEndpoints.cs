@@ -13,7 +13,9 @@ public sealed record GithubConnection(
 
 public static class ConnectionsEndpoints
 {
-    public static void MapConnections(this RouteGroupBuilder api) =>
+    public static void MapConnections(this RouteGroupBuilder api)
+    {
+        api.MapConnectGithub();
         api.MapGet("/connections", async (TenantDb db, CancellationToken ct) =>
         {
             var rows = await db.ReadAsync(
@@ -25,4 +27,5 @@ public static class ConnectionsEndpoints
                 ct);
             return rows.ToList();
         });
+    }
 }

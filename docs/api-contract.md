@@ -163,7 +163,7 @@ that fails does not stop the others, except on `RateLimited` and `Unauthorized`,
   "lastError": "short text" | null, "rateLimitRemaining": 4990 | null, "nextRunAt": "ISO" | null }
 ```
 `connected` is false when the tenant has no active connection with an installation; the other fields are then null/false.
-`lastSyncedAt` is the latest repository sync time; `lastResult`, `lastError` and `rateLimitRemaining` come from the most
+`lastSyncedAt` is the time of the most recent successful repository sync (not the last attempt); `lastResult`, `lastError` and `rateLimitRemaining` come from the most
 recent finished run. `nextRunAt` is null while the periodic loop is off.
 
 `POST /api/sync/run` (admin only) starts a run in the background -> `202 { "started": true }`. Errors, checked in this

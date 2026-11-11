@@ -82,17 +82,29 @@ public sealed class MirrorWriter([FromKeyedServices(DataKeys.Sync)] NpgsqlDataSo
 
     private static DateTime? Utc(DateTimeOffset? value) => value?.UtcDateTime;
 
-    private static async Task<Guid> UpsertRepositoryAsync(Db db, Guid connectionId, SourceRepository repo) =>
-        await db.Scalar<Guid>("""
+    // Another row of the connection that still holds the incoming name (a repository deleted and recreated, or
+    // renamed in the same list) is renamed out of the way and archived; it is rewritten if its own upsert follows.
+    private static async Task<Guid> UpsertRepositoryAsync(Db db, Guid connectionId, SourceRepository repo)
+    {
+        var args = new
+        {
+            connectionId, githubId = repo.Id, name = repo.Name, fullName = repo.FullName, htmlUrl = repo.HtmlUrl, archived = repo.Archived,
+        };
+        await db.Exec("""
+            update repositories
+               set name = name || '#' || github_repo_id, full_name = full_name || '#' || github_repo_id, archived = true
+             where tenant_id = @tenantId and connection_id = @connectionId and github_repo_id <> @githubId
+               and (name = @name or full_name = @fullName)
+            """, args);
+        return await db.Scalar<Guid>("""
             insert into repositories (tenant_id, connection_id, github_repo_id, name, full_name, html_url, archived)
             values (@tenantId, @connectionId, @githubId, @name, @fullName, @htmlUrl, @archived)
             on conflict (tenant_id, github_repo_id) do update
-               set name = excluded.name, full_name = excluded.full_name, html_url = excluded.html_url, archived = excluded.archived
+               set connection_id = excluded.connection_id, name = excluded.name, full_name = excluded.full_name,
+                   html_url = excluded.html_url, archived = excluded.archived
             returning id
-            """, new
-        {
-            connectionId, githubId = repo.Id, name = repo.Name, fullName = repo.FullName, htmlUrl = repo.HtmlUrl, archived = repo.Archived,
-        });
+            """, args);
+    }
 
     private static async Task UpsertUsersAsync(Db db, RepositorySnapshot snapshot)
     {

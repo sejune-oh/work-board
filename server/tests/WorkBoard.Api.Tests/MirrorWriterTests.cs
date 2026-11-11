@@ -275,6 +275,64 @@ public class MirrorWriterTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.Equal(1, await t.ScalarAsync<long>("select count(*) from issue_labels where tenant_id = @tid", new { tid = t.Id }));
     }
 
+    private static SourceRepository SrcRepo(long id, string owner, string name) =>
+        new(id, name, $"{owner}/{name}", null, false);
+
+    private static async Task<string[]> RepoNamesAsync(TestTenant t) =>
+        (await t.QueryAsync("select name, archived from repositories where tenant_id = @tid order by github_repo_id", new { tid = t.Id }))
+        .Select(r => $"{(string)r.name}:{(bool)r.archived}").ToArray();
+
+    [DbFact]
+    public async Task A_repository_recreated_with_the_same_name_replaces_the_old_row()
+    {
+        await using var t = await TestTenant.CreateAsync(_factory);
+        var owner = $"org-{t.Suffix}";
+        var (oldId, newId) = (TestTenant.NextId(), TestTenant.NextId());
+        await Writer().UpsertRepositoriesAsync(t.Id, t.ConnectionId, [SrcRepo(oldId, owner, "foo")], default);
+
+        await Writer().UpsertRepositoriesAsync(t.Id, t.ConnectionId, [SrcRepo(newId, owner, "foo")], default);
+
+        Assert.Equal([$"foo#{oldId}:True", "foo:False"], await RepoNamesAsync(t));
+    }
+
+    [DbFact]
+    public async Task A_rename_and_a_new_repository_with_the_old_name_fit_in_one_list_in_either_order()
+    {
+        await using var t = await TestTenant.CreateAsync(_factory);
+        var owner = $"org-{t.Suffix}";
+        var (a, b) = (TestTenant.NextId(), TestTenant.NextId());
+        await Writer().UpsertRepositoriesAsync(t.Id, t.ConnectionId, [SrcRepo(a, owner, "foo")], default);
+
+        await Writer().UpsertRepositoriesAsync(t.Id, t.ConnectionId, [SrcRepo(b, owner, "foo"), SrcRepo(a, owner, "bar")], default);
+
+        Assert.Equal(["bar:False", "foo:False"], await RepoNamesAsync(t));
+        var (c, d) = (TestTenant.NextId(), TestTenant.NextId());
+        await Writer().UpsertRepositoriesAsync(t.Id, t.ConnectionId, [SrcRepo(c, owner, "x")], default);
+
+        await Writer().UpsertRepositoriesAsync(t.Id, t.ConnectionId, [SrcRepo(c, owner, "y"), SrcRepo(d, owner, "x")], default);
+
+        Assert.Equal(1, await t.ScalarAsync<long>(
+            "select count(*) from repositories where tenant_id = @tid and name = 'x' and not archived", new { tid = t.Id }));
+        Assert.Equal(1, await t.ScalarAsync<long>(
+            "select count(*) from repositories where tenant_id = @tid and name = 'y' and not archived", new { tid = t.Id }));
+    }
+
+    [DbFact]
+    public async Task A_repository_moves_to_another_connection_of_the_tenant()
+    {
+        await using var t = await TestTenant.CreateAsync(_factory);
+        var other = Guid.NewGuid();
+        await t.ExecAsync(
+            "insert into github_connections (id, tenant_id, account_id, account_login, account_type) values (@id, @tid, @account, 'p', 'user')",
+            new { id = other, tid = t.Id, account = TestTenant.NextId() });
+        var id = TestTenant.NextId();
+        await Writer().UpsertRepositoriesAsync(t.Id, t.ConnectionId, [SrcRepo(id, "o", "foo")], default);
+
+        await Writer().UpsertRepositoriesAsync(t.Id, other, [SrcRepo(id, "o", "foo")], default);
+
+        Assert.Equal(other, await t.ScalarAsync<Guid>("select connection_id from repositories where tenant_id = @tid", new { tid = t.Id }));
+    }
+
     [DbFact]
     public async Task A_failure_rolls_the_whole_repository_back()
     {

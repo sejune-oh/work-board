@@ -30,7 +30,7 @@ public sealed class SyncWorker(
 
             while (!ct.IsCancellationRequested)
             {
-                if (app.Value.Configured)
+                if (app.Value.CanReadInstallations)
                     await RunAllAsync(ct);
                 var interval = options.Value.Interval;
                 runner.NextRunAt = time.GetUtcNow() + interval;

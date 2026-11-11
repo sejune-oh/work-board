@@ -47,14 +47,14 @@ public class SyncEndpointTests : IClassFixture<WebApplicationFactory<Program>>
 
     public SyncEndpointTests(WebApplicationFactory<Program> factory) => _factory = factory;
 
-    private HttpClient Client(FakeSource fake, string login, bool configured = true) =>
+    private HttpClient Client(FakeSource fake, string login, bool configured = true, string clientSecret = "secret") =>
         _factory.WithWebHostBuilder(b =>
         {
             b.ConfigureAppConfiguration((_, cfg) => cfg.AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["GitHub:App:AppId"] = configured ? "123" : "0",
                 ["GitHub:App:ClientId"] = configured ? "client" : "",
-                ["GitHub:App:ClientSecret"] = configured ? "secret" : "",
+                ["GitHub:App:ClientSecret"] = configured ? clientSecret : "",
                 ["GitHub:App:PrivateKeyPath"] = configured ? "unused.pem" : "",
                 ["Sync:Enabled"] = "false",
             }));
@@ -165,6 +165,38 @@ public class SyncEndpointTests : IClassFixture<WebApplicationFactory<Program>>
 
         Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
         Assert.Equal("github_app_not_configured", await ErrorAsync(response));
+    }
+
+    [DbFact]
+    public async Task Run_does_not_need_the_client_secret()
+    {
+        await using var t = await TestTenant.CreateAsync(_factory);
+        await ConnectAsync(t);
+        var (admin, _) = await AdminAsync(t);
+        var client = Client(new FakeSource(), admin, clientSecret: "");
+
+        var response = await client.PostAsync("/api/sync/run", null);
+        await WaitIdleAsync(client);
+
+        Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
+    }
+
+    [DbFact]
+    public async Task A_recreated_repository_does_not_fail_the_run()
+    {
+        await using var t = await TestTenant.CreateAsync(_factory);
+        await ConnectAsync(t);
+        var (admin, _) = await AdminAsync(t);
+        var fake = new FakeSource { Repositories = [Repo(t, "api")] };
+        var client = Client(fake, admin);
+        await client.PostAsync("/api/sync/run", null);
+        await WaitIdleAsync(client);
+
+        fake.Repositories = [Repo(t, "api")];
+        await client.PostAsync("/api/sync/run", null);
+        await WaitIdleAsync(client);
+
+        Assert.Equal("ok", (await StatusAsync(client)).GetProperty("lastResult").GetString());
     }
 
     [DbFact]

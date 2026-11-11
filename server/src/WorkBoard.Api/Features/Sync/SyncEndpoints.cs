@@ -56,7 +56,7 @@ public static class SyncEndpoints
         var caller = user.Identity;
         if (caller.Member.Role != "admin")
             return Error(StatusCodes.Status403Forbidden, "admin_only");
-        if (!app.Value.Configured)
+        if (!app.Value.CanReadInstallations)
             return Error(StatusCodes.Status503ServiceUnavailable, "github_app_not_configured");
 
         await using (var conn = await sync.OpenConnectionAsync(ct))

@@ -133,6 +133,70 @@ public class MigratorTests
         Assert.Contains("0001_x", ex.Message);
     }
 
+    [DbFact]
+    public async Task Database_created_before_the_tenant_creator_column_gets_it()
+    {
+        await using var db = await ScratchDb.CreateAsync();
+        var migrations = EmbeddedSql.Migrations().OrderBy(m => m.Name, StringComparer.Ordinal).ToList();
+        await db.ExecAsync(migrations[0].Sql);
+        await db.ExecAsync("drop index tenants_created_by; alter table tenants drop column created_by_github_user_id");
+
+        var result = await Real(db).RunAsync();
+
+        Assert.True(result.BaselineAdopted);
+        Assert.True(await db.ScalarAsync<bool>("""
+            select exists (select 1 from information_schema.columns
+                            where table_name = 'tenants' and column_name = 'created_by_github_user_id')
+            """));
+        Assert.True(await db.ScalarAsync<bool>("select to_regclass('public.tenants_created_by') is not null"));
+    }
+
+    [DbFact]
+    public async Task Renaming_a_repository_renames_its_full_name()
+    {
+        await using var db = await ScratchDb.CreateAsync();
+        await Real(db).RunAsync();
+        await db.ExecAsync("""
+            insert into tenants (id, name) values ('10000000-0000-0000-0000-0000000000bb', 'T');
+            insert into github_connections (id, tenant_id, account_id, account_login, account_type)
+              values ('a0000000-0000-0000-0000-0000000000bb', '10000000-0000-0000-0000-0000000000bb', 7, 'octo', 'user');
+            insert into repositories (id, tenant_id, connection_id, github_repo_id, name)
+              values ('30000000-0000-0000-0000-0000000000bb', '10000000-0000-0000-0000-0000000000bb', 'a0000000-0000-0000-0000-0000000000bb', 1, 'old');
+            update repositories set name = 'new' where id = '30000000-0000-0000-0000-0000000000bb';
+            insert into repositories (tenant_id, connection_id, github_repo_id, name)
+              values ('10000000-0000-0000-0000-0000000000bb', 'a0000000-0000-0000-0000-0000000000bb', 2, 'old');
+            update repositories set name = 'other', full_name = 'someone/else' where github_repo_id = 2;
+            """);
+
+        Assert.Equal("octo/new", await db.ScalarAsync<string>("select full_name from repositories where github_repo_id = 1"));
+        Assert.Equal("someone/else", await db.ScalarAsync<string>("select full_name from repositories where github_repo_id = 2"));
+    }
+
+    [DbFact]
+    public async Task Labels_upsert_by_github_id_and_can_swap_names()
+    {
+        await using var db = await ScratchDb.CreateAsync();
+        await Real(db).RunAsync();
+        await db.ExecAsync("""
+            insert into tenants (id, name) values ('10000000-0000-0000-0000-0000000000cc', 'T');
+            insert into github_connections (id, tenant_id, account_id, account_login, account_type)
+              values ('a0000000-0000-0000-0000-0000000000cc', '10000000-0000-0000-0000-0000000000cc', 8, 'octo', 'user');
+            insert into repositories (id, tenant_id, connection_id, github_repo_id, name)
+              values ('30000000-0000-0000-0000-0000000000cc', '10000000-0000-0000-0000-0000000000cc', 'a0000000-0000-0000-0000-0000000000cc', 1, 'r');
+            insert into labels (tenant_id, repository_id, github_label_id, name)
+              values ('10000000-0000-0000-0000-0000000000cc', '30000000-0000-0000-0000-0000000000cc', 11, 'bug'),
+                     ('10000000-0000-0000-0000-0000000000cc', '30000000-0000-0000-0000-0000000000cc', 12, 'feat');
+            insert into labels (tenant_id, repository_id, github_label_id, name)
+              values ('10000000-0000-0000-0000-0000000000cc', '30000000-0000-0000-0000-0000000000cc', 11, 'feat'),
+                     ('10000000-0000-0000-0000-0000000000cc', '30000000-0000-0000-0000-0000000000cc', 12, 'bug')
+              on conflict (repository_id, github_label_id) do update set name = excluded.name;
+            """);
+
+        Assert.Equal("feat", await db.ScalarAsync<string>("select name from labels where github_label_id = 11"));
+        Assert.Equal("bug", await db.ScalarAsync<string>("select name from labels where github_label_id = 12"));
+        Assert.Equal(2, await db.ScalarAsync<long>("select count(*) from labels"));
+    }
+
     private static async Task<string[]> QueryNames(ScratchDb db)
     {
         await using var conn = new NpgsqlConnection(db.ConnectionString);

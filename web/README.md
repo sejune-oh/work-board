@@ -17,6 +17,7 @@ pnpm build   # out/ 에 정적 파일
 | `NEXT_PUBLIC_API_URL` | `http://localhost:5080` | C# API 주소 |
 | `NEXT_PUBLIC_SUPABASE_URL` | 개발용 사용자 선택 | Supabase 프로젝트 주소 (`https://<ref>.supabase.co`) |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | 개발용 사용자 선택 | Supabase 프로젝트의 anon(public) 키 |
+| `NEXT_PUBLIC_GITHUB_APP_SLUG` | 설정의 "GitHub 연결하기" 버튼을 숨기고 안내 한 줄만 보임 | GitHub App 주소의 이름(`https://github.com/apps/<slug>`) |
 
 로컬에서는 `web/.env.local`에 둡니다(`.env*`는 git에 올라가지 않습니다).
 
@@ -31,3 +32,11 @@ pnpm build   # out/ 에 정적 파일
   토큰 갱신은 `@supabase/supabase-js`가 맡습니다.
 - API 오류에 따라 보이는 화면: `401 unauthenticated` → 로그인 화면, `401 tenant_required` → 회사 고르기,
   `403 no_membership` → "아직 소속된 회사가 없습니다".
+
+## GitHub 연결
+
+- GitHub App의 Setup URL(설치 뒤 돌아올 주소)을 `<사이트 주소>/connect/github`로 두고
+  "Request user authorization (OAuth) during installation"을 켭니다(로컬은 `http://localhost:3000/connect/github`).
+- 관리자가 설정에서 "GitHub 연결하기"를 누르면 GitHub 설치 화면으로 갑니다. 돌아온 `/connect/github` 화면이
+  `code`, `installation_id`를 `POST /api/connections/github`로 한 번 보내고, 끝나면 설정으로 돌아갑니다.
+- 조직 승인 대기(`setup_action=request`)는 아직 지원하지 않는다고 안내합니다.

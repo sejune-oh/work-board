@@ -9,6 +9,7 @@ import { useMe } from "@/lib/me";
 import { AccountMenu } from "./Auth";
 import { IssuePanel } from "./IssuePanel";
 import { LangToggle } from "./LangToggle";
+import { SyncStatus } from "./SyncStatus";
 import { ThemeToggle } from "./ThemeToggle";
 import { Kbd } from "./ui";
 import { UserPicker } from "./UserPicker";
@@ -102,6 +103,21 @@ function OrgMark({ org, size }: { org: string; size: "sm" | "md" }) {
   );
 }
 
+const NARROW_QUERY = "(max-width: 1023px)";
+
+/** Below 1024px the top bar has no room, so the sync line moves above the page there. */
+function useNarrow(): boolean {
+  const [narrow, setNarrow] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia(NARROW_QUERY);
+    const update = () => setNarrow(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+  return narrow;
+}
+
 /** Marks which edges of the tab strip still have tabs past them (`data-more`), so only those edges fade. */
 function useTabFade() {
   const ref = useRef<HTMLElement>(null);
@@ -148,6 +164,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   useShortcuts(openSearch);
   const tabsRef = useTabFade();
+  const narrow = useNarrow();
 
   return (
     <div className="flex min-h-dvh">
@@ -272,6 +289,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             >
               <SearchIcon size={18} />
             </button>
+            {!narrow && <SyncStatus className="flex shrink-0" />}
             <div className={`flex shrink-0 items-center gap-2 ${searchOpen ? "max-[639px]:hidden" : ""}`}>
               <div className="flex items-center gap-2 min-[1024px]:hidden">
                 <LangToggle />
@@ -298,7 +316,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             })}
           </nav>
         </header>
-        <main className="mx-auto w-full max-w-[1200px] flex-1 px-4 pb-20 pt-6 min-[640px]:px-6 min-[1024px]:px-10 min-[1024px]:pt-8">{children}</main>
+        <main className="mx-auto w-full max-w-[1200px] flex-1 px-4 pb-20 pt-6 min-[640px]:px-6 min-[1024px]:px-10 min-[1024px]:pt-8">
+          {narrow && <SyncStatus className="-mt-2 mb-4 flex justify-between min-[640px]:justify-end" />}
+          {children}
+        </main>
       </div>
 
       <IssuePanel />

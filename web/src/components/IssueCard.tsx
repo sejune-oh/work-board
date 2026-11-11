@@ -4,7 +4,7 @@ import { useFormat, useT } from "@/lib/i18n";
 import { STALE_DAYS, daysSince, isCanceled, isStale } from "@/lib/labels";
 import { useSettings } from "@/lib/me";
 import type { BoardIssue } from "@/lib/types";
-import { Flag, StatusBadge } from "./ui";
+import { Flag, GitHubLink, LabelChips, MilestoneTag, StatusBadge } from "./ui";
 import { ROW_ATTR } from "./useShortcuts";
 import { useIssuePanel } from "./useIssuePanel";
 
@@ -27,8 +27,12 @@ export function IssueCard({ issue, showAssignee = true, showStatus = false }: Pr
   const high = settings.priorityEnabled && issue.priority === "high" && !done;
   const unassigned = issue.state === "open" && issue.assignees.length === 0;
   const fade = stale ? "opacity-55" : "";
+  const ref = `${issue.repository.name} #${issue.number}`;
+  const hasMeta = issue.labels.length > 0 || issue.milestone !== null;
 
+  // The GitHub link sits beside the card button, not inside it, so the card stays one click target.
   return (
+    <div className="relative">
     <button
       type="button"
       {...{ [ROW_ATTR]: "" }}
@@ -37,11 +41,9 @@ export function IssueCard({ issue, showAssignee = true, showStatus = false }: Pr
         done ? "shadow-[0_0_0_1px_var(--wb-ring)]" : "bg-surface shadow-elev-1"
       } ${urgent && issue.status === "todo" ? "gutter" : ""}`}
     >
-      <div className={`flex min-h-[22px] items-center gap-2 text-meta text-muted ${fade}`}>
+      <div className={`flex min-h-[22px] items-center gap-2 text-meta text-muted ${issue.htmlUrl ? "pr-7" : ""} ${fade}`}>
         <span className="truncate">
-          <span className="font-mono">
-            {issue.repository.name} #{issue.number}
-          </span>
+          <span className="font-mono">{ref}</span>
           {issue.issueType && ` · ${fmt.issueType(issue.issueType)}`}
         </span>
         <span className="ml-auto shrink-0">
@@ -54,6 +56,12 @@ export function IssueCard({ issue, showAssignee = true, showStatus = false }: Pr
       >
         {issue.title}
       </p>
+      {hasMeta && (
+        <div className={`mt-2 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 ${done ? "opacity-70" : ""} ${fade}`}>
+          <LabelChips labels={issue.labels} />
+          {issue.milestone && <MilestoneTag title={issue.milestone.title} />}
+        </div>
+      )}
       {showStatus && (
         <div className={`mt-1.5 ${fade}`}>
           <StatusBadge status={issue.status} />
@@ -86,5 +94,13 @@ export function IssueCard({ issue, showAssignee = true, showStatus = false }: Pr
         </span>
       </div>
     </button>
+    {issue.htmlUrl && (
+      <GitHubLink
+        href={issue.htmlUrl}
+        label={t.github.openRef(ref)}
+        className="absolute right-2.5 top-2.5 grid h-7 w-7 place-items-center rounded-control text-muted transition-colors duration-[120ms] ease-tool hover:bg-hover hover:text-ink"
+      />
+    )}
+    </div>
   );
 }

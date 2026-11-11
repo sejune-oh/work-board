@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { AUTH_EVENT, GATE_EVENT, authEnabled, getAccessToken, getTenant, signOutIfStill } from "./auth";
+import type { Milestone, SyncStatus } from "./types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5080";
 const DEV_USER_KEY = "workboard.devUser";
@@ -101,6 +102,22 @@ export function apiGet<T>(path: string): Promise<T> {
 
 export function apiPost<T>(path: string, body: unknown): Promise<T> {
   return request<T>(path, { method: "POST", body });
+}
+
+export const MILESTONES_PATH = "/api/milestones";
+export const SYNC_STATUS_PATH = "/api/sync/status";
+
+export function getMilestones(): Promise<Milestone[]> {
+  return apiGet<Milestone[]>(MILESTONES_PATH);
+}
+
+export function getSyncStatus(): Promise<SyncStatus> {
+  return apiGet<SyncStatus>(SYNC_STATUS_PATH);
+}
+
+/** Admin only. Resolves on 202; rejects with an `ApiError` whose `code` is a `RunSyncError`. */
+export function runSync(): Promise<{ started: true }> {
+  return request<{ started: true }>("/api/sync/run", { method: "POST" });
 }
 
 export type Loadable<T> = { data: T | null; error: ApiError | Error | null; loading: boolean; reload: () => void };

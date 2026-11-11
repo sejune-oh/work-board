@@ -64,3 +64,27 @@ export const CROWDED_MIN = 4;
 export function isCrowded(active: number, teamActive: number[]): boolean {
   return active >= CROWDED_MIN && active >= 2 * median(teamActive);
 }
+
+const LABEL_DARK_TEXT = "101317";
+const LABEL_LIGHT_TEXT = "ffffff";
+
+function luminance(hex: string): number {
+  const [r, g, b] = [0, 2, 4].map((i) => {
+    const c = parseInt(hex.slice(i, i + 2), 16) / 255;
+    return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+/**
+ * A GitHub label's own colour as the chip background, with whichever of near-black or white text
+ * has the higher WCAG contrast on it. The background ignores the theme, so the text does too.
+ * `null` when the colour is missing or malformed; the chip then uses the neutral style.
+ */
+export function labelStyle(color: string | null): { background: string; color: string } | null {
+  if (!color || !/^[0-9a-f]{6}$/i.test(color)) return null;
+  const l = luminance(color);
+  const withLight = (luminance(LABEL_LIGHT_TEXT) + 0.05) / (l + 0.05);
+  const withDark = (l + 0.05) / (luminance(LABEL_DARK_TEXT) + 0.05);
+  return { background: `#${color}`, color: `#${withDark >= withLight ? LABEL_DARK_TEXT : LABEL_LIGHT_TEXT}` };
+}

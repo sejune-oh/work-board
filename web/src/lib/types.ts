@@ -77,6 +77,9 @@ export type Priority = "urgent" | "high" | "normal" | "low";
 
 export type Assignee = { githubUserId: number; githubLogin: string; displayName: string | null };
 
+/** `color` is six hex digits without `#`, as GitHub sends it. */
+export type IssueLabel = { id: string; name: string; color: string | null };
+
 export type BoardIssue = {
   id: string;
   repository: { id: string; name: string };
@@ -96,6 +99,9 @@ export type BoardIssue = {
   priority: Priority | null;
   updatedAt: string;
   closedAt: string | null;
+  htmlUrl: string | null;
+  labels: IssueLabel[];
+  milestone: { id: string; title: string; dueOn: string | null } | null;
 };
 
 export type IssueDetail = BoardIssue & {
@@ -109,6 +115,7 @@ export type IssueDetail = BoardIssue & {
     state: "open" | "closed" | "merged";
     draft: boolean;
     reviewRequested: boolean;
+    htmlUrl: string | null;
   }[];
   comments: {
     id: string;
@@ -223,3 +230,30 @@ export type SearchResult = {
   comments: { issueId: string; issueTitle: string; snippet: string }[];
   meetingNotes: { id: string; title: string }[];
 };
+
+/** `GET /api/milestones`: open first, then by due date (none last). Counts leave out cancelled issues. */
+export type Milestone = {
+  id: string;
+  repository: { id: string; name: string };
+  number: number;
+  title: string;
+  state: "open" | "closed";
+  dueOn: string | null;
+  htmlUrl: string | null;
+  issueCount: number;
+  doneCount: number;
+};
+
+/** `GET /api/sync/status`. With no active GitHub connection, `connected` is false and the rest is empty. */
+export type SyncStatus = {
+  connected: boolean;
+  running: boolean;
+  lastSyncedAt: string | null;
+  lastResult: "ok" | "failed" | null;
+  lastError: string | null;
+  rateLimitRemaining: number | null;
+  nextRunAt: string | null;
+};
+
+/** `POST /api/sync/run` errors (`error` field). */
+export type RunSyncError = "sync_running" | "admin_only" | "not_connected" | "github_app_not_configured";

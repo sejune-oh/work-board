@@ -41,6 +41,37 @@ export const ko = {
   priority: { urgent: "긴급", high: "높음", normal: "보통", low: "낮음" },
   size: { S: "작음", M: "보통", L: "큼" },
 
+  github: {
+    open: "GitHub에서 보기",
+    openRef: (ref: string) => `${ref} GitHub에서 보기, 새 탭`,
+    newTab: "새 탭에서 열립니다",
+  },
+
+  issueMeta: {
+    labels: "라벨",
+    moreLabels: (n: number) => `+${n}`,
+    moreLabelsTitle: (names: string) => `다른 라벨: ${names}`,
+    milestone: "마일스톤",
+  },
+
+  sync: {
+    syncedAgo: (when: string) => `마지막 동기화 ${when}`,
+    never: "아직 동기화 전",
+    running: "동기화하는 중",
+    failed: "동기화 실패",
+    failedTitle: (when: string, reason: string) => `${when} 동기화 실패: ${reason}`,
+    unknownReason: "이유를 알 수 없습니다",
+    notConnected: "GitHub 연결 전",
+    connect: "설정에서 연결",
+    runNow: "지금 동기화",
+    started: "동기화를 시작했습니다",
+    alreadyRunning: "이미 동기화하는 중입니다",
+    notConfigured: "GitHub 앱 설정이 없어 동기화할 수 없습니다",
+    notConnectedError: "GitHub 연결이 없어 동기화할 수 없습니다",
+    adminOnly: "관리자만 동기화할 수 있습니다",
+    runFailed: "동기화를 시작하지 못했습니다",
+  },
+
   time: {
     today: "오늘",
     todayHeading: "오늘",
@@ -205,6 +236,9 @@ export const ko = {
     prState: { open: "열림", closed: "닫힘", merged: "병합됨" },
     reviewRequested: " · 리뷰 요청",
     draft: " · 초안",
+    labels: "라벨",
+    milestone: "마일스톤",
+    openPr: (n: number) => `PR #${n} GitHub에서 보기, 새 탭`,
   },
 
   overview: {
@@ -301,6 +335,13 @@ export const ko = {
       noMeeting: "회의 없음",
       milestones: "마일스톤",
       milestonesHint: "GitHub 마일스톤을 가져오면 마감일과 진행률이 여기에 보입니다.",
+      milestonesOpen: "열린 마일스톤",
+      milestonesAria: (title: string, done: number, total: number) => `${title}: ${total}건 중 ${done}건 완료`,
+      due: (date: string) => `${date} 마감`,
+      overdue: (date: string) => `${date} 마감 지남`,
+      noDue: "마감일 없음",
+      milestonesMore: (n: number) => `닫힌 마일스톤 ${n}개는 GitHub에서 볼 수 있습니다.`,
+      milestonesAllClosed: "열린 마일스톤이 없습니다.",
     },
     sprint: {
       daysLeft: (() => "일 남음") as (n: number) => string,

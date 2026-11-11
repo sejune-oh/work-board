@@ -161,6 +161,19 @@ public class ConnectGithubTests : IClassFixture<WebApplicationFactory<Program>>
     }
 
     [DbFact]
+    public async Task Personal_installation_of_another_account_gets_403_not_your_account()
+    {
+        await using var tenant = await TestTenant.CreateAsync(_factory);
+        var (login, fake, installationId, _) = await AdminAsync(tenant);
+        fake.Installation = new GitHubInstallation(TestTenant.NextId(), "someone-else", "User", "all");
+
+        var response = await PostAsync(Client(fake, login), installationId);
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        Assert.Equal("not_your_account", await ErrorAsync(response));
+    }
+
+    [DbFact]
     public async Task Invalid_code_gets_400()
     {
         await using var tenant = await TestTenant.CreateAsync(_factory);

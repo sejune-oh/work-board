@@ -54,6 +54,9 @@ public static class ConnectGithub
             if (!string.Equals(installation.AccountType, "User", StringComparison.OrdinalIgnoreCase))
                 return Error(StatusCodes.Status422UnprocessableEntity, "organization_not_supported");
 
+            if (installation.AccountId != githubUser.Id)
+                return Error(StatusCodes.Status403Forbidden, "not_your_account");
+
             var saved = await SaveAsync(sync, caller.TenantId, installationId, installation, ct);
             return saved is null
                 ? Error(StatusCodes.Status409Conflict, "account_connected")
